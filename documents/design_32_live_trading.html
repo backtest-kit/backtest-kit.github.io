@@ -1,0 +1,350 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/32_live_trading | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_32_live_trading.html">design/32_live_trading</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="live-trading" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Live Trading<a href="#live-trading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document covers the live trading execution system, which enables real-time signal monitoring and trading operations with crash recovery. Live trading runs as an infinite async generator that continuously evaluates market conditions and manages open positions.</p>
+<p>For information about backtesting historical data, see <a href="design_28_backtesting.html">Backtesting</a>. For details on the underlying signal lifecycle and state transitions, see <a href="design_23_signal_lifecycle.html">Signal Lifecycle</a>. For information about signal persistence mechanisms, see <a href="design_26_signal_persistence.html">Signal Persistence</a>.</p>
+<hr>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading provides a production-ready framework for executing trading strategies in real-time. Unlike backtesting, which iterates through historical timeframes, live trading operates continuously with 1-minute intervals and uses the current system time (<code>Date.now()</code>). The system is designed for reliability with atomic state persistence that enables crash recovery without signal duplication or loss.</p>
+<p>Key characteristics:</p>
+<ul>
+<li><strong>Infinite execution</strong>: The generator never completes unless manually stopped</li>
+<li><strong>Crash-safe</strong>: State is persisted to disk before every yield</li>
+<li><strong>Real-time</strong>: Uses current market prices via <code>getAveragePrice()</code></li>
+<li><strong>Filtered output</strong>: Only yields <code>opened</code> and <code>closed</code> events (skips <code>idle</code> and <code>active</code>)</li>
+</ul>
+<hr>
+<a id="public-api-surface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Surface<a href="#public-api-surface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Live</code> singleton class provides the user-facing interface for live trading operations. All methods delegate to <code>liveGlobalService</code> with logging.</p>
+<a id="liverun" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live.run()<a href="#liverun" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Starts live trading execution and returns an infinite async generator that yields opened and closed signals.</p>
+<p><strong>Method Signature</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultOpened</span><span class="hl-1"> | </span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal opened:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;PNL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Important</strong>: This loop runs forever and must be terminated with Ctrl+C or process.exit().</p>
+<hr>
+<a id="livebackground" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live.background()<a href="#livebackground" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Executes live trading without yielding results to the caller. All signal events are still processed internally and logged, but the caller does not receive them. Returns a cancellation closure that stops execution after the next closed signal.</p>
+<p><strong>Method Signature</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;() </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cancel</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: stop after next signal closes</span><br/><span class="hl-0">cancel</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="livegetreport-and-livedump" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live.getReport() and Live.dump()<a href="#livegetreport-and-livedump" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Generate markdown reports summarizing all signal events for a strategy. <code>getReport()</code> returns the markdown string, while <code>dump()</code> writes it to disk.</p>
+<p><strong>Method Signatures</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span><br/><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">?: </span><span class="hl-4">string</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-6">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Default path for <code>dump()</code> is <code>./logs/live</code>.</p>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading uses a three-layer architecture with context injection:</p>
+<p><img src="../media/32_Live_Trading_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Layer Responsibilities</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Component</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Public API</td>
+<td><code>Live</code></td>
+<td>User-facing interface with logging</td>
+</tr>
+<tr>
+<td>Service Orchestration</td>
+<td><code>LiveGlobalService</code></td>
+<td>Service aggregation</td>
+</tr>
+<tr>
+<td>Service Orchestration</td>
+<td><code>LiveLogicPublicService</code></td>
+<td>Context injection wrapper</td>
+</tr>
+<tr>
+<td>Service Orchestration</td>
+<td><code>LiveLogicPrivateService</code></td>
+<td>Core infinite loop orchestration</td>
+</tr>
+<tr>
+<td>Business Logic</td>
+<td><code>ClientStrategy</code></td>
+<td>Signal evaluation and persistence</td>
+</tr>
+<tr>
+<td>Cross-Cutting</td>
+<td><code>PersistSignalAdapter</code></td>
+<td>Atomic file I/O for crash safety</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="livelogicprivateservice-core-execution-loop" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LiveLogicPrivateService: Core Execution Loop<a href="#livelogicprivateservice-core-execution-loop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService</code> implements the infinite execution loop that drives live trading. The service is located at <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts</a>.</p>
+<a id="infinite-loop-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Infinite Loop Pattern<a href="#infinite-loop-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Live_Trading_1.svg" alt="Mermaid Diagram"></p>
+<a id="key-constants" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Constants<a href="#key-constants" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TICK_TTL</code></td>
+<td><code>60,001 ms</code></td>
+<td>Interval between ticks (1 minute + 1 millisecond buffer)</td>
+</tr>
+</tbody>
+</table>
+<p>The extra 1ms buffer ensures the next tick starts after the minute boundary, preventing edge case timing issues.</p>
+<hr>
+<a id="execution-flow-details" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Flow Details<a href="#execution-flow-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>run()</code> method at <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:53-82</a> implements the following steps:</p>
+<ol>
+<li><strong>Enter infinite loop</strong>: <code>while (true)</code> creates unbounded execution</li>
+<li><strong>Create timestamp</strong>: <code>const when = new Date()</code> captures current time</li>
+<li><strong>Evaluate strategy</strong>: <code>await this.strategyGlobalService.tick(symbol, when, false)</code>
+<ul>
+<li>The <code>false</code> parameter indicates live mode (not backtest)</li>
+<li>This triggers signal evaluation in <code>ClientStrategy</code></li>
+</ul>
+</li>
+<li><strong>Filter results</strong>:
+<ul>
+<li><code>idle</code>: No signal exists, skip yielding</li>
+<li><code>active</code>: Signal is monitoring conditions, skip yielding</li>
+<li><code>opened</code>: New signal created, yield to user</li>
+<li><code>closed</code>: Signal completed, yield to user with PnL</li>
+</ul>
+</li>
+<li><strong>Sleep</strong>: <code>await sleep(TICK_TTL)</code> waits 1 minute before next iteration</li>
+</ol>
+<p><strong>Result Filtering Rationale</strong>:</p>
+<p>Live mode only yields <code>opened</code> and <code>closed</code> events to reduce noise. The <code>active</code> state occurs every minute while a signal is monitoring conditions, which would flood the output. Users typically only care about signal entry and exit points.</p>
+<hr>
+<a id="context-propagation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Propagation<a href="#context-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPublicService</code> wraps <code>LiveLogicPrivateService</code> with <code>MethodContextService</code> to enable implicit context passing. This allows framework functions like <code>getCandles()</code> and <code>getSignal()</code> to work without explicit parameters.</p>
+<p><img src="../media/32_Live_Trading_2.svg" alt="Mermaid Diagram"></p>
+<a id="context-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Structure<a href="#context-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The context object contains:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-11">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;  </span><span class="hl-5">// Which strategy to execute</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;  </span><span class="hl-5">// Which exchange to use</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;     </span><span class="hl-5">// Always &quot;&quot; for live mode</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>frameName</code> is an empty string for live trading because there is no historical timeframe—execution uses real-time data.</p>
+<hr>
+<a id="crash-recovery-mechanism" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery Mechanism<a href="#crash-recovery-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading persists signal state to disk before every yield, enabling seamless recovery after process crashes or restarts.</p>
+<a id="persistence-workflow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Workflow<a href="#persistence-workflow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Live_Trading_3.svg" alt="Mermaid Diagram"></p>
+<a id="persistence-guarantees" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Guarantees<a href="#persistence-guarantees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Atomicity</strong>: File writes are atomic using temporary files and rename operations</li>
+<li><strong>Durability</strong>: State is written to disk before yielding, ensuring no in-memory-only state</li>
+<li><strong>Idempotency</strong>: On restart, the same signal is not duplicated—monitoring resumes</li>
+<li><strong>Location</strong>: Files stored at <code>./logs/persist/{strategyName}/{symbol}.json</code></li>
+</ol>
+<a id="state-transitions-and-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions and Persistence<a href="#state-transitions-and-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>State Transition</th>
+<th>Persistence Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code> → <code>opened</code></td>
+<td>Write signal to disk</td>
+</tr>
+<tr>
+<td><code>opened</code> → <code>active</code></td>
+<td>No change (signal already persisted)</td>
+</tr>
+<tr>
+<td><code>active</code> → <code>active</code></td>
+<td>No change (monitoring)</td>
+</tr>
+<tr>
+<td><code>active</code> → <code>closed</code></td>
+<td>Write <code>null</code> to disk (clear signal)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="real-time-price-fetching" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Real-time Price Fetching<a href="#real-time-price-fetching" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Unlike backtesting which uses historical candle data, live trading fetches the current market price in real-time using <code>getAveragePrice()</code>. This function calculates Volume-Weighted Average Price (VWAP) from recent trades.</p>
+<a id="price-source" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Source<a href="#price-source" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Live_Trading_4.svg" alt="Mermaid Diagram"></p>
+<p>The <code>getAveragePrice()</code> function is called during every tick to:</p>
+<ol>
+<li><strong>Check take profit</strong>: Compare current price to signal's <code>takeProfit</code> level</li>
+<li><strong>Check stop loss</strong>: Compare current price to signal's <code>stopLoss</code> level</li>
+<li><strong>Calculate PnL</strong>: Determine profit/loss when closing signal</li>
+</ol>
+<hr>
+<a id="integration-with-global-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Global Services<a href="#integration-with-global-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService</code> orchestrates execution by delegating to global services:</p>
+<p><img src="../media/32_Live_Trading_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Dependencies</strong>:</p>
+<ul>
+<li><strong>StrategyGlobalService</strong>: Executes strategy logic and manages signal lifecycle</li>
+<li><strong>LoggerService</strong>: Records tick results and signal events</li>
+<li><strong>ExchangeGlobalService</strong> (indirect): Fetches market prices via strategy calls</li>
+</ul>
+<p>All services are injected via dependency injection using <code>TYPES</code> symbols.</p>
+<hr>
+<a id="comparison-live-vs-backtest" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Comparison: Live vs Backtest<a href="#comparison-live-vs-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Live Trading</th>
+<th>Backtesting</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Execution</strong></td>
+<td>Infinite loop (<code>while(true)</code>)</td>
+<td>Finite iteration over timeframes</td>
+</tr>
+<tr>
+<td><strong>Time Source</strong></td>
+<td><code>new Date()</code> (real-time)</td>
+<td>Timeframe array (historical)</td>
+</tr>
+<tr>
+<td><strong>Price Source</strong></td>
+<td><code>getAveragePrice()</code> (VWAP)</td>
+<td><code>getCandles()</code> (OHLCV data)</td>
+</tr>
+<tr>
+<td><strong>Interval</strong></td>
+<td>1 minute + 1ms</td>
+<td>Configurable (1m, 5m, 1d, etc.)</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>Enabled (crash recovery)</td>
+<td>Disabled (simulation only)</td>
+</tr>
+<tr>
+<td><strong>Yielded Events</strong></td>
+<td><code>opened</code> and <code>closed</code> only</td>
+<td>All events including <code>active</code></td>
+</tr>
+<tr>
+<td><strong>Fast-Forward</strong></td>
+<td>No (real-time progression)</td>
+<td>Yes (<code>backtest()</code> method)</td>
+</tr>
+<tr>
+<td><strong>Completion</strong></td>
+<td>Never completes</td>
+<td>Completes after last timeframe</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="process-termination" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Process Termination<a href="#process-termination" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live trading does not handle graceful shutdown automatically. To stop execution:</p>
+<ol>
+<li><strong>Ctrl+C</strong>: Sends SIGINT to process, which Node.js handles by default</li>
+<li><strong>process.exit()</strong>: Explicitly terminates process</li>
+<li><strong>Cancel function</strong>: <code>Live.background()</code> returns a closure that stops after next closed signal</li>
+</ol>
+<a id="crash-scenarios" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Crash Scenarios<a href="#crash-scenarios" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system handles crashes transparently:</p>
+<ul>
+<li><strong>Mid-tick crash</strong>: Next restart recovers persisted state from disk</li>
+<li><strong>Between ticks</strong>: No active work to recover, resumes normally</li>
+<li><strong>During persistence</strong>: Atomic writes prevent partial state corruption</li>
+</ul>
+<a id="validation-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Errors<a href="#validation-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If <code>getSignal()</code> returns an invalid signal, <code>ClientStrategy</code> throws an error and the process crashes. Users should ensure their signal generation logic is correct before running live.</p>
+<hr>
+<a id="monitoring-and-observability" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Monitoring and Observability<a href="#monitoring-and-observability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logging<a href="#logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>LiveLogicPrivateService</code> logs every tick result:</p>
+<pre><code class="typescript"><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&quot;liveLogicPrivateService tick result&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">action:</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Log locations:</p>
+<ul>
+<li>Console output (if enabled)</li>
+<li>Log files (if file transport configured)</li>
+<li>Custom logger implementation (if provided)</li>
+</ul>
+<a id="markdown-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Markdown Reports<a href="#markdown-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>LiveMarkdownService</code> accumulates all signal events and generates reports with:</p>
+<ul>
+<li>List of all opened signals</li>
+<li>List of all closed signals with PnL</li>
+<li>Win rate statistics</li>
+<li>Average profit/loss</li>
+</ul>
+<p>Access reports via:</p>
+<ul>
+<li><code>Live.getReport(strategyName)</code>: Returns markdown string</li>
+<li><code>Live.dump(strategyName, path)</code>: Writes markdown to disk</li>
+</ul>
+<hr>
+<a id="usage-example-complete-live-trading-setup" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Example: Complete Live Trading Setup<a href="#usage-example-complete-live-trading-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Live</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./classes/Live&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./functions/addStrategy&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./functions/addExchange&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Register strategy</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Your signal generation logic</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">price</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">shouldEnterLong</span><span class="hl-1">(</span><span class="hl-4">price</span><span class="hl-1">)) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-2">`signal-</span><span class="hl-6">${</span><span class="hl-4">Date</span><span class="hl-9">.</span><span class="hl-0">now</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">side:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">openPrice:</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">takeProfit:</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1"> * </span><span class="hl-8">1.02</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">stopLoss:</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1"> * </span><span class="hl-8">0.98</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Register exchange</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">date</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch from Binance API</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Run live trading (infinite loop)</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;🔔 Signal opened:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;   Open:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">openPrice</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;   TP:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">takeProfit</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;   SL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">stopLoss</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;🏁 Signal closed:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;   Reason:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;   PnL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">, </span><span class="hl-2">&quot;%&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Generate report after stopping (in another context)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">report</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;momentum-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">report</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="thread-safety-and-concurrency" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Thread Safety and Concurrency<a href="#thread-safety-and-concurrency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading is <strong>single-threaded</strong> and <strong>synchronous</strong>:</p>
+<ul>
+<li>Only one tick executes at a time</li>
+<li>The <code>sleep(TICK_TTL)</code> ensures 1-minute spacing</li>
+<li>No concurrent ticks can occur</li>
+<li>No locks or mutexes required</li>
+</ul>
+<p><strong>Running Multiple Strategies</strong>:</p>
+<p>To run multiple strategies or symbols simultaneously, spawn separate Node.js processes:</p>
+<pre><code class="bash"><span class="hl-5"># Terminal 1</span><br/><span class="hl-0">node</span><span class="hl-1"> </span><span class="hl-2">live-btc.js</span><br/><br/><span class="hl-5"># Terminal 2</span><br/><span class="hl-0">node</span><span class="hl-1"> </span><span class="hl-2">live-eth.js</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each process maintains its own state and persistence files, preventing conflicts.</p>
+<hr>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Factor</th>
+<th>Impact</th>
+<th>Mitigation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Network latency</strong></td>
+<td>Delays in fetching VWAP</td>
+<td>Use exchange with low latency, consider co-location</td>
+</tr>
+<tr>
+<td><strong>Disk I/O</strong></td>
+<td>Persistence writes block execution</td>
+<td>Use SSD storage, minimize writes</td>
+</tr>
+<tr>
+<td><strong>Strategy complexity</strong></td>
+<td>Slow <code>getSignal()</code> delays ticks</td>
+<td>Optimize signal generation logic</td>
+</tr>
+<tr>
+<td><strong>Sleep precision</strong></td>
+<td>Node.js timers not guaranteed precise</td>
+<td>Accept ~1ms jitter, or use <code>setInterval</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Memory Usage</strong>:</p>
+<p>Live trading has minimal memory footprint:</p>
+<ul>
+<li>No historical data arrays (unlike backtest)</li>
+<li>Only current signal in memory</li>
+<li>Generator pattern prevents accumulation</li>
+</ul>
+<hr>
+<a id="related-subsections" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Subsections<a href="#related-subsections" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>For detailed information about specific live trading subsystems:</p>
+<ul>
+<li><strong><a href="design_33_live_execution_flow.html">Live Execution Flow</a></strong>: Step-by-step explanation of <code>LiveLogicPrivateService</code> orchestration</li>
+<li><strong><a href="design_34_crash_recovery.html">Crash Recovery</a></strong>: Detailed atomic persistence and state recovery mechanisms</li>
+<li><strong><a href="design_35_real-time_monitoring.html">Real-time Monitoring</a></strong>: How <code>ClientStrategy</code> monitors signals against market conditions</li>
+</ul>
+<p>For related topics across the framework:</p>
+<ul>
+<li><strong><a href="design_23_signal_lifecycle.html">Signal Lifecycle</a></strong>: Complete signal state machine and transitions</li>
+<li><strong><a href="design_26_signal_persistence.html">Signal Persistence</a></strong>: <code>PersistSignalAdapter</code> implementation details</li>
+<li><strong><a href="design_10_backtest_api.html">Backtest API</a></strong>: Comparison with backtesting execution model</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#live-trading"><span>Live <wbr/>Trading</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#public-api-surface"><span>Public API <wbr/>Surface</span></a></li><li><ul><li><a href="#liverun"><span>Live.run()</span></a></li><li><a href="#livebackground"><span>Live.background()</span></a></li><li><a href="#livegetreport-and-livedump"><span>Live.get<wbr/>Report() and <wbr/>Live.dump()</span></a></li></ul></li><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><a href="#livelogicprivateservice-core-execution-loop"><span>Live<wbr/>Logic<wbr/>Private<wbr/>Service: <wbr/>Core <wbr/>Execution <wbr/>Loop</span></a></li><li><ul><li><a href="#infinite-loop-pattern"><span>Infinite <wbr/>Loop <wbr/>Pattern</span></a></li><li><a href="#key-constants"><span>Key <wbr/>Constants</span></a></li><li><a href="#execution-flow-details"><span>Execution <wbr/>Flow <wbr/>Details</span></a></li></ul></li><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li><li><ul><li><a href="#context-structure"><span>Context <wbr/>Structure</span></a></li></ul></li><li><a href="#crash-recovery-mechanism"><span>Crash <wbr/>Recovery <wbr/>Mechanism</span></a></li><li><ul><li><a href="#persistence-workflow"><span>Persistence <wbr/>Workflow</span></a></li><li><a href="#persistence-guarantees"><span>Persistence <wbr/>Guarantees</span></a></li><li><a href="#state-transitions-and-persistence"><span>State <wbr/>Transitions and <wbr/>Persistence</span></a></li></ul></li><li><a href="#real-time-price-fetching"><span>Real-<wbr/>time <wbr/>Price <wbr/>Fetching</span></a></li><li><ul><li><a href="#price-source"><span>Price <wbr/>Source</span></a></li></ul></li><li><a href="#integration-with-global-services"><span>Integration with <wbr/>Global <wbr/>Services</span></a></li><li><a href="#comparison-live-vs-backtest"><span>Comparison: <wbr/>Live vs <wbr/>Backtest</span></a></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#process-termination"><span>Process <wbr/>Termination</span></a></li><li><a href="#crash-scenarios"><span>Crash <wbr/>Scenarios</span></a></li><li><a href="#validation-errors"><span>Validation <wbr/>Errors</span></a></li></ul></li><li><a href="#monitoring-and-observability"><span>Monitoring and <wbr/>Observability</span></a></li><li><ul><li><a href="#logging"><span>Logging</span></a></li><li><a href="#markdown-reports"><span>Markdown <wbr/>Reports</span></a></li></ul></li><li><a href="#usage-example-complete-live-trading-setup"><span>Usage <wbr/>Example: <wbr/>Complete <wbr/>Live <wbr/>Trading <wbr/>Setup</span></a></li><li><a href="#thread-safety-and-concurrency"><span>Thread <wbr/>Safety and <wbr/>Concurrency</span></a></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><a href="#related-subsections"><span>Related <wbr/>Subsections</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

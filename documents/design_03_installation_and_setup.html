@@ -1,0 +1,273 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/03_installation_and_setup | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_03_installation_and_setup.html">design/03_installation_and_setup</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="installation-and-setup" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Installation and Setup<a href="#installation-and-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p><strong>Purpose and Scope:</strong> This page covers the installation process, package structure, module entry points, and build system configuration for the backtest-kit framework. For information about configuring strategies, exchanges, and frames after installation, see <a href="design_09_configuration_functions.html">Configuration Functions</a>. For architecture details and service layer setup, see <a href="design_04_architecture.html">Architecture</a> and <a href="design_06_dependency_injection_system.html">Dependency Injection System</a>.</p>
+<hr>
+<a id="prerequisites" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Prerequisites<a href="#prerequisites" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest-kit framework requires <strong>TypeScript 5.0 or higher</strong> as a peer dependency. Ensure your project meets this requirement before installation.</p>
+<p><strong>Required peer dependency:</strong></p>
+<ul>
+<li><code>typescript</code>: <code>^5.0.0</code></li>
+</ul>
+<p><strong>Supported Node.js versions:</strong> Node.js 14.18.0 or higher (inferred from build tool requirements)</p>
+<hr>
+<a id="installing-the-package" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Installing the Package<a href="#installing-the-package" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Install backtest-kit from npm:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">backtest-kit</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This installs the framework along with its runtime dependencies:</p>
+<ul>
+<li><code>di-kit</code> (^1.0.18) - Dependency injection container</li>
+<li><code>di-scoped</code> (^1.0.20) - Scoped context management</li>
+<li><code>functools-kit</code> (^1.0.93) - Functional programming utilities</li>
+<li><code>get-moment-stamp</code> (^1.1.1) - Timestamp utilities</li>
+</ul>
+<hr>
+<a id="package-structure-and-distribution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Package Structure and Distribution<a href="#package-structure-and-distribution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The distributed npm package contains three primary artifacts:</p>
+<p><img src="../media/03_Installation_and_Setup_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Package contents:</strong></p>
+<table>
+<thead>
+<tr>
+<th>File/Directory</th>
+<th>Purpose</th>
+<th>Referenced By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build/index.cjs</code></td>
+<td>CommonJS entry point</td>
+<td><code>main</code>, <code>exports.require</code></td>
+</tr>
+<tr>
+<td><code>build/index.mjs</code></td>
+<td>ES Module entry point</td>
+<td><code>module</code>, <code>exports.import</code></td>
+</tr>
+<tr>
+<td><code>types.d.ts</code></td>
+<td>TypeScript type definitions</td>
+<td><code>types</code>, <code>exports.types</code></td>
+</tr>
+<tr>
+<td><code>README.md</code></td>
+<td>Documentation</td>
+<td>Package metadata</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="module-system-and-entry-points" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Module System and Entry Points<a href="#module-system-and-entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The package supports both CommonJS and ES Modules through conditional exports:</p>
+<a id="es-module-import-recommended" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ES Module Import (Recommended)<a href="#es-module-import-recommended" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><br/><span class="hl-1">  </span><span class="hl-4">Backtest</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">Live</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addExchange</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addFrame</span><span class="hl-1"> </span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Resolves to: <code>build/index.mjs</code></p>
+<a id="commonjs-require" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CommonJS Require<a href="#commonjs-require" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-6">const</span><span class="hl-1"> { </span><br/><span class="hl-1">  </span><span class="hl-7">Backtest</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-7">Live</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-7">addStrategy</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-7">addExchange</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-7">addFrame</span><span class="hl-1"> </span><br/><span class="hl-1">} = </span><span class="hl-0">require</span><span class="hl-1">(</span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Resolves to: <code>build/index.cjs</code></p>
+<a id="typescript-type-definitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TypeScript Type Definitions<a href="#typescript-type-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>TypeScript automatically resolves types from <code>types.d.ts</code> for both import styles.</p>
+<p><img src="../media/03_Installation_and_Setup_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="build-system-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Build System Architecture<a href="#build-system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The package uses <strong>Rollup</strong> to compile TypeScript source into distributable JavaScript and type definitions.</p>
+<a id="build-process-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Build Process Overview<a href="#build-process-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/03_Installation_and_Setup_2.svg" alt="Mermaid Diagram"></p>
+<a id="build-scripts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Build Scripts<a href="#build-scripts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following npm scripts manage the build process:</p>
+<table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Command</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>build</code></td>
+<td><code>rollup -c</code></td>
+<td>Compile source to <code>build/</code> and generate <code>types.d.ts</code></td>
+</tr>
+<tr>
+<td><code>build:docs</code></td>
+<td><code>rimraf docs &amp;&amp; mkdir docs &amp;&amp; node ./scripts/dts-docs.cjs ./types.d.ts ./docs</code></td>
+<td>Generate documentation from types</td>
+</tr>
+<tr>
+<td><code>docs:www</code></td>
+<td><code>rimraf docs/wwwroot &amp;&amp; typedoc</code></td>
+<td>Generate TypeDoc HTML documentation</td>
+</tr>
+</tbody>
+</table>
+<a id="rollup-plugins-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Rollup Plugins Configuration<a href="#rollup-plugins-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The build system uses these plugins:</p>
+<ol>
+<li><strong>@rollup/plugin-typescript</strong> - Compiles TypeScript to JavaScript</li>
+<li><strong>rollup-plugin-dts</strong> - Bundles TypeScript declarations into single <code>types.d.ts</code></li>
+<li><strong>rollup-plugin-peer-deps-external</strong> - Externalizes peer dependencies</li>
+</ol>
+<hr>
+<a id="dependency-tree" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Tree<a href="#dependency-tree" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework's runtime dependencies form a lightweight tree:</p>
+<p><img src="../media/03_Installation_and_Setup_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Dependencies:</strong></p>
+<ul>
+<li><strong>di-kit</strong>: Provides symbol-based dependency injection container (see <a href="design_06_dependency_injection_system.html">Dependency Injection System</a>)</li>
+<li><strong>di-scoped</strong>: Enables implicit context propagation for services (see <a href="design_07_context_propagation.html">Context Propagation</a>)</li>
+<li><strong>functools-kit</strong>: Functional programming utilities for memoization and queuing</li>
+<li><strong>get-moment-stamp</strong>: Timestamp calculation and interval utilities</li>
+</ul>
+<hr>
+<a id="verifying-installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Verifying Installation<a href="#verifying-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="quick-verification-script" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Quick Verification Script<a href="#quick-verification-script" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Create a file <code>verify-install.ts</code>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Backtest</span><span class="hl-1">, </span><span class="hl-4">Live</span><span class="hl-1">, </span><span class="hl-4">addExchange</span><span class="hl-1">, </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">addFrame</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;✓ Import successful&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Backtest:&quot;</span><span class="hl-1">, </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-4">run</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Live:&quot;</span><span class="hl-1">, </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-4">run</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;addExchange:&quot;</span><span class="hl-1">, </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">addExchange</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;addStrategy:&quot;</span><span class="hl-1">, </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">addStrategy</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;addFrame:&quot;</span><span class="hl-1">, </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">addFrame</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Run with:</p>
+<pre><code class="bash"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">ts-node</span><span class="hl-1"> </span><span class="hl-2">verify-install.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Expected output:</p>
+<pre><code><span class="hl-1">✓ </span><span class="hl-4">Import</span><span class="hl-1"> </span><span class="hl-4">successful</span><br/><span class="hl-10">Backtest</span><span class="hl-1">: </span><span class="hl-6">function</span><br/><span class="hl-0">Live</span><span class="hl-1">: </span><span class="hl-0">function</span><br/><span class="hl-0">addExchange</span><span class="hl-1">: </span><span class="hl-0">function</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">: </span><span class="hl-0">function</span><br/><span class="hl-0">addFrame</span><span class="hl-1">: </span><span class="hl-0">function</span>
+</code><button>Copy</button></pre>
+
+<a id="checking-package-version" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Checking Package Version<a href="#checking-package-version" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">list</span><span class="hl-1"> </span><span class="hl-2">backtest-kit</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Expected output:</p>
+<pre><code><span class="hl-4">your</span><span class="hl-1">-</span><span class="hl-4">project</span><span class="hl-1">@</span><span class="hl-8">1.0</span><span class="hl-1">.</span><span class="hl-8">0</span><br/><span class="hl-1">└── </span><span class="hl-4">backtest</span><span class="hl-1">-</span><span class="hl-4">kit</span><span class="hl-1">@</span><span class="hl-8">1.0</span><span class="hl-1">.</span><span class="hl-8">4</span>
+</code><button>Copy</button></pre>
+
+<hr>
+<a id="module-resolution-and-code-entity-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Module Resolution and Code Entity Mapping<a href="#module-resolution-and-code-entity-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Understanding how public API functions map to internal implementation:</p>
+<p><img src="../media/03_Installation_and_Setup_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Export Mappings:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Public Export</th>
+<th>Source File</th>
+<th>Internal Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Backtest</code></td>
+<td><code>src/lib/index.ts</code></td>
+<td>Service aggregator exposing <code>BacktestLogicPublicService</code></td>
+</tr>
+<tr>
+<td><code>Live</code></td>
+<td><code>src/lib/index.ts</code></td>
+<td>Service aggregator exposing <code>LiveLogicPublicService</code></td>
+</tr>
+<tr>
+<td><code>addStrategy</code></td>
+<td><code>src/function/add.ts</code></td>
+<td>Registers schema in <code>StrategySchemaService</code></td>
+</tr>
+<tr>
+<td><code>addExchange</code></td>
+<td><code>src/function/add.ts</code></td>
+<td>Registers schema in <code>ExchangeSchemaService</code></td>
+</tr>
+<tr>
+<td><code>addFrame</code></td>
+<td><code>src/function/add.ts</code></td>
+<td>Registers schema in <code>FrameSchemaService</code></td>
+</tr>
+<tr>
+<td><code>getCandles</code></td>
+<td><code>src/function/exchange.ts</code></td>
+<td>Proxies to <code>ExchangeGlobalService.getCandles</code></td>
+</tr>
+<tr>
+<td><code>getAveragePrice</code></td>
+<td><code>src/function/exchange.ts</code></td>
+<td>Proxies to <code>ExchangeGlobalService.getAveragePrice</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="troubleshooting-common-issues" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Troubleshooting Common Issues<a href="#troubleshooting-common-issues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="typescript-version-mismatch" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TypeScript Version Mismatch<a href="#typescript-version-mismatch" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Error:</strong></p>
+<pre><code><span class="hl-4">npm</span><span class="hl-1"> </span><span class="hl-7">ERR</span><span class="hl-1">! </span><span class="hl-4">peer</span><span class="hl-1"> </span><span class="hl-4">typescript</span><span class="hl-1">@</span><span class="hl-2">&quot;^5.0.0&quot;</span><span class="hl-1"> </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">-</span><span class="hl-4">kit</span><span class="hl-1">@</span><span class="hl-8">1.0</span><span class="hl-1">.</span><span class="hl-8">4</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Solution:</strong> Upgrade TypeScript to version 5.0 or higher:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-6">--save-dev</span><span class="hl-1"> </span><span class="hl-2">typescript@^5.0.0</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="module-resolution-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Module Resolution Errors<a href="#module-resolution-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Error:</strong></p>
+<pre><code><span class="hl-4">Cannot</span><span class="hl-1"> </span><span class="hl-4">find</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Solutions:</strong></p>
+<ol>
+<li>
+<p>Ensure <code>node_modules</code> is not corrupted:</p>
+<pre><code class="bash"><span class="hl-0">rm</span><span class="hl-1"> </span><span class="hl-6">-rf</span><span class="hl-1"> </span><span class="hl-2">node_modules</span><span class="hl-1"> </span><span class="hl-2">package-lock.json</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p>Check <code>tsconfig.json</code> has proper module resolution:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">&quot;compilerOptions&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-12">&quot;moduleResolution&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;node&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-12">&quot;esModuleInterop&quot;</span><span class="hl-1">: </span><span class="hl-6">true</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+</ol>
+<a id="missing-type-definitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Missing Type Definitions<a href="#missing-type-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Error:</strong></p>
+<pre><code><span class="hl-4">Could</span><span class="hl-1"> </span><span class="hl-4">not</span><span class="hl-1"> </span><span class="hl-4">find</span><span class="hl-1"> </span><span class="hl-4">a</span><span class="hl-1"> </span><span class="hl-4">declaration</span><span class="hl-1"> </span><span class="hl-4">file</span><span class="hl-1"> </span><span class="hl-4">for</span><span class="hl-1"> </span><span class="hl-6">module</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Solution:</strong> Verify <code>types.d.ts</code> exists in <code>node_modules/backtest-kit/</code>:</p>
+<pre><code class="bash"><span class="hl-0">ls</span><span class="hl-1"> </span><span class="hl-2">node_modules/backtest-kit/types.d.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<p>If missing, reinstall:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">backtest-kit</span><span class="hl-1"> </span><span class="hl-6">--force</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="development-setup-for-contributors" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Development Setup (For Contributors)<a href="#development-setup-for-contributors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>If you're contributing to backtest-kit or need to build from source:</p>
+<a id="cloning-the-repository" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cloning the Repository<a href="#cloning-the-repository" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">git</span><span class="hl-1"> </span><span class="hl-2">clone</span><span class="hl-1"> </span><span class="hl-2">https://github.com/tripolskypetr/backtest-kit</span><br/><span class="hl-0">cd</span><span class="hl-1"> </span><span class="hl-2">backtest-kit</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="building-from-source" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Building from Source<a href="#building-from-source" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-2">build</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This generates:</p>
+<ul>
+<li><code>build/index.cjs</code> - CommonJS bundle</li>
+<li><code>build/index.mjs</code> - ES Module bundle</li>
+<li><code>types.d.ts</code> - TypeScript definitions</li>
+</ul>
+<a id="development-scripts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Development Scripts<a href="#development-scripts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Script</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>npm run build</code></td>
+<td>Compile TypeScript to distributable format</td>
+</tr>
+<tr>
+<td><code>npm run build:docs</code></td>
+<td>Generate markdown documentation from types</td>
+</tr>
+<tr>
+<td><code>npm run docs:www</code></td>
+<td>Generate TypeDoc HTML documentation</td>
+</tr>
+<tr>
+<td><code>npm run repl</code></td>
+<td>Start interactive REPL for testing</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="next-steps" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>After successful installation:</p>
+<ol>
+<li><strong>Register your exchange data source</strong> - See <a href="design_09_configuration_functions.html">Configuration Functions</a> for <code>addExchange</code></li>
+<li><strong>Define your trading strategy</strong> - See <a href="design_09_configuration_functions.html">Configuration Functions</a> for <code>addStrategy</code></li>
+<li><strong>Set up timeframe generators</strong> - See <a href="design_09_configuration_functions.html">Configuration Functions</a> for <code>addFrame</code></li>
+<li><strong>Run your first backtest</strong> - See <a href="design_10_backtest_api.html">Backtest API</a></li>
+<li><strong>Deploy to live trading</strong> - See <a href="design_11_live_trading_api.html">Live Trading API</a></li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#installation-and-setup"><span>Installation and <wbr/>Setup</span></a><ul><li><a href="#prerequisites"><span>Prerequisites</span></a></li><li><a href="#installing-the-package"><span>Installing the <wbr/>Package</span></a></li><li><a href="#package-structure-and-distribution"><span>Package <wbr/>Structure and <wbr/>Distribution</span></a></li><li><a href="#module-system-and-entry-points"><span>Module <wbr/>System and <wbr/>Entry <wbr/>Points</span></a></li><li><ul><li><a href="#es-module-import-recommended"><span>ES <wbr/>Module <wbr/>Import (<wbr/>Recommended)</span></a></li><li><a href="#commonjs-require"><span>CommonJS <wbr/>Require</span></a></li><li><a href="#typescript-type-definitions"><span>Type<wbr/>Script <wbr/>Type <wbr/>Definitions</span></a></li></ul></li><li><a href="#build-system-architecture"><span>Build <wbr/>System <wbr/>Architecture</span></a></li><li><ul><li><a href="#build-process-overview"><span>Build <wbr/>Process <wbr/>Overview</span></a></li><li><a href="#build-scripts"><span>Build <wbr/>Scripts</span></a></li><li><a href="#rollup-plugins-configuration"><span>Rollup <wbr/>Plugins <wbr/>Configuration</span></a></li></ul></li><li><a href="#dependency-tree"><span>Dependency <wbr/>Tree</span></a></li><li><a href="#verifying-installation"><span>Verifying <wbr/>Installation</span></a></li><li><ul><li><a href="#quick-verification-script"><span>Quick <wbr/>Verification <wbr/>Script</span></a></li><li><a href="#checking-package-version"><span>Checking <wbr/>Package <wbr/>Version</span></a></li></ul></li><li><a href="#module-resolution-and-code-entity-mapping"><span>Module <wbr/>Resolution and <wbr/>Code <wbr/>Entity <wbr/>Mapping</span></a></li><li><a href="#troubleshooting-common-issues"><span>Troubleshooting <wbr/>Common <wbr/>Issues</span></a></li><li><ul><li><a href="#typescript-version-mismatch"><span>Type<wbr/>Script <wbr/>Version <wbr/>Mismatch</span></a></li><li><a href="#module-resolution-errors"><span>Module <wbr/>Resolution <wbr/>Errors</span></a></li><li><a href="#missing-type-definitions"><span>Missing <wbr/>Type <wbr/>Definitions</span></a></li></ul></li><li><a href="#development-setup-for-contributors"><span>Development <wbr/>Setup (<wbr/>For <wbr/>Contributors)</span></a></li><li><ul><li><a href="#cloning-the-repository"><span>Cloning the <wbr/>Repository</span></a></li><li><a href="#building-from-source"><span>Building from <wbr/>Source</span></a></li><li><a href="#development-scripts"><span>Development <wbr/>Scripts</span></a></li></ul></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

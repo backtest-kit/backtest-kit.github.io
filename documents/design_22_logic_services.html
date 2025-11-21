@@ -1,0 +1,473 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/22_logic_services | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_22_logic_services.html">design/22_logic_services</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="logic-services" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Logic Services<a href="#logic-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services orchestrate the execution of backtest and live trading operations using async generators. They coordinate between Strategy, Exchange, and Frame services while managing execution context propagation. Logic Services form the top layer of the Service Orchestration hierarchy and are the primary entry point for execution flows initiated by the Public API.</p>
+<p>For configuration and registration of strategies, exchanges, and frames, see <a href="design_09_configuration_functions.html">Configuration Functions</a>. For the business logic implementations that Logic Services orchestrate, see <a href="design_14_core_business_logic.html">Core Business Logic</a>.</p>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services follow a two-tier pattern with distinct responsibilities:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Classes</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Public</strong></td>
+<td><code>BacktestLogicPublicService</code>, <code>LiveLogicPublicService</code></td>
+<td>Context propagation, method routing, public API exposure</td>
+</tr>
+<tr>
+<td><strong>Private</strong></td>
+<td><code>BacktestLogicPrivateService</code>, <code>LiveLogicPrivateService</code></td>
+<td>Core orchestration logic, async generator implementation, service coordination</td>
+</tr>
+</tbody>
+</table>
+<a id="service-hierarchy-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Hierarchy Diagram<a href="#service-hierarchy-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="public-private-separation-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public-Private Separation Pattern<a href="#public-private-separation-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services use a two-tier pattern to separate context management from execution logic:</p>
+<a id="responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Responsibilities<a href="#responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Public Services:</strong></p>
+<ul>
+<li>Wrap private service generators with <code>MethodContextService.runAsyncIterator()</code></li>
+<li>Inject <code>IMethodContext</code> containing <code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code></li>
+<li>Provide the public interface for dependency injection consumers</li>
+<li>Located in <a href="">src/lib/services/logic/public/</a></li>
+</ul>
+<p><strong>Private Services:</strong></p>
+<ul>
+<li>Implement core orchestration logic using async generators</li>
+<li>Coordinate between Global Services</li>
+<li>Manage execution flow (iteration, timing, result streaming)</li>
+<li>Located in <a href="">src/lib/services/logic/private/</a></li>
+</ul>
+<a id="context-propagation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Propagation Flow<a href="#context-propagation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="backtestlogicprivateservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">BacktestLogicPrivateService<a href="#backtestlogicprivateservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Core orchestration service for backtest execution using memory-efficient async generators.</p>
+<a id="class-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Class Structure<a href="#class-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loggerService</code></td>
+<td><code>LoggerService</code></td>
+<td>Logs orchestration events (tick results, signal state changes)</td>
+</tr>
+<tr>
+<td><code>strategyGlobalService</code></td>
+<td><code>StrategyGlobalService</code></td>
+<td>Executes <code>tick()</code> and <code>backtest()</code> operations</td>
+</tr>
+<tr>
+<td><code>exchangeGlobalService</code></td>
+<td><code>ExchangeGlobalService</code></td>
+<td>Fetches future candles for fast-forward simulation</td>
+</tr>
+<tr>
+<td><code>frameGlobalService</code></td>
+<td><code>FrameGlobalService</code></td>
+<td>Retrieves timeframe array for iteration</td>
+</tr>
+</tbody>
+</table>
+<a id="execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_2.svg" alt="Mermaid Diagram"></p>
+<a id="key-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Methods<a href="#key-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong><code>run(symbol: string): AsyncGenerator&lt;IStrategyTickResultClosed&gt;</code></strong></p>
+<p>Iterates through historical timeframes, executing strategy ticks and fast-forwarding through opened signals.</p>
+<ul>
+<li>Fetches timeframe array from <code>FrameGlobalService</code> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:53</a></li>
+<li>Loops through each timestamp in the timeframe <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:57-118</a></li>
+<li>Calls <code>tick()</code> for each timestamp to check for signal generation <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:60</a></li>
+<li>When <code>action === &quot;opened&quot;</code>: fetches future candles and calls <code>backtest()</code> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:63-97</a></li>
+<li>Skips timeframes until <code>closeTimestamp</code> to avoid redundant processing <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:107-112</a></li>
+<li>Yields only closed results, never intermediate states <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:114</a></li>
+</ul>
+<a id="signal-processing-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Processing Logic<a href="#signal-processing-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a signal opens during iteration:</p>
+<ol>
+<li><strong>Candle Fetch</strong>: Calls <code>getNextCandles(symbol, &quot;1m&quot;, minuteEstimatedTime)</code> to retrieve future candles <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:73-79</a></li>
+<li><strong>Fast-Forward</strong>: Calls <code>backtest(candles)</code> to simulate signal lifecycle without iterating each timestamp <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:92-97</a></li>
+<li><strong>Time Skip</strong>: Advances loop index to skip past the signal's close timestamp <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:107-112</a></li>
+<li><strong>Result Yield</strong>: Emits <code>IStrategyTickResultClosed</code> with PnL calculation <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:114</a></li>
+</ol>
+<hr>
+<a id="livelogicprivateservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LiveLogicPrivateService<a href="#livelogicprivateservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Core orchestration service for live trading execution with infinite async generation.</p>
+<a id="class-structure-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Class Structure<a href="#class-structure-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loggerService</code></td>
+<td><code>LoggerService</code></td>
+<td>Logs tick results and signal state changes</td>
+</tr>
+<tr>
+<td><code>strategyGlobalService</code></td>
+<td><code>StrategyGlobalService</code></td>
+<td>Executes <code>tick()</code> to monitor signals in real-time</td>
+</tr>
+</tbody>
+</table>
+<a id="constants" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Constants<a href="#constants" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TICK_TTL</code></td>
+<td><code>1 * 60 * 1_000 + 1</code></td>
+<td>1 minute + 1ms sleep duration between ticks</td>
+</tr>
+</tbody>
+</table>
+<a id="key-methods-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Methods<a href="#key-methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong><code>run(symbol: string): AsyncGenerator&lt;IStrategyTickResultOpened | IStrategyTickResultClosed&gt;</code></strong></p>
+<p>Infinite generator that monitors signal state every minute and yields opened/closed events.</p>
+<ul>
+<li>Runs infinite <code>while(true)</code> loop for continuous monitoring <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:58</a></li>
+<li>Creates real-time date with <code>new Date()</code> on each iteration <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:59</a></li>
+<li>Calls <code>tick(symbol, when, false)</code> to check signal status <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:61</a></li>
+<li>Filters out <code>idle</code> and <code>active</code> states (does not yield) <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:68-76</a></li>
+<li>Yields only <code>opened</code> and <code>closed</code> results <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:78</a></li>
+<li>Sleeps for <code>TICK_TTL</code> (1 minute + 1ms) between iterations <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:69-80</a></li>
+</ul>
+<a id="state-filtering-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Filtering Strategy<a href="#state-filtering-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live trading filters intermediate states to reduce noise:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Yielded</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code></td>
+<td>No</td>
+<td>No active signal - nothing to report <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:73-76</a></td>
+</tr>
+<tr>
+<td><code>opened</code></td>
+<td><strong>Yes</strong></td>
+<td>New signal created - requires notification <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:78</a></td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>No</td>
+<td>Signal monitoring in progress - no state change <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:68-71</a></td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td><strong>Yes</strong></td>
+<td>Signal completed - PnL finalized <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:78</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="backtestlogicpublicservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">BacktestLogicPublicService<a href="#backtestlogicpublicservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Public-facing wrapper for <code>BacktestLogicPrivateService</code> that manages context propagation.</p>
+<a id="class-structure-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Class Structure<a href="#class-structure-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loggerService</code></td>
+<td><code>LoggerService</code></td>
+<td>Logs public service invocations</td>
+</tr>
+<tr>
+<td><code>backtestLogicPrivateService</code></td>
+<td><code>BacktestLogicPrivateService</code></td>
+<td>Core orchestration logic</td>
+</tr>
+</tbody>
+</table>
+<a id="key-methods-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Methods<a href="#key-methods-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong><code>run(symbol: string, context: {strategyName, exchangeName, frameName}): AsyncGenerator</code></strong></p>
+<p>Wraps private service generator with method context injection.</p>
+<pre><code class="typescript"><span class="hl-5">// Method signature from source</span><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">run</span><span class="hl-1"> = (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation Pattern:</strong></p>
+<ol>
+<li>Logs invocation with context parameters <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:54-57</a></li>
+<li>Calls <code>MethodContextService.runAsyncIterator()</code> with generator and context <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:58-65</a></li>
+<li>Returns wrapped async generator that propagates context to all downstream services</li>
+</ol>
+<a id="context-object-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Object Structure<a href="#context-object-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Identifies which strategy schema to use</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Identifies which exchange schema to use</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Identifies which frame schema to use for timeframe generation</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="livelogicpublicservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LiveLogicPublicService<a href="#livelogicpublicservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Public-facing wrapper for <code>LiveLogicPrivateService</code> that manages context propagation.</p>
+<a id="class-structure-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Class Structure<a href="#class-structure-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loggerService</code></td>
+<td><code>LoggerService</code></td>
+<td>Logs public service invocations</td>
+</tr>
+<tr>
+<td><code>liveLogicPrivateService</code></td>
+<td><code>LiveLogicPrivateService</code></td>
+<td>Core orchestration logic</td>
+</tr>
+</tbody>
+</table>
+<a id="key-methods-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Methods<a href="#key-methods-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong><code>run(symbol: string, context: {strategyName, exchangeName}): AsyncGenerator</code></strong></p>
+<p>Wraps private service generator with method context injection.</p>
+<pre><code class="typescript"><span class="hl-5">// Method signature from source</span><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">run</span><span class="hl-1"> = (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation Pattern:</strong></p>
+<ol>
+<li>Logs invocation with context parameters <a href="">src/lib/services/logic/public/LiveLogicPublicService.ts:62-65</a></li>
+<li>Calls <code>MethodContextService.runAsyncIterator()</code> with generator and context <a href="">src/lib/services/logic/public/LiveLogicPublicService.ts:66-73</a></li>
+<li>Returns wrapped async generator that propagates context to all downstream services</li>
+</ol>
+<a id="context-object-structure-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Object Structure<a href="#context-object-structure-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Identifies which strategy schema to use</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Identifies which exchange schema to use</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Empty string for live mode (no frame needed) <a href="">src/lib/services/logic/public/LiveLogicPublicService.ts:71</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="async-generator-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Async Generator Pattern<a href="#async-generator-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services use async generators (<code>async function*</code>) for memory-efficient streaming execution.</p>
+<a id="generator-characteristics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generator Characteristics<a href="#generator-characteristics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Backtest</th>
+<th>Live</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Completion</strong></td>
+<td>Finite (completes when timeframe exhausted)</td>
+<td>Infinite (never completes)</td>
+</tr>
+<tr>
+<td><strong>Iteration</strong></td>
+<td>Array of historical timestamps</td>
+<td>Real-time <code>new Date()</code> every minute</td>
+</tr>
+<tr>
+<td><strong>Yielded Types</strong></td>
+<td><code>IStrategyTickResultClosed</code> only</td>
+<td><code>IStrategyTickResultOpened | IStrategyTickResultClosed</code></td>
+</tr>
+<tr>
+<td><strong>Memory Usage</strong></td>
+<td>O(1) - streams results without accumulation</td>
+<td>O(1) - no result accumulation</td>
+</tr>
+<tr>
+<td><strong>Early Termination</strong></td>
+<td>Supported via <code>break</code> in consumer</td>
+<td>Supported via <code>break</code> in consumer</td>
+</tr>
+</tbody>
+</table>
+<a id="memory-efficiency-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Efficiency Diagram<a href="#memory-efficiency-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_4.svg" alt="Mermaid Diagram"></p>
+<a id="consumer-pattern-examples" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Consumer Pattern Examples<a href="#consumer-pattern-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest with Early Termination:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Example from documentation</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">backtestLogic</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &lt; -</span><span class="hl-8">10</span><span class="hl-1">) </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Early termination</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Live with Infinite Loop:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Example from documentation</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">liveLogic</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;New signal:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;PNL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Infinite loop - will never complete</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="service-dependencies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Dependencies<a href="#service-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services coordinate multiple service types through dependency injection.</p>
+<a id="dependency-injection-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Injection Registration<a href="#dependency-injection-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_5.svg" alt="Mermaid Diagram"></p>
+<a id="injected-dependencies-by-service" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Injected Dependencies by Service<a href="#injected-dependencies-by-service" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>BacktestLogicPrivateService:</strong></p>
+<ul>
+<li><code>LoggerService</code> - Event logging <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:23</a></li>
+<li><code>StrategyGlobalService</code> - Signal tick and backtest execution <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:24-26</a></li>
+<li><code>ExchangeGlobalService</code> - Future candle fetching <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:27-29</a></li>
+<li><code>FrameGlobalService</code> - Timeframe array retrieval <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:30-32</a></li>
+</ul>
+<p><strong>LiveLogicPrivateService:</strong></p>
+<ul>
+<li><code>LoggerService</code> - Event logging <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:26</a></li>
+<li><code>StrategyGlobalService</code> - Signal tick execution <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:27-29</a></li>
+</ul>
+<p><strong>BacktestLogicPublicService:</strong></p>
+<ul>
+<li><code>LoggerService</code> - Invocation logging <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:32</a></li>
+<li><code>BacktestLogicPrivateService</code> - Orchestration delegation <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:33-34</a></li>
+</ul>
+<p><strong>LiveLogicPublicService:</strong></p>
+<ul>
+<li><code>LoggerService</code> - Invocation logging <a href="">src/lib/services/logic/public/LiveLogicPublicService.ts:39</a></li>
+<li><code>LiveLogicPrivateService</code> - Orchestration delegation <a href="">src/lib/services/logic/public/LiveLogicPublicService.ts:40-42</a></li>
+</ul>
+<hr>
+<a id="context-injection-mechanism" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Injection Mechanism<a href="#context-injection-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services use <code>MethodContextService.runAsyncIterator()</code> to inject context into async generators.</p>
+<a id="methodcontextservice-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MethodContextService Integration<a href="#methodcontextservice-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_6.svg" alt="Mermaid Diagram"></p>
+<a id="context-lifecycle" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Lifecycle<a href="#context-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Context Creation</strong>: Public service receives context object with schema names <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:48-52</a></li>
+<li><strong>Scope Injection</strong>: <code>MethodContextService.runAsyncIterator()</code> wraps generator with scoped context <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:58-65</a></li>
+<li><strong>Implicit Propagation</strong>: Connection Services read context without explicit parameters <a href="">src/lib/services/context/MethodContextService.ts:41-45</a></li>
+<li><strong>Scope Cleanup</strong>: Context destroyed when generator completes or terminates</li>
+</ol>
+<a id="imethodcontext-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IMethodContext Interface<a href="#imethodcontext-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Routes to correct strategy schema</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Routes to correct exchange schema</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>FrameName</code></td>
+<td>Routes to correct frame schema (empty for live)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="integration-with-global-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Global Services<a href="#integration-with-global-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services delegate business logic execution to Global Services that inject <code>ExecutionContextService</code>.</p>
+<a id="service-call-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Call Patterns<a href="#service-call-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>BacktestLogicPrivateService calls:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Global Service</th>
+<th>Method</th>
+<th>Purpose</th>
+<th>Line Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FrameGlobalService</code></td>
+<td><code>getTimeframe(symbol)</code></td>
+<td>Retrieve historical timestamp array</td>
+<td><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:53</a></td>
+</tr>
+<tr>
+<td><code>StrategyGlobalService</code></td>
+<td><code>tick(symbol, when, true)</code></td>
+<td>Check for signal generation at timestamp</td>
+<td><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:60</a></td>
+</tr>
+<tr>
+<td><code>ExchangeGlobalService</code></td>
+<td><code>getNextCandles(symbol, &quot;1m&quot;, limit)</code></td>
+<td>Fetch future candles for simulation</td>
+<td><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:73-79</a></td>
+</tr>
+<tr>
+<td><code>StrategyGlobalService</code></td>
+<td><code>backtest(symbol, candles, when, true)</code></td>
+<td>Fast-forward simulate signal lifecycle</td>
+<td><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:92-97</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>LiveLogicPrivateService calls:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Global Service</th>
+<th>Method</th>
+<th>Purpose</th>
+<th>Line Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StrategyGlobalService</code></td>
+<td><code>tick(symbol, when, false)</code></td>
+<td>Monitor signal status in real-time</td>
+<td><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:61</a></td>
+</tr>
+</tbody>
+</table>
+<a id="execution-context-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Context Injection<a href="#execution-context-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_7.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="usage-from-public-api" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage from Public API<a href="#usage-from-public-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services are accessed through the <code>Backtest</code> and <code>Live</code> classes in the Public API layer.</p>
+<a id="call-chain-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Call Chain Diagram<a href="#call-chain-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/22_Logic_Services_8.svg" alt="Mermaid Diagram"></p>
+<a id="type-signatures" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Signatures<a href="#type-signatures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest Entry Point:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// From Backtest class</span><br/><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">options</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Live Entry Point:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// From Live class</span><br/><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">options</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultOpened</span><span class="hl-1"> | </span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#logic-services"><span>Logic <wbr/>Services</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><ul><li><a href="#service-hierarchy-diagram"><span>Service <wbr/>Hierarchy <wbr/>Diagram</span></a></li></ul></li><li><a href="#public-private-separation-pattern"><span>Public-<wbr/>Private <wbr/>Separation <wbr/>Pattern</span></a></li><li><ul><li><a href="#responsibilities"><span>Responsibilities</span></a></li><li><a href="#context-propagation-flow"><span>Context <wbr/>Propagation <wbr/>Flow</span></a></li></ul></li><li><a href="#backtestlogicprivateservice"><span>Backtest<wbr/>Logic<wbr/>Private<wbr/>Service</span></a></li><li><ul><li><a href="#class-structure"><span>Class <wbr/>Structure</span></a></li><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><a href="#key-methods"><span>Key <wbr/>Methods</span></a></li><li><a href="#signal-processing-logic"><span>Signal <wbr/>Processing <wbr/>Logic</span></a></li></ul></li><li><a href="#livelogicprivateservice"><span>Live<wbr/>Logic<wbr/>Private<wbr/>Service</span></a></li><li><ul><li><a href="#class-structure-1"><span>Class <wbr/>Structure</span></a></li><li><a href="#constants"><span>Constants</span></a></li><li><a href="#key-methods-1"><span>Key <wbr/>Methods</span></a></li><li><a href="#state-filtering-strategy"><span>State <wbr/>Filtering <wbr/>Strategy</span></a></li></ul></li><li><a href="#backtestlogicpublicservice"><span>Backtest<wbr/>Logic<wbr/>Public<wbr/>Service</span></a></li><li><ul><li><a href="#class-structure-2"><span>Class <wbr/>Structure</span></a></li><li><a href="#key-methods-2"><span>Key <wbr/>Methods</span></a></li><li><a href="#context-object-structure"><span>Context <wbr/>Object <wbr/>Structure</span></a></li></ul></li><li><a href="#livelogicpublicservice"><span>Live<wbr/>Logic<wbr/>Public<wbr/>Service</span></a></li><li><ul><li><a href="#class-structure-3"><span>Class <wbr/>Structure</span></a></li><li><a href="#key-methods-3"><span>Key <wbr/>Methods</span></a></li><li><a href="#context-object-structure-1"><span>Context <wbr/>Object <wbr/>Structure</span></a></li></ul></li><li><a href="#async-generator-pattern"><span>Async <wbr/>Generator <wbr/>Pattern</span></a></li><li><ul><li><a href="#generator-characteristics"><span>Generator <wbr/>Characteristics</span></a></li><li><a href="#memory-efficiency-diagram"><span>Memory <wbr/>Efficiency <wbr/>Diagram</span></a></li><li><a href="#consumer-pattern-examples"><span>Consumer <wbr/>Pattern <wbr/>Examples</span></a></li></ul></li><li><a href="#service-dependencies"><span>Service <wbr/>Dependencies</span></a></li><li><ul><li><a href="#dependency-injection-registration"><span>Dependency <wbr/>Injection <wbr/>Registration</span></a></li><li><a href="#injected-dependencies-by-service"><span>Injected <wbr/>Dependencies by <wbr/>Service</span></a></li></ul></li><li><a href="#context-injection-mechanism"><span>Context <wbr/>Injection <wbr/>Mechanism</span></a></li><li><ul><li><a href="#methodcontextservice-integration"><span>Method<wbr/>Context<wbr/>Service <wbr/>Integration</span></a></li><li><a href="#context-lifecycle"><span>Context <wbr/>Lifecycle</span></a></li><li><a href="#imethodcontext-interface"><span>IMethod<wbr/>Context <wbr/>Interface</span></a></li></ul></li><li><a href="#integration-with-global-services"><span>Integration with <wbr/>Global <wbr/>Services</span></a></li><li><ul><li><a href="#service-call-patterns"><span>Service <wbr/>Call <wbr/>Patterns</span></a></li><li><a href="#execution-context-injection"><span>Execution <wbr/>Context <wbr/>Injection</span></a></li></ul></li><li><a href="#usage-from-public-api"><span>Usage from <wbr/>Public API</span></a></li><li><ul><li><a href="#call-chain-diagram"><span>Call <wbr/>Chain <wbr/>Diagram</span></a></li><li><a href="#type-signatures"><span>Type <wbr/>Signatures</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>

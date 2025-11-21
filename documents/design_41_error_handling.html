@@ -1,0 +1,206 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/41_error_handling | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_41_error_handling.html">design/41_error_handling</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="error-handling" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document describes the error handling mechanisms in the backtest-kit framework, including validation errors, exchange data errors, persistence errors, and recommended error handling patterns for users. The framework uses a combination of explicit error throwing for unrecoverable errors, warning logs for degraded conditions, and graceful fallbacks for recoverable failures.</p>
+<p>For information about the logging system that captures error messages, see <a href="design_40_logging_system.html">Logging System</a>. For signal lifecycle management, see <a href="design_23_signal_lifecycle.html">Signal Lifecycle</a>.</p>
+<hr>
+<a id="error-categories" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Categories<a href="#error-categories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework distinguishes between several categories of errors based on their origin and recovery strategy:</p>
+<table>
+<thead>
+<tr>
+<th>Error Category</th>
+<th>Recovery Strategy</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Validation Errors</strong></td>
+<td>Fail-fast, throw immediately</td>
+<td>Invalid TP/SL prices, negative timestamps</td>
+</tr>
+<tr>
+<td><strong>Exchange Data Errors</strong></td>
+<td>Warn and continue or throw</td>
+<td>Missing candles, empty datasets</td>
+</tr>
+<tr>
+<td><strong>Persistence Errors</strong></td>
+<td>Implicit (atomic file writes)</td>
+<td>Disk write failures, corrupted state files</td>
+</tr>
+<tr>
+<td><strong>Configuration Errors</strong></td>
+<td>Throw on initialization</td>
+<td>Unknown intervals, invalid date ranges</td>
+</tr>
+<tr>
+<td><strong>State Errors</strong></td>
+<td>Throw with context</td>
+<td>Calling backtest in live mode, no pending signal</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="validation-error-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Error System<a href="#validation-error-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="signal-validation-pipeline" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Validation Pipeline<a href="#signal-validation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All signals generated by <code>getSignal()</code> are validated before persistence. The <code>VALIDATE_SIGNAL_FN</code> performs comprehensive checks and throws an error with aggregated error messages if validation fails.</p>
+<p><img src="../media/41_Error_Handling_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Signal Validation Error Flow</strong></p>
+<p>The validation logic is implemented as a pure function that aggregates all validation errors before throwing:</p>
+<a id="validation-rules" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Rules<a href="#validation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following validation rules are enforced:</p>
+<a id="price-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Price Validation<a href="#price-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>priceOpen &gt; 0</code> - Entry price must be positive</li>
+<li><code>priceTakeProfit &gt; 0</code> - Take profit target must be positive</li>
+<li><code>priceStopLoss &gt; 0</code> - Stop loss target must be positive</li>
+</ul>
+<a id="long-position-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Long Position Validation<a href="#long-position-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>priceTakeProfit &gt; priceOpen</code> - Profit target must be above entry</li>
+<li><code>priceStopLoss &lt; priceOpen</code> - Stop loss must be below entry</li>
+</ul>
+<a id="short-position-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Short Position Validation<a href="#short-position-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>priceTakeProfit &lt; priceOpen</code> - Profit target must be below entry</li>
+<li><code>priceStopLoss &gt; priceOpen</code> - Stop loss must be above entry</li>
+</ul>
+<a id="time-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Time Validation<a href="#time-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>minuteEstimatedTime &gt; 0</code> - Signal duration must be positive</li>
+<li><code>timestamp &gt; 0</code> - Signal creation time must be valid</li>
+</ul>
+<a id="error-message-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Message Format<a href="#error-message-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation errors are thrown with detailed multi-line messages that list all validation failures:</p>
+<pre><code><span class="hl-4">Invalid</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-4">for</span><span class="hl-1"> </span><span class="hl-4">long</span><span class="hl-1"> </span><span class="hl-10">position</span><span class="hl-1">:</span><br/><span class="hl-4">priceTakeProfit</span><span class="hl-1"> </span><span class="hl-4">must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> </span><span class="hl-4">positive</span><span class="hl-1">, </span><span class="hl-4">got</span><span class="hl-1"> -</span><span class="hl-8">100</span><br/><span class="hl-10">Long</span><span class="hl-1">: </span><span class="hl-0">priceTakeProfit</span><span class="hl-1"> (</span><span class="hl-8">49000</span><span class="hl-1">) </span><span class="hl-4">must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> &gt; </span><span class="hl-0">priceOpen</span><span class="hl-1"> (</span><span class="hl-8">50000</span><span class="hl-1">)</span><br/><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> </span><span class="hl-4">must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> </span><span class="hl-4">positive</span><span class="hl-1">, </span><span class="hl-4">got</span><span class="hl-1"> -</span><span class="hl-8">5</span>
+</code><button>Copy</button></pre>
+
+<p>This format allows users to fix all validation issues in a single iteration rather than discovering them one at a time.</p>
+<hr>
+<a id="graceful-error-recovery" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Graceful Error Recovery<a href="#graceful-error-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="trycatch-wrapper-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Trycatch Wrapper Pattern<a href="#trycatch-wrapper-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>GET_SIGNAL_FN</code> uses the <code>trycatch</code> wrapper from <code>functools-kit</code> to handle errors gracefully during signal generation:</p>
+<p><img src="../media/41_Error_Handling_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Graceful Error Recovery with Trycatch Wrapper</strong></p>
+<p>This pattern ensures that:</p>
+<ol>
+<li>User-provided <code>getSignal()</code> errors are caught</li>
+<li>Validation errors are caught</li>
+<li>Signal generation failures return <code>null</code> instead of crashing</li>
+<li>The tick continues with &quot;idle&quot; state when <code>null</code> is returned</li>
+</ol>
+<hr>
+<a id="exchange-data-errors" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Exchange Data Errors<a href="#exchange-data-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="missing-candle-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Missing Candle Data<a href="#missing-candle-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ClientExchange</code> class handles missing or incomplete candle data with warning logs rather than throwing errors:</p>
+<p><img src="../media/41_Error_Handling_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Exchange Data Error Handling</strong></p>
+<a id="empty-dataset-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Empty Dataset Errors<a href="#empty-dataset-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When VWAP calculation encounters empty candle arrays, an error is thrown immediately since VWAP cannot be calculated without data:</p>
+<pre><code class="typescript"><span class="hl-5">// In ClientExchange.getAveragePrice()</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> === </span><span class="hl-8">0</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`ClientExchange getAveragePrice: no candles data for symbol=</span><span class="hl-6">${</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This is a fail-fast approach because VWAP is critical for signal monitoring and cannot be approximated.</p>
+<a id="future-candle-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Future Candle Validation<a href="#future-candle-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getNextCandles()</code> method validates that requested candles don't exceed <code>Date.now()</code> in live mode:</p>
+<pre><code class="typescript"><span class="hl-5">// Prevent future candle requests in live mode</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">endTime</span><span class="hl-1"> &gt; </span><span class="hl-4">now</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> [];  </span><span class="hl-5">// Graceful empty array return</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This prevents errors when backtesting approaches real-time but returns empty arrays rather than throwing.</p>
+<hr>
+<a id="state-transition-errors" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Transition Errors<a href="#state-transition-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="invalid-backtest-state" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Invalid Backtest State<a href="#invalid-backtest-state" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>backtest()</code> method validates preconditions and throws descriptive errors:</p>
+<table>
+<thead>
+<tr>
+<th>Error Condition</th>
+<th>Error Message</th>
+<th>File Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No pending signal</td>
+<td><code>&quot;ClientStrategy backtest: no pending signal&quot;</code></td>
+<td><a href="">ClientStrategy.ts:495-497</a></td>
+</tr>
+<tr>
+<td>Live mode context</td>
+<td><code>&quot;ClientStrategy backtest: running in live context&quot;</code></td>
+<td><a href="">ClientStrategy.ts:499-501</a></td>
+</tr>
+</tbody>
+</table>
+<p>These errors catch programmer mistakes (calling <code>backtest()</code> at the wrong time) rather than user input errors.</p>
+<a id="insufficient-candle-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Insufficient Candle Data<a href="#insufficient-candle-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When backtesting with fewer than 5 candles (minimum for VWAP calculation), a warning is logged but execution continues:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &lt; </span><span class="hl-8">5</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`ClientStrategy backtest: Expected at least 5 candles for VWAP, got </span><span class="hl-6">${</span><span class="hl-4">candles</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The system proceeds with whatever data is available rather than failing completely.</p>
+<hr>
+<a id="warning-system-for-degraded-performance" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Warning System for Degraded Performance<a href="#warning-system-for-degraded-performance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="stop-loss-warnings" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Stop Loss Warnings<a href="#stop-loss-warnings" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When signals close at a loss via stop loss, warnings are logged to alert users:</p>
+<p><img src="../media/41_Error_Handling_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Loss Warning System</strong></p>
+<p>These warnings serve as operational alerts during live trading without interrupting execution.</p>
+<hr>
+<a id="configuration-errors" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Errors<a href="#configuration-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="unknown-interval-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Unknown Interval Errors<a href="#unknown-interval-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Configuration errors are detected early and throw immediately:</p>
+<pre><code class="typescript"><span class="hl-5">// In ClientExchange</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">adjust</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`ClientExchange unknown time adjust for interval=</span><span class="hl-6">${</span><span class="hl-4">interval</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// In ClientFrame</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">intervalMinutes</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`ClientFrame unknown interval: </span><span class="hl-6">${</span><span class="hl-4">interval</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These errors indicate configuration mistakes that must be fixed before execution can proceed.</p>
+<hr>
+<a id="error-handling-patterns-for-users" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling Patterns for Users<a href="#error-handling-patterns-for-users" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="recommended-pattern-callback-error-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Recommended Pattern: Callback Error Handling<a href="#recommended-pattern-callback-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Users should handle errors in strategy callbacks rather than in the main execution loop:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-5">// User signal generation logic</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-4">currentPrice</span><span class="hl-1"> * </span><span class="hl-8">1.02</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-4">currentPrice</span><span class="hl-1"> * </span><span class="hl-8">0.98</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal generation failed:&quot;</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">; </span><span class="hl-5">// Graceful fallback</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTick</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1"> === </span><span class="hl-2">&quot;stop_loss&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`Stop loss hit for </span><span class="hl-6">${</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern allows errors to be handled at the appropriate level without interrupting the framework's execution.</p>
+<a id="type-safe-error-prevention" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type-Safe Error Prevention<a href="#type-safe-error-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses discriminated unions to prevent type errors at compile time:</p>
+<pre><code class="typescript"><span class="hl-5">// Type-safe result handling</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">();</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// TypeScript knows result.pnl exists here</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`PNL: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-6">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// TypeScript knows result.signal exists here</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal opened: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This eliminates entire classes of runtime errors by making invalid states unrepresentable.</p>
+<hr>
+<a id="error-context-and-debugging" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Context and Debugging<a href="#error-context-and-debugging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="logger-context-enrichment" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logger Context Enrichment<a href="#logger-context-enrichment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All error and warning messages are enriched with context from <code>ExecutionContextService</code> and <code>MethodContextService</code>:</p>
+<p><img src="../media/41_Error_Handling_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Error Context Enrichment</strong></p>
+<p>This ensures that error messages contain sufficient context for debugging without manual parameter threading.</p>
+<a id="debug-logging-for-error-paths" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Debug Logging for Error Paths<a href="#debug-logging-for-error-paths" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Debug-level logs trace execution through error-prone code paths:</p>
+<pre><code class="typescript"><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(</span><span class="hl-2">&quot;ClientStrategy tick check&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">averagePrice</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">signalId:</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Enable debug logging via the <code>LoggerService</code> configuration to trace error conditions.</p>
+<hr>
+<a id="persistence-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence Error Handling<a href="#persistence-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>PersistSignalAdapter</code> uses atomic file writes to prevent corruption, but file system errors are not explicitly caught. The framework relies on the operating system's crash recovery:</p>
+<ol>
+<li><strong>Atomic Writes</strong>: Signal state is written atomically to prevent partial writes</li>
+<li><strong>Crash Recovery</strong>: On restart, the last valid state is loaded</li>
+<li><strong>State Validation</strong>: Loaded state is validated against current strategy/exchange</li>
+</ol>
+<p>For details on persistence mechanisms, see <a href="design_26_signal_persistence.html">Signal Persistence</a>.</p>
+<hr>
+<a id="summary-of-error-handling-strategy" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary of Error Handling Strategy<a href="#summary-of-error-handling-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Strategy</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Validation</strong></td>
+<td>Fail-fast with detailed messages</td>
+<td>Signal price/time validation</td>
+</tr>
+<tr>
+<td><strong>Data Fetching</strong></td>
+<td>Warn and continue with partial data</td>
+<td>Missing candles</td>
+</tr>
+<tr>
+<td><strong>State Transitions</strong></td>
+<td>Throw on invalid state</td>
+<td>Calling backtest() in live mode</td>
+</tr>
+<tr>
+<td><strong>User Code</strong></td>
+<td>Graceful fallback with trycatch</td>
+<td>Signal generation errors return null</td>
+</tr>
+<tr>
+<td><strong>Critical Operations</strong></td>
+<td>Fail-fast</td>
+<td>Empty VWAP dataset</td>
+</tr>
+<tr>
+<td><strong>Performance Issues</strong></td>
+<td>Warn but continue</td>
+<td>Stop loss hits, time expiration</td>
+</tr>
+</tbody>
+</table>
+<p>The framework prioritizes <strong>fail-fast for configuration errors</strong> (caught at startup) and <strong>graceful degradation for runtime errors</strong> (logged and recovered), ensuring production stability while maintaining debuggability.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#error-handling"><span>Error <wbr/>Handling</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#error-categories"><span>Error <wbr/>Categories</span></a></li><li><a href="#validation-error-system"><span>Validation <wbr/>Error <wbr/>System</span></a></li><li><ul><li><a href="#signal-validation-pipeline"><span>Signal <wbr/>Validation <wbr/>Pipeline</span></a></li><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li><li><ul><li><a href="#price-validation"><span>Price <wbr/>Validation</span></a></li><li><a href="#long-position-validation"><span>Long <wbr/>Position <wbr/>Validation</span></a></li><li><a href="#short-position-validation"><span>Short <wbr/>Position <wbr/>Validation</span></a></li><li><a href="#time-validation"><span>Time <wbr/>Validation</span></a></li></ul></li><li><a href="#error-message-format"><span>Error <wbr/>Message <wbr/>Format</span></a></li></ul></li><li><a href="#graceful-error-recovery"><span>Graceful <wbr/>Error <wbr/>Recovery</span></a></li><li><ul><li><a href="#trycatch-wrapper-pattern"><span>Trycatch <wbr/>Wrapper <wbr/>Pattern</span></a></li></ul></li><li><a href="#exchange-data-errors"><span>Exchange <wbr/>Data <wbr/>Errors</span></a></li><li><ul><li><a href="#missing-candle-data"><span>Missing <wbr/>Candle <wbr/>Data</span></a></li><li><a href="#empty-dataset-errors"><span>Empty <wbr/>Dataset <wbr/>Errors</span></a></li><li><a href="#future-candle-validation"><span>Future <wbr/>Candle <wbr/>Validation</span></a></li></ul></li><li><a href="#state-transition-errors"><span>State <wbr/>Transition <wbr/>Errors</span></a></li><li><ul><li><a href="#invalid-backtest-state"><span>Invalid <wbr/>Backtest <wbr/>State</span></a></li><li><a href="#insufficient-candle-data"><span>Insufficient <wbr/>Candle <wbr/>Data</span></a></li></ul></li><li><a href="#warning-system-for-degraded-performance"><span>Warning <wbr/>System for <wbr/>Degraded <wbr/>Performance</span></a></li><li><ul><li><a href="#stop-loss-warnings"><span>Stop <wbr/>Loss <wbr/>Warnings</span></a></li></ul></li><li><a href="#configuration-errors"><span>Configuration <wbr/>Errors</span></a></li><li><ul><li><a href="#unknown-interval-errors"><span>Unknown <wbr/>Interval <wbr/>Errors</span></a></li></ul></li><li><a href="#error-handling-patterns-for-users"><span>Error <wbr/>Handling <wbr/>Patterns for <wbr/>Users</span></a></li><li><ul><li><a href="#recommended-pattern-callback-error-handling"><span>Recommended <wbr/>Pattern: <wbr/>Callback <wbr/>Error <wbr/>Handling</span></a></li><li><a href="#type-safe-error-prevention"><span>Type-<wbr/>Safe <wbr/>Error <wbr/>Prevention</span></a></li></ul></li><li><a href="#error-context-and-debugging"><span>Error <wbr/>Context and <wbr/>Debugging</span></a></li><li><ul><li><a href="#logger-context-enrichment"><span>Logger <wbr/>Context <wbr/>Enrichment</span></a></li><li><a href="#debug-logging-for-error-paths"><span>Debug <wbr/>Logging for <wbr/>Error <wbr/>Paths</span></a></li></ul></li><li><a href="#persistence-error-handling"><span>Persistence <wbr/>Error <wbr/>Handling</span></a></li><li><a href="#summary-of-error-handling-strategy"><span>Summary of <wbr/>Error <wbr/>Handling <wbr/>Strategy</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
