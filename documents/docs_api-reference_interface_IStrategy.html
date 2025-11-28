@@ -5,11 +5,13 @@ Defines core strategy execution methods.</p>
 
 <p>Single tick of strategy execution with VWAP monitoring.
 Checks for signal generation (throttled) and TP/SL conditions.</p>
-<a id="backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">backtest<a href="#backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-11">backtest</span><span class="hl-1">: (</span><span class="hl-4">candles</span><span class="hl-1">: </span><span class="hl-10">ICandleData</span><span class="hl-1">[]) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+<a id="backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">backtest<a href="#backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-11">backtest</span><span class="hl-1">: (</span><span class="hl-4">candles</span><span class="hl-1">: </span><span class="hl-10">ICandleData</span><span class="hl-1">[]) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyBacktestResult</span><span class="hl-1">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Fast backtest using historical candles.
 Iterates through candles, calculates VWAP, checks TP/SL on each candle.</p>
+<p>For scheduled signals: first monitors activation/cancellation,
+then if activated continues with TP/SL monitoring.</p>
 <a id="stop" class="tsd-anchor"></a><h3 class="tsd-anchor-link">stop<a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-11">stop</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-6">void</span><span class="hl-1">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
