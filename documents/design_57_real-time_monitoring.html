@@ -1,0 +1,428 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/57_real-time_monitoring | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_57_real-time_monitoring.html">design/57_real-time_monitoring</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="real-time-monitoring" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Real-time Monitoring<a href="#real-time-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page explains how the framework monitors active positions and scheduled signals in real-time during live trading. It covers VWAP (Volume Weighted Average Price) calculation using recent candles, Take Profit and Stop Loss detection logic, time-based expiration monitoring, and scheduled signal activation checks. For information about the overall live execution loop, see <a href="design_55_live_execution_flow.html">10.1</a>. For crash recovery and state restoration, see <a href="design_56_crash_recovery.html">10.2</a>.</p>
+<hr>
+<a id="vwap-based-price-calculation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">VWAP-Based Price Calculation<a href="#vwap-based-price-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses <strong>VWAP (Volume Weighted Average Price)</strong> instead of simple close prices for all monitoring decisions. This reduces the impact of short-term price spikes and provides more accurate entry/exit pricing that reflects actual trading volume.</p>
+<a id="get_avg_price_fn-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">GET_AVG_PRICE_FN Implementation<a href="#get_avg_price_fn-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The VWAP calculation is performed by <code>GET_AVG_PRICE_FN</code> in <a href="">src/client/ClientStrategy.ts:285-296</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-0">GET_AVG_PRICE_FN</span><span class="hl-1"> = (</span><span class="hl-4">candles</span><span class="hl-1">: </span><span class="hl-10">ICandleData</span><span class="hl-1">[]): </span><span class="hl-10">number</span><span class="hl-1"> </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">sumPriceVolume</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">acc</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">typicalPrice</span><span class="hl-1"> = (</span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">) / </span><span class="hl-8">3</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">acc</span><span class="hl-1"> + </span><span class="hl-4">typicalPrice</span><span class="hl-1"> * </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">volume</span><span class="hl-1">;</span><br/><span class="hl-1">  }, </span><span class="hl-8">0</span><span class="hl-1">);</span><br/><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">totalVolume</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">acc</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">acc</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">volume</span><span class="hl-1">, </span><span class="hl-8">0</span><span class="hl-1">);</span><br/><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">totalVolume</span><span class="hl-1"> === </span><span class="hl-8">0</span><br/><span class="hl-1">    ? </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">acc</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">acc</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-8">0</span><span class="hl-1">) / </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><br/><span class="hl-1">    : </span><span class="hl-4">sumPriceVolume</span><span class="hl-1"> / </span><span class="hl-4">totalVolume</span><span class="hl-1">;</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Calculation steps:</strong></p>
+<ol>
+<li>Compute <strong>typical price</strong> for each candle: <code>(high + low + close) / 3</code></li>
+<li>Multiply typical price by volume for each candle</li>
+<li>Sum all price-volume products</li>
+<li>Divide by total volume</li>
+<li>If total volume is zero (rare edge case), fallback to simple average of close prices</li>
+</ol>
+<a id="cc_avg_price_candles_count-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_AVG_PRICE_CANDLES_COUNT Configuration<a href="#cc_avg_price_candles_count-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The number of recent candles used for VWAP calculation is controlled by <code>GLOBAL_CONFIG.CC_AVG_PRICE_CANDLES_COUNT</code> <a href="">src/config/params.ts:11</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><code>5</code></td>
+<td>Number of recent candles for VWAP (e.g., last 5 minutes with 1m interval)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage in live mode</strong>: <code>ClientExchange.getAveragePrice()</code> fetches the last N candles and computes VWAP. See <a href="design_21_exchange_functions.html">4.7</a> for the public API.</p>
+<hr>
+<a id="monitoring-flow-diagram" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Monitoring Flow Diagram<a href="#monitoring-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/57_Real-time_Monitoring_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key decision points:</strong></p>
+<ol>
+<li>If <code>_pendingSignal</code> exists → monitor TP/SL/time</li>
+<li>If <code>_scheduledSignal</code> exists → monitor timeout/activation/cancellation</li>
+<li>If neither exists → attempt to generate new signal</li>
+</ol>
+<hr>
+<a id="take-profit-monitoring" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Take Profit Monitoring<a href="#take-profit-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="detection-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Detection Logic<a href="#detection-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Take Profit monitoring is performed in <code>CHECK_PENDING_SIGNAL_COMPLETION_FN</code> <a href="">src/client/ClientStrategy.ts:695-712</a>:</p>
+<p><strong>For LONG positions</strong> <a href="">src/client/ClientStrategy.ts:696-703</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">averagePrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<ul>
+<li>TP triggered when current VWAP ≥ <code>priceTakeProfit</code></li>
+<li>Position closed at <strong>exact TP price</strong> (not VWAP) for deterministic PnL</li>
+</ul>
+<p><strong>For SHORT positions</strong> <a href="">src/client/ClientStrategy.ts:705-712</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">averagePrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<ul>
+<li>TP triggered when current VWAP ≤ <code>priceTakeProfit</code></li>
+<li>Position closed at <strong>exact TP price</strong></li>
+</ul>
+<a id="closure-mechanics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Closure Mechanics<a href="#closure-mechanics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When TP is hit, <code>CLOSE_PENDING_SIGNAL_FN</code> is called <a href="">src/client/ClientStrategy.ts:736-789</a>:</p>
+<ol>
+<li>Calculate PnL using <code>toProfitLossDto(signal, signal.priceTakeProfit)</code> (exact TP price)</li>
+<li>Call <code>callbacks.onClose()</code></li>
+<li>Remove signal from risk tracking via <code>risk.removeSignal()</code></li>
+<li>Clear <code>_pendingSignal</code> state</li>
+<li>Persist null to disk (if live mode)</li>
+<li>Return <code>IStrategyTickResultClosed</code> with <code>closeReason: &quot;take_profit&quot;</code></li>
+</ol>
+<a id="why-exact-price" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Why Exact Price?<a href="#why-exact-price" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Using exact TP price ensures:</p>
+<ul>
+<li><strong>Deterministic PnL</strong>: Same signal in backtest and live produces identical profit</li>
+<li><strong>Conservative calculation</strong>: Assumes you got filled exactly at TP, not at a better price</li>
+<li><strong>No slippage assumptions</strong>: Framework applies fees and slippage in <code>toProfitLossDto</code>, not in monitoring logic</li>
+</ul>
+<hr>
+<a id="stop-loss-monitoring" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Stop Loss Monitoring<a href="#stop-loss-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="detection-logic-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Detection Logic<a href="#detection-logic-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Stop Loss monitoring follows the same pattern <a href="">src/client/ClientStrategy.ts:714-731</a>:</p>
+<p><strong>For LONG positions</strong> <a href="">src/client/ClientStrategy.ts:715-722</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">averagePrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<ul>
+<li>SL triggered when current VWAP ≤ <code>priceStopLoss</code></li>
+<li>Position closed at <strong>exact SL price</strong></li>
+</ul>
+<p><strong>For SHORT positions</strong> <a href="">src/client/ClientStrategy.ts:724-731</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">averagePrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<ul>
+<li>SL triggered when current VWAP ≥ <code>priceStopLoss</code></li>
+<li>Position closed at <strong>exact SL price</strong></li>
+</ul>
+<a id="priority-order" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Priority Order<a href="#priority-order" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In <code>CHECK_PENDING_SIGNAL_COMPLETION_FN</code>, checks are performed in this order <a href="">src/client/ClientStrategy.ts:686-731</a>:</p>
+<ol>
+<li><strong>Time expiration</strong> (checked first)</li>
+<li><strong>Take Profit</strong> (checked second)</li>
+<li><strong>Stop Loss</strong> (checked third)</li>
+</ol>
+<p><strong>Rationale</strong>: Time expiration has highest priority because <code>minuteEstimatedTime</code> is a hard deadline. TP/SL are checked only if time hasn't expired.</p>
+<a id="protection-mechanisms" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Protection Mechanisms<a href="#protection-mechanisms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Stop Loss is validated at signal generation by <code>VALIDATE_SIGNAL_FN</code> <a href="">src/client/ClientStrategy.ts:40-185</a>:</p>
+<p><strong>For LONG</strong> <a href="">src/client/ClientStrategy.ts:80-84</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`Long: priceStopLoss must be &lt; priceOpen`</span><span class="hl-1">)</span><br/><span class="hl-1">}</span>
+</code><button>Copy</button></pre>
+
+<p><strong>For SHORT</strong> <a href="">src/client/ClientStrategy.ts:120-124</a>:</p>
+<pre><code><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`Short: priceStopLoss must be &gt; priceOpen`</span><span class="hl-1">)</span><br/><span class="hl-1">}</span>
+</code><button>Copy</button></pre>
+
+<p>Additionally, <code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code> limits maximum loss <a href="">src/client/ClientStrategy.ts:100-110</a>, <a href="">src/config/params.ts:23</a>.</p>
+<hr>
+<a id="time-expiration-monitoring" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Time Expiration Monitoring<a href="#time-expiration-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="lifetime-calculation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lifetime Calculation<a href="#lifetime-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Time expiration is checked first in <code>CHECK_PENDING_SIGNAL_COMPLETION_FN</code> <a href="">src/client/ClientStrategy.ts:680-693</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">signalTime</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pendingAt</span><span class="hl-1">; </span><span class="hl-5">// CRITICAL: use pendingAt, not scheduledAt!</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signalTime</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">CLOSE_PENDING_SIGNAL_FN</span><span class="hl-1">(</span><span class="hl-4">self</span><span class="hl-1">, </span><span class="hl-4">signal</span><span class="hl-1">, </span><span class="hl-4">averagePrice</span><span class="hl-1">, </span><span class="hl-2">&quot;time_expired&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key timestamp</strong>: <code>signal.pendingAt</code> is used, <strong>not</strong> <code>signal.scheduledAt</code>. This ensures:</p>
+<ul>
+<li>For immediate signals: <code>pendingAt === scheduledAt</code> (both set to current time)</li>
+<li>For scheduled signals: <code>pendingAt</code> is set when signal <strong>activates</strong>, not when created</li>
+<li>Lifetime counts from position open, not from signal creation</li>
+</ul>
+<a id="pendingat-vs-scheduledat" class="tsd-anchor"></a><h3 class="tsd-anchor-link">pendingAt vs scheduledAt<a href="#pendingat-vs-scheduledat" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Timestamp</th>
+<th>Set When</th>
+<th>Used For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduledAt</code></td>
+<td>Signal first created (immediate or scheduled)</td>
+<td>Tracking signal generation time, scheduled timeout</td>
+</tr>
+<tr>
+<td><code>pendingAt</code></td>
+<td>Position becomes active (opened)</td>
+<td>Time expiration monitoring, PnL duration</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example scenario</strong>:</p>
+<ol>
+<li>Scheduled signal created at <code>t=0</code> → <code>scheduledAt=0</code>, <code>pendingAt=0</code> (temporary)</li>
+<li>Price activates signal at <code>t=1000</code> → <code>pendingAt=1000</code> (updated)</li>
+<li>Time expiration checks: <code>currentTime - pendingAt</code>, not <code>currentTime - scheduledAt</code></li>
+</ol>
+<p>This prevents premature timeout for signals that wait a long time for activation. See <a href="">src/client/ClientStrategy.ts:510-516</a> for <code>pendingAt</code> update logic.</p>
+<a id="maximum-lifetime-protection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Maximum Lifetime Protection<a href="#maximum-lifetime-protection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code> prevents eternal signals <a href="">src/config/params.ts:25-29</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>1440</code> (1 day)</td>
+<td>Prevents signals from blocking risk limits for weeks/months</td>
+</tr>
+</tbody>
+</table>
+<p>Validated by <code>VALIDATE_SIGNAL_FN</code> <a href="">src/client/ClientStrategy.ts:161-171</a>:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> &gt; </span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`minuteEstimatedTime too large (</span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-6">}</span><span class="hl-2"> minutes). </span><br/><span class="hl-2">               Eternal signals block risk limits and prevent new trades.`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="scheduled-signal-activation-monitoring" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled Signal Activation Monitoring<a href="#scheduled-signal-activation-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="price-activation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Activation Logic<a href="#price-activation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals wait for price to reach <code>priceOpen</code> before opening a position. Activation is checked by <code>CHECK_SCHEDULED_SIGNAL_PRICE_ACTIVATION_FN</code> <a href="">src/client/ClientStrategy.ts:388-422</a>:</p>
+<p><strong>For LONG positions</strong> <a href="">src/client/ClientStrategy.ts:395-406</a>:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Check StopLoss FIRST (cancellation has priority)</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldCancel</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Activate if price drops to priceOpen AND SL not hit</span><br/><span class="hl-1">  </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldActivate</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>For SHORT positions</strong> <a href="">src/client/ClientStrategy.ts:408-419</a>:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Check StopLoss FIRST</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldCancel</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Activate if price rises to priceOpen AND SL not hit</span><br/><span class="hl-1">  </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldActivate</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Critical ordering</strong>: StopLoss check has <strong>priority</strong> over activation. If both conditions are met (price hit SL and priceOpen), signal is <strong>cancelled</strong>, not activated.</p>
+<a id="timeout-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timeout Monitoring<a href="#timeout-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals are also monitored for timeout by <code>CHECK_SCHEDULED_SIGNAL_TIMEOUT_FN</code> <a href="">src/client/ClientStrategy.ts:332-386</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">signalTime</span><span class="hl-1"> = </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">; </span><span class="hl-5">// Timeout counts from scheduledAt</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signalTime</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel scheduled signal - never activated</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">IStrategyTickResultCancelled</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key difference</strong>: Scheduled timeout uses <code>scheduledAt</code>, not <code>pendingAt</code>, because the signal hasn't activated yet.</p>
+<table>
+<thead>
+<tr>
+<th>Config Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><code>120</code> (2 hours)</td>
+<td>Maximum time to wait for scheduled signal activation</td>
+</tr>
+</tbody>
+</table>
+<p>See <a href="">src/config/params.ts:6</a>.</p>
+<a id="activation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Activation Flow<a href="#activation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When activation conditions are met, <code>ACTIVATE_SCHEDULED_SIGNAL_FN</code> is called <a href="">src/client/ClientStrategy.ts:459-551</a>:</p>
+<ol>
+<li><strong>Check if strategy stopped</strong> <a href="">src/client/ClientStrategy.ts:465-472</a> → early return if stopped</li>
+<li><strong>Run risk validation</strong> <a href="">src/client/ClientStrategy.ts:489-506</a> → check if position can be opened</li>
+<li><strong>Update <code>pendingAt</code> timestamp</strong> <a href="">src/client/ClientStrategy.ts:510-516</a> → set to activation time</li>
+<li><strong>Convert to active signal</strong> <a href="">src/client/ClientStrategy.ts:511-516</a> → <code>_isScheduled: false</code></li>
+<li><strong>Persist to disk</strong> <a href="">src/client/ClientStrategy.ts:517</a> → crash-safe state save</li>
+<li><strong>Add to risk tracking</strong> <a href="">src/client/ClientStrategy.ts:519-522</a> → increment active positions</li>
+<li><strong>Call <code>onOpen</code> callback</strong> <a href="">src/client/ClientStrategy.ts:524-531</a></li>
+<li><strong>Return <code>IStrategyTickResultOpened</code></strong> <a href="">src/client/ClientStrategy.ts:533-550</a></li>
+</ol>
+<hr>
+<a id="live-vs-backtest-monitoring-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live vs Backtest Monitoring Comparison<a href="#live-vs-backtest-monitoring-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="data-source-differences" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Source Differences<a href="#data-source-differences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Live Mode</th>
+<th>Backtest Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Price calculation</strong></td>
+<td><code>exchange.getAveragePrice(symbol)</code></td>
+<td><code>GET_AVG_PRICE_FN(candles)</code></td>
+</tr>
+<tr>
+<td><strong>Candles source</strong></td>
+<td>Real-time API call (last N candles)</td>
+<td>Pre-fetched historical array</td>
+</tr>
+<tr>
+<td><strong>Monitoring frequency</strong></td>
+<td>Every tick (interval-based)</td>
+<td>Every candle in array</td>
+</tr>
+<tr>
+<td><strong>State persistence</strong></td>
+<td>Written to disk after each change</td>
+<td>In-memory only</td>
+</tr>
+<tr>
+<td><strong>Timestamp source</strong></td>
+<td><code>Date.now()</code> via <code>executionContext.when</code></td>
+<td>Candle timestamp from array</td>
+</tr>
+</tbody>
+</table>
+<a id="live-mode-vwap-calculation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode VWAP Calculation<a href="#live-mode-vwap-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode, <code>ClientExchange.getAveragePrice()</code> <a href="">src/lib/services/connection/ExchangeConnectionService.ts</a> (not shown in provided files, but referenced) performs:</p>
+<ol>
+<li>Call <code>exchange.getCandles(symbol, interval, since, CC_AVG_PRICE_CANDLES_COUNT)</code></li>
+<li>Pass candles to <code>GET_AVG_PRICE_FN(candles)</code></li>
+<li>Return VWAP</li>
+</ol>
+<p><strong>Implications</strong>:</p>
+<ul>
+<li><strong>Latency</strong>: Each tick requires API call to fetch candles</li>
+<li><strong>Consistency</strong>: VWAP based on most recent market data</li>
+<li><strong>Throttling</strong>: Interval-based signal generation prevents excessive API calls (see <a href="design_58_interval_throttling.html">10.4</a>)</li>
+</ul>
+<a id="backtest-mode-candle-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode Candle Processing<a href="#backtest-mode-candle-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In backtest mode, <code>ClientStrategy.backtest()</code> <a href="">src/client/ClientStrategy.ts:1191-1329</a> processes entire candle array:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">i</span><span class="hl-1"> = </span><span class="hl-4">candlesCount</span><span class="hl-1"> - </span><span class="hl-8">1</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1">++) {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">recentCandles</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">slice</span><span class="hl-1">(</span><span class="hl-4">i</span><span class="hl-1"> - (</span><span class="hl-4">candlesCount</span><span class="hl-1"> - </span><span class="hl-8">1</span><span class="hl-1">), </span><span class="hl-4">i</span><span class="hl-1"> + </span><span class="hl-8">1</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">averagePrice</span><span class="hl-1"> = </span><span class="hl-0">GET_AVG_PRICE_FN</span><span class="hl-1">(</span><span class="hl-4">recentCandles</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Check TP/SL using high/low for accuracy</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentCandle</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldClose</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">closeReason</span><span class="hl-1"> = </span><span class="hl-2">&quot;take_profit&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key differences</strong>:</p>
+<ul>
+<li>Uses <code>candle.high</code> and <code>candle.low</code> for <strong>exact TP/SL detection</strong></li>
+<li>Processes all candles in single loop (no API calls)</li>
+<li>Deterministic results (same candles → same outcome)</li>
+</ul>
+<a id="monitoring-accuracy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Monitoring Accuracy<a href="#monitoring-accuracy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Check Type</th>
+<th>Live Mode</th>
+<th>Backtest Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TP/SL detection</strong></td>
+<td>VWAP-based (may miss intra-minute spikes)</td>
+<td><code>high</code>/<code>low</code>-based (detects all spikes)</td>
+</tr>
+<tr>
+<td><strong>Time resolution</strong></td>
+<td>Depends on tick interval</td>
+<td>1 candle = 1 minute (or interval)</td>
+</tr>
+<tr>
+<td><strong>Price volatility</strong></td>
+<td>Smoothed by VWAP over 5 candles</td>
+<td>Captured by candle high/low</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong>: If TP is briefly hit during a 1-minute candle but VWAP doesn't reach it:</p>
+<ul>
+<li><strong>Live mode</strong>: May <strong>miss</strong> TP if VWAP over 5 minutes doesn't reach threshold</li>
+<li><strong>Backtest mode</strong>: Will <strong>detect</strong> TP using <code>candle.high</code></li>
+</ul>
+<p>This discrepancy is intentional — live mode prioritizes realistic fills (VWAP) over perfect detection.</p>
+<hr>
+<a id="monitoring-state-transitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Monitoring State Transitions<a href="#monitoring-state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Key monitoring loops:</p>
+<ol>
+<li><strong>idle → scheduled → opened → active → closed</strong>: Full lifecycle with scheduled entry</li>
+<li><strong>idle → opened → active → closed</strong>: Immediate entry lifecycle</li>
+<li><strong>scheduled → cancelled</strong>: Timeout or SL hit before activation</li>
+<li><strong>scheduled → idle</strong>: SL hit before activation (cancellation variant)</li>
+</ol>
+<hr>
+<a id="monitoring-configuration-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Monitoring Configuration Summary<a href="#monitoring-configuration-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>File</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><a href="">src/config/params.ts:11</a></td>
+<td><code>5</code></td>
+<td>Number of candles for VWAP calculation</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><a href="">src/config/params.ts:6</a></td>
+<td><code>120</code></td>
+<td>Maximum time to wait for scheduled signal activation</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><a href="">src/config/params.ts:29</a></td>
+<td><code>1440</code></td>
+<td>Maximum signal lifetime (prevents eternal signals)</td>
+</tr>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><a href="">src/config/params.ts:17</a></td>
+<td><code>0.1%</code></td>
+<td>Minimum TP distance to cover fees</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><a href="">src/config/params.ts:23</a></td>
+<td><code>20%</code></td>
+<td>Maximum SL distance to protect capital</td>
+</tr>
+</tbody>
+</table>
+<p>All parameters can be modified via <code>setConfig()</code> <a href="design_15_configuration_functions.html">4.1</a> before starting live trading.</p>
+<hr>
+<a id="monitoring-function-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Monitoring Function Reference<a href="#monitoring-function-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>File Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET_AVG_PRICE_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:285-296</a></td>
+<td>Calculate VWAP from candles array</td>
+</tr>
+<tr>
+<td><code>CHECK_PENDING_SIGNAL_COMPLETION_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:675-734</a></td>
+<td>Monitor active signal for TP/SL/time</td>
+</tr>
+<tr>
+<td><code>CHECK_SCHEDULED_SIGNAL_TIMEOUT_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:332-386</a></td>
+<td>Check scheduled signal timeout</td>
+</tr>
+<tr>
+<td><code>CHECK_SCHEDULED_SIGNAL_PRICE_ACTIVATION_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:388-422</a></td>
+<td>Check if scheduled signal should activate</td>
+</tr>
+<tr>
+<td><code>CLOSE_PENDING_SIGNAL_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:736-789</a></td>
+<td>Close active signal with PnL calculation</td>
+</tr>
+<tr>
+<td><code>ACTIVATE_SCHEDULED_SIGNAL_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:459-551</a></td>
+<td>Convert scheduled signal to active</td>
+</tr>
+<tr>
+<td><code>CANCEL_SCHEDULED_SIGNAL_BY_STOPLOSS_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:424-457</a></td>
+<td>Cancel scheduled signal due to SL</td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#real-time-monitoring"><span>Real-<wbr/>time <wbr/>Monitoring</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#vwap-based-price-calculation"><span>VWAP-<wbr/>Based <wbr/>Price <wbr/>Calculation</span></a></li><li><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#get_avg_price_fn-implementation"><span>GET_<wbr/>AVG_<wbr/>PRICE_<wbr/>FN <wbr/>Implementation</span></a></li><li><a href="#cc_avg_price_candles_count-configuration"><span>CC_<wbr/>AVG_<wbr/>PRICE_<wbr/>CANDLES_<wbr/>COUNT <wbr/>Configuration</span></a></li></ul></li><li><a href="#monitoring-flow-diagram"><span>Monitoring <wbr/>Flow <wbr/>Diagram</span></a></li><li><a href="#take-profit-monitoring"><span>Take <wbr/>Profit <wbr/>Monitoring</span></a></li><li><ul><li><a href="#detection-logic"><span>Detection <wbr/>Logic</span></a></li><li><a href="#closure-mechanics"><span>Closure <wbr/>Mechanics</span></a></li><li><a href="#why-exact-price"><span>Why <wbr/>Exact <wbr/>Price?</span></a></li></ul></li><li><a href="#stop-loss-monitoring"><span>Stop <wbr/>Loss <wbr/>Monitoring</span></a></li><li><ul><li><a href="#detection-logic-1"><span>Detection <wbr/>Logic</span></a></li><li><a href="#priority-order"><span>Priority <wbr/>Order</span></a></li><li><a href="#protection-mechanisms"><span>Protection <wbr/>Mechanisms</span></a></li></ul></li><li><a href="#time-expiration-monitoring"><span>Time <wbr/>Expiration <wbr/>Monitoring</span></a></li><li><ul><li><a href="#lifetime-calculation"><span>Lifetime <wbr/>Calculation</span></a></li><li><a href="#pendingat-vs-scheduledat"><span>pending<wbr/>At vs scheduled<wbr/>At</span></a></li><li><a href="#maximum-lifetime-protection"><span>Maximum <wbr/>Lifetime <wbr/>Protection</span></a></li></ul></li><li><a href="#scheduled-signal-activation-monitoring"><span>Scheduled <wbr/>Signal <wbr/>Activation <wbr/>Monitoring</span></a></li><li><ul><li><a href="#price-activation-logic"><span>Price <wbr/>Activation <wbr/>Logic</span></a></li><li><a href="#timeout-monitoring"><span>Timeout <wbr/>Monitoring</span></a></li><li><a href="#activation-flow"><span>Activation <wbr/>Flow</span></a></li></ul></li><li><a href="#live-vs-backtest-monitoring-comparison"><span>Live vs <wbr/>Backtest <wbr/>Monitoring <wbr/>Comparison</span></a></li><li><ul><li><a href="#data-source-differences"><span>Data <wbr/>Source <wbr/>Differences</span></a></li><li><a href="#live-mode-vwap-calculation"><span>Live <wbr/>Mode VWAP <wbr/>Calculation</span></a></li><li><a href="#backtest-mode-candle-processing"><span>Backtest <wbr/>Mode <wbr/>Candle <wbr/>Processing</span></a></li><li><a href="#monitoring-accuracy"><span>Monitoring <wbr/>Accuracy</span></a></li></ul></li><li><a href="#monitoring-state-transitions"><span>Monitoring <wbr/>State <wbr/>Transitions</span></a></li><li><a href="#monitoring-configuration-summary"><span>Monitoring <wbr/>Configuration <wbr/>Summary</span></a></li><li><a href="#monitoring-function-reference"><span>Monitoring <wbr/>Function <wbr/>Reference</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

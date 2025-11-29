@@ -1,0 +1,307 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/23_component_types | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_23_component_types.html">design/23_component_types</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="component-types" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Component Types<a href="#component-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page provides a comprehensive overview of the six component types that can be registered in backtest-kit. Each component type serves a distinct role in the trading system architecture: <strong>Strategy</strong> (signal generation logic), <strong>Exchange</strong> (market data access), <strong>Frame</strong> (backtest timeframe generation), <strong>Risk</strong> (portfolio-level risk management), <strong>Sizing</strong> (position size calculation), and <strong>Walker</strong> (multi-strategy comparison).</p>
+<p>For detailed implementation guidance on individual component types, see their respective subsections: <a href="design_24_strategy_schemas.html">Strategy Schemas</a>, <a href="design_25_exchange_schemas.html">Exchange Schemas</a>, <a href="design_26_frame_schemas.html">Frame Schemas</a>, <a href="design_27_risk_schemas.html">Risk Schemas</a>, <a href="design_28_sizing_schemas.html">Sizing Schemas</a>, and <a href="design_29_walker_schemas.html">Walker Schemas</a>. For information about registering components via the public API, see <a href="design_16_component_registration_functions.html">Component Registration Functions</a>. For information about the service layer that manages these components, see <a href="design_39_schema_services.html">Schema Services</a>.</p>
+<hr>
+<a id="component-based-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component-Based Architecture<a href="#component-based-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>backtest-kit uses a <strong>schema-based registration system</strong> where users define component configurations as TypeScript objects and register them via <code>add*</code> functions. Each component type has:</p>
+<ol>
+<li><strong>Schema Interface</strong> - TypeScript interface defining required and optional fields</li>
+<li><strong>Registration Function</strong> - Public API function (<code>addStrategy</code>, <code>addExchange</code>, etc.) for schema registration</li>
+<li><strong>Schema Service</strong> - Internal storage using <code>ToolRegistry</code> pattern for schema retrieval by name</li>
+<li><strong>Validation Service</strong> - Runtime validation logic ensuring schema correctness and preventing duplicate registration</li>
+<li><strong>Connection Service</strong> - Memoized factory for creating client instances from schemas</li>
+</ol>
+<p>This architecture enables <strong>separation of concerns</strong>: schemas define &quot;what&quot; components do, while the framework handles &quot;how&quot; they integrate with execution modes (Backtest, Live, Walker).</p>
+<hr>
+<a id="registration-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Pattern<a href="#registration-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All component registration follows the same pattern implemented in <a href="">src/function/add.ts:1-342</a>:</p>
+<pre><code class="typescript"><span class="hl-5">// 1. User calls public registration function</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">schema</span><span class="hl-1">);  </span><span class="hl-5">// or addExchange, addFrame, addRisk, addSizing, addWalker</span><br/><br/><span class="hl-5">// 2. Framework validates schema</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">schema</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// 3. Framework stores schema in registry</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">schema</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The validation step performs:</p>
+<ul>
+<li><strong>Duplicate name detection</strong> - Throws error if component name already registered</li>
+<li><strong>Required field validation</strong> - Ensures all mandatory schema fields are present</li>
+<li><strong>Type checking</strong> - Validates field types match interface definitions</li>
+<li><strong>Memoization</strong> - Stores validation result to avoid redundant checks</li>
+</ul>
+<hr>
+<a id="component-type-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Type Overview<a href="#component-type-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="comparison-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comparison Table<a href="#comparison-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Component Type</th>
+<th>Schema Interface</th>
+<th>Registration Function</th>
+<th>Primary Responsibility</th>
+<th>Used In Modes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Strategy</strong></td>
+<td><code>IStrategySchema</code></td>
+<td><code>addStrategy()</code></td>
+<td>Signal generation logic with <code>getSignal()</code> function</td>
+<td>Backtest, Live, Walker</td>
+</tr>
+<tr>
+<td><strong>Exchange</strong></td>
+<td><code>IExchangeSchema</code></td>
+<td><code>addExchange()</code></td>
+<td>Market data access via <code>getCandles()</code>, price/quantity formatting</td>
+<td>Backtest, Live, Walker</td>
+</tr>
+<tr>
+<td><strong>Frame</strong></td>
+<td><code>IFrameSchema</code></td>
+<td><code>addFrame()</code></td>
+<td>Timeframe generation for historical backtesting periods</td>
+<td>Backtest, Walker</td>
+</tr>
+<tr>
+<td><strong>Risk</strong></td>
+<td><code>IRiskSchema</code></td>
+<td><code>addRisk()</code></td>
+<td>Portfolio-level risk validation and position tracking</td>
+<td>Backtest, Live, Walker</td>
+</tr>
+<tr>
+<td><strong>Sizing</strong></td>
+<td><code>ISizingSchema</code></td>
+<td><code>addSizing()</code></td>
+<td>Position size calculation (fixed, Kelly, ATR-based methods)</td>
+<td>Backtest, Live, Walker</td>
+</tr>
+<tr>
+<td><strong>Walker</strong></td>
+<td><code>IWalkerSchema</code></td>
+<td><code>addWalker()</code></td>
+<td>Multi-strategy comparison orchestration</td>
+<td>Walker only</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="component-registration-flow-diagram" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Registration Flow Diagram<a href="#component-registration-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/23_Component_Types_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="schema-storage-and-retrieval" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Storage and Retrieval<a href="#schema-storage-and-retrieval" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="schema-service-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Service Pattern<a href="#schema-service-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each component type has a corresponding <code>*SchemaService</code> class that implements the <code>ToolRegistry</code> pattern for name-based storage and retrieval:</p>
+<p><img src="../media/23_Component_Types_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="validation-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Services<a href="#validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each component type has a <code>*ValidationService</code> class responsible for:</p>
+<ol>
+<li><strong>Registration-time validation</strong> - Called by <code>add*</code> functions before schema storage</li>
+<li><strong>Duplicate detection</strong> - Prevents registering the same component name twice</li>
+<li><strong>Schema validation</strong> - Ensures required fields are present and valid</li>
+<li><strong>List functionality</strong> - Returns all registered schemas for introspection</li>
+</ol>
+<a id="validation-service-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Service Architecture<a href="#validation-service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Service Class</th>
+<th>Purpose</th>
+<th>Registered Via</th>
+<th>Retrieved Via</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StrategyValidationService</code></td>
+<td>Validates <code>IStrategySchema</code> fields (strategyName, interval, getSignal)</td>
+<td><code>addStrategy()</code></td>
+<td><code>listStrategies()</code></td>
+</tr>
+<tr>
+<td><code>ExchangeValidationService</code></td>
+<td>Validates <code>IExchangeSchema</code> fields (exchangeName, getCandles, formatPrice, formatQuantity)</td>
+<td><code>addExchange()</code></td>
+<td><code>listExchanges()</code></td>
+</tr>
+<tr>
+<td><code>FrameValidationService</code></td>
+<td>Validates <code>IFrameSchema</code> fields (frameName, interval, startDate, endDate)</td>
+<td><code>addFrame()</code></td>
+<td><code>listFrames()</code></td>
+</tr>
+<tr>
+<td><code>RiskValidationService</code></td>
+<td>Validates <code>IRiskSchema</code> fields (riskName, validations array)</td>
+<td><code>addRisk()</code></td>
+<td><code>listRisks()</code></td>
+</tr>
+<tr>
+<td><code>SizingValidationService</code></td>
+<td>Validates <code>ISizingSchema</code> discriminated union (method-specific fields)</td>
+<td><code>addSizing()</code></td>
+<td><code>listSizings()</code></td>
+</tr>
+<tr>
+<td><code>WalkerValidationService</code></td>
+<td>Validates <code>IWalkerSchema</code> fields (walkerName, strategies array, metric)</td>
+<td><code>addWalker()</code></td>
+<td><code>listWalkers()</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="connection-services-and-client-instantiation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Connection Services and Client Instantiation<a href="#connection-services-and-client-instantiation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="memoized-instance-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoized Instance Pattern<a href="#memoized-instance-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>*ConnectionService</code> classes act as <strong>memoized factories</strong> that create and cache <code>Client*</code> instances. Each component name gets exactly one client instance, created lazily on first use:</p>
+<p><img src="../media/23_Component_Types_2.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="component-lifecycle-states" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Lifecycle States<a href="#component-lifecycle-states" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/23_Component_Types_3.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="dependency-injection-tokens" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Tokens<a href="#dependency-injection-tokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses Symbol-based tokens for dependency injection, defined in <a href="">src/lib/core/types.ts:1-81</a>:</p>
+<a id="schema-service-tokens" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Service Tokens<a href="#schema-service-tokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">schemaServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategySchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="validation-service-tokens" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Service Tokens<a href="#validation-service-tokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">validationServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategyValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategyValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="connection-service-tokens" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Connection Service Tokens<a href="#connection-service-tokens" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">connectionServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategyConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategyConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="component-name-types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Name Types<a href="#component-name-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each component type has a corresponding string-based name type for type-safe registration and retrieval:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Name Type</th>
+<th>Example Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Strategy</td>
+<td><code>StrategyName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;my-strategy&quot;</code></td>
+</tr>
+<tr>
+<td>Exchange</td>
+<td><code>ExchangeName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;binance&quot;</code></td>
+</tr>
+<tr>
+<td>Frame</td>
+<td><code>FrameName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;1d-backtest&quot;</code></td>
+</tr>
+<tr>
+<td>Risk</td>
+<td><code>RiskName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;conservative&quot;</code></td>
+</tr>
+<tr>
+<td>Sizing</td>
+<td><code>SizingName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;fixed-1-percent&quot;</code></td>
+</tr>
+<tr>
+<td>Walker</td>
+<td><code>WalkerName</code> (alias of <code>string</code>)</td>
+<td><code>&quot;llm-optimizer&quot;</code></td>
+</tr>
+</tbody>
+</table>
+<p>These type aliases provide semantic clarity while maintaining string compatibility for runtime lookup.</p>
+<hr>
+<a id="cross-component-dependencies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cross-Component Dependencies<a href="#cross-component-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Some component types reference other components by name, creating a dependency graph:</p>
+<p><img src="../media/23_Component_Types_4.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="list-functions-for-introspection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">List Functions for Introspection<a href="#list-functions-for-introspection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides <code>list*</code> functions defined in <a href="">src/function/list.ts:1-218</a> for retrieving all registered component schemas:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Returns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listStrategies()</code></td>
+<td><code>Promise&lt;IStrategySchema[]&gt;</code></td>
+<td>All registered strategies</td>
+</tr>
+<tr>
+<td><code>listExchanges()</code></td>
+<td><code>Promise&lt;IExchangeSchema[]&gt;</code></td>
+<td>All registered exchanges</td>
+</tr>
+<tr>
+<td><code>listFrames()</code></td>
+<td><code>Promise&lt;IFrameSchema[]&gt;</code></td>
+<td>All registered frames</td>
+</tr>
+<tr>
+<td><code>listRisks()</code></td>
+<td><code>Promise&lt;IRiskSchema[]&gt;</code></td>
+<td>All registered risk profiles</td>
+</tr>
+<tr>
+<td><code>listSizings()</code></td>
+<td><code>Promise&lt;ISizingSchema[]&gt;</code></td>
+<td>All registered sizing configurations</td>
+</tr>
+<tr>
+<td><code>listWalkers()</code></td>
+<td><code>Promise&lt;IWalkerSchema[]&gt;</code></td>
+<td>All registered walkers</td>
+</tr>
+</tbody>
+</table>
+<p>These functions are useful for:</p>
+<ul>
+<li><strong>Debugging</strong> - Inspecting what components are registered</li>
+<li><strong>Documentation</strong> - Generating component lists dynamically</li>
+<li><strong>UI Generation</strong> - Building dropdowns/selectors of available components</li>
+<li><strong>Testing</strong> - Verifying registration state</li>
+</ul>
+<hr>
+<a id="common-schema-fields" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Schema Fields<a href="#common-schema-fields" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All component schemas share these common optional fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>note</code></td>
+<td><code>string | undefined</code></td>
+<td>Optional developer documentation for the component</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;I*Callbacks&gt; | undefined</code></td>
+<td>Optional lifecycle event handlers for debugging/logging</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>callbacks</code> field provides hooks into component lifecycle events without requiring custom code. Each component type has its own callback interface (e.g., <code>IStrategyCallbacks</code>, <code>IExchangeCallbacks</code>) with event-specific methods.</p>
+<hr>
+<a id="service-layer-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Layer Summary<a href="#service-layer-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>For each component type, the framework maintains three service classes:</p>
+<p><img src="../media/23_Component_Types_5.svg" alt="Mermaid Diagram"></p>
+<p>This consistent three-layer pattern (Validation → Schema → Connection → Client) applies to all component types, providing predictable behavior and code organization.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#component-types"><span>Component <wbr/>Types</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#component-based-architecture"><span>Component-<wbr/>Based <wbr/>Architecture</span></a></li><li><a href="#registration-pattern"><span>Registration <wbr/>Pattern</span></a></li><li><a href="#component-type-overview"><span>Component <wbr/>Type <wbr/>Overview</span></a></li><li><ul><li><a href="#comparison-table"><span>Comparison <wbr/>Table</span></a></li></ul></li><li><a href="#component-registration-flow-diagram"><span>Component <wbr/>Registration <wbr/>Flow <wbr/>Diagram</span></a></li><li><a href="#schema-storage-and-retrieval"><span>Schema <wbr/>Storage and <wbr/>Retrieval</span></a></li><li><ul><li><a href="#schema-service-pattern"><span>Schema <wbr/>Service <wbr/>Pattern</span></a></li></ul></li><li><a href="#validation-services"><span>Validation <wbr/>Services</span></a></li><li><ul><li><a href="#validation-service-architecture"><span>Validation <wbr/>Service <wbr/>Architecture</span></a></li></ul></li><li><a href="#connection-services-and-client-instantiation"><span>Connection <wbr/>Services and <wbr/>Client <wbr/>Instantiation</span></a></li><li><ul><li><a href="#memoized-instance-pattern"><span>Memoized <wbr/>Instance <wbr/>Pattern</span></a></li></ul></li><li><a href="#component-lifecycle-states"><span>Component <wbr/>Lifecycle <wbr/>States</span></a></li><li><a href="#dependency-injection-tokens"><span>Dependency <wbr/>Injection <wbr/>Tokens</span></a></li><li><ul><li><a href="#schema-service-tokens"><span>Schema <wbr/>Service <wbr/>Tokens</span></a></li><li><a href="#validation-service-tokens"><span>Validation <wbr/>Service <wbr/>Tokens</span></a></li><li><a href="#connection-service-tokens"><span>Connection <wbr/>Service <wbr/>Tokens</span></a></li></ul></li><li><a href="#component-name-types"><span>Component <wbr/>Name <wbr/>Types</span></a></li><li><a href="#cross-component-dependencies"><span>Cross-<wbr/>Component <wbr/>Dependencies</span></a></li><li><a href="#list-functions-for-introspection"><span>List <wbr/>Functions for <wbr/>Introspection</span></a></li><li><a href="#common-schema-fields"><span>Common <wbr/>Schema <wbr/>Fields</span></a></li><li><a href="#service-layer-summary"><span>Service <wbr/>Layer <wbr/>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

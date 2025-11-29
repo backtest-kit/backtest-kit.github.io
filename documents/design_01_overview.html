@@ -1,100 +1,124 @@
-<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/01_overview | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_01_overview.html">design/01_overview</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="overview" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document provides a high-level introduction to <strong>backtest-kit</strong>, a production-ready TypeScript framework for backtesting and live trading of algorithmic trading strategies. The framework is designed with clean architecture principles, crash-safe persistence, memory-efficient async generators, and comprehensive signal validation.</p>
-<p>This page covers:</p>
-<ul>
-<li>The framework's architectural design and four-layer structure</li>
-<li>Execution modes (backtest vs live trading)</li>
-<li>Key components and their responsibilities</li>
-<li>Signal lifecycle and data flow</li>
-<li>Technology dependencies</li>
-</ul>
-<p>For detailed information about specific subsystems, refer to:</p>
-<ul>
-<li>Configuration and registration: <a href="design_09_configuration_functions.html">Configuration Functions</a></li>
-<li>Backtest execution details: <a href="design_28_backtesting.html">Backtesting</a></li>
-<li>Live trading implementation: <a href="design_32_live_trading.html">Live Trading</a></li>
-<li>Signal state management: <a href="design_23_signal_lifecycle.html">Signal Lifecycle</a></li>
-<li>Service layer architecture: <a href="design_18_service_layer.html">Service Layer</a></li>
-</ul>
-<hr>
-<a id="framework-purpose" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Framework Purpose<a href="#framework-purpose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <strong>backtest-kit</strong> framework enables users to:</p>
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/01_overview | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_01_overview.html">design/01_overview</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="overview" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p><strong>backtest-kit</strong> is a production-ready TypeScript framework for backtesting and live trading algorithmic strategies. It provides crash-safe state persistence, comprehensive signal validation, memory-optimized async generators, and enterprise-grade reporting capabilities.</p>
+<a id="core-capabilities" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Capabilities<a href="#core-capabilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework enables:</p>
 <ol>
-<li><strong>Backtest trading strategies</strong> - Test algorithms against historical candle data with memory-efficient streaming</li>
-<li><strong>Deploy live trading</strong> - Run strategies in production with crash recovery and atomic persistence</li>
-<li><strong>Validate signals</strong> - Automatically validate signal parameters (prices, TP/SL logic, timestamps)</li>
-<li><strong>Monitor performance</strong> - Generate markdown reports with statistics (win rate, PnL, close reasons)</li>
-<li><strong>Integrate data sources</strong> - Connect custom exchanges via pluggable schema registration</li>
+<li><strong>Historical Backtesting</strong> - Memory-efficient streaming execution against historical candle data via <code>Backtest.run()</code> and <code>Backtest.background()</code></li>
+<li><strong>Live Trading</strong> - Real-time strategy execution with atomic persistence and crash recovery via <code>Live.run()</code> and <code>Live.background()</code></li>
+<li><strong>Signal Validation</strong> - Automatic validation of TP/SL logic, price relationships, and timestamp constraints in <a href="">src/client/ClientStrategy.ts</a></li>
+<li><strong>Strategy Comparison</strong> - Multi-strategy A/B testing with metric-based ranking via <code>Walker.run()</code> and <code>Walker.background()</code></li>
+<li><strong>Portfolio Analytics</strong> - Multi-symbol performance tracking with extended metrics via <code>Heat.getData()</code></li>
+<li><strong>Risk Management</strong> - Portfolio-level risk controls with custom validation logic via <code>addRisk()</code></li>
+<li><strong>Position Sizing</strong> - Built-in sizing methods (Fixed %, Kelly Criterion, ATR-based) via <code>PositionSize</code> class</li>
+<li><strong>Scheduled Signals</strong> - Limit order tracking with cancellation rate analytics via <code>Schedule.getData()</code></li>
+<li><strong>Pluggable Integration</strong> - Custom exchange data sources and persistence backends via schema registration</li>
 </ol>
-<p>The framework enforces separation of concerns through dependency injection, enabling testable business logic without tight coupling to infrastructure services.</p>
 <hr>
-<a id="four-layer-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Four-Layer Architecture<a href="#four-layer-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework follows a clean architecture pattern with four distinct layers:</p>
-<p><img src="../media/01_Overview_0.svg" alt="Mermaid Diagram"></p>
+<a id="system-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">System Architecture<a href="#system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a six-layer clean architecture with dependency injection:</p>
+<a id="high-level-system-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">High-Level System Diagram<a href="#high-level-system-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/01_Overview_0.svg" alt="Mermaid Diagram"></p>
 <a id="layer-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Layer Responsibilities<a href="#layer-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
 <thead>
 <tr>
 <th>Layer</th>
 <th>Purpose</th>
-<th>Components</th>
-<th>Key Files</th>
+<th>Key Components</th>
+<th>Location</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Public API</strong></td>
-<td>User-facing functions and utilities</td>
-<td><code>Backtest</code>, <code>Live</code>, <code>addStrategy</code>, <code>getCandles</code></td>
-<td><a href="">src/index.ts:1-56</a></td>
+<td><strong>User Interface</strong></td>
+<td>Public API exports and utility classes</td>
+<td><code>Backtest</code>, <code>Live</code>, <code>Walker</code>, <code>Heat</code>, <code>Schedule</code>, <code>PositionSize</code></td>
+<td><a href="">src/classes/</a>, <a href="">src/function/</a></td>
 </tr>
 <tr>
-<td><strong>Service Orchestration</strong></td>
-<td>Dependency injection, routing, context management</td>
-<td>Schema/Connection/Global/Logic services</td>
-<td><a href="">src/lib/services/*</a></td>
+<td><strong>Registry &amp; Validation</strong></td>
+<td>Schema storage and validation logic</td>
+<td><code>*SchemaService</code>, <code>*ValidationService</code></td>
+<td><a href="">src/lib/services/schema/</a>, <a href="">src/lib/services/validation/</a></td>
 </tr>
 <tr>
-<td><strong>Business Logic</strong></td>
-<td>Pure, testable domain logic</td>
-<td><code>ClientStrategy</code>, <code>ClientExchange</code>, <code>ClientFrame</code></td>
-<td><a href="">src/client/*</a></td>
+<td><strong>Execution Engine</strong></td>
+<td>Core orchestration and business logic</td>
+<td><code>*LogicPrivateService</code>, <code>*GlobalService</code>, <code>*ConnectionService</code>, <code>Client*</code> classes</td>
+<td><a href="">src/lib/services/logic/</a>, <a href="">src/lib/services/global/</a>, <a href="">src/lib/services/connection/</a>, <a href="">src/client/</a></td>
 </tr>
 <tr>
-<td><strong>Cross-Cutting</strong></td>
-<td>Logging, persistence, reporting, context</td>
-<td><code>LoggerService</code>, <code>PersistSignalAdapter</code>, Markdown services</td>
-<td><a href="">src/lib/services/base</a>, <a href="">src/classes/Persist.ts</a></td>
+<td><strong>State Management</strong></td>
+<td>Crash-safe persistence and configuration</td>
+<td><code>PersistSignalAdapter</code>, <code>PersistRiskAdapter</code>, <code>GLOBAL_CONFIG</code></td>
+<td><a href="">src/classes/Persist.ts</a>, <a href="">src/config/params.ts</a></td>
+</tr>
+<tr>
+<td><strong>Event System</strong></td>
+<td>Pub-sub for observability</td>
+<td><code>signalEmitter</code>, <code>doneEmitter</code>, <code>errorEmitter</code>, <code>progressEmitter</code></td>
+<td><a href="">src/config/emitters.ts</a></td>
+</tr>
+<tr>
+<td><strong>Reporting &amp; Analytics</strong></td>
+<td>Performance metrics and markdown generation</td>
+<td><code>BacktestMarkdownService</code>, <code>LiveMarkdownService</code>, etc.</td>
+<td><a href="">src/lib/services/markdown/</a></td>
 </tr>
 </tbody>
 </table>
-<p>For detailed layer responsibilities, see <a href="design_05_layer_responsibilities.html">Layer Responsibilities</a>.</p>
 <hr>
-<a id="execution-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Modes<a href="#execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework supports two execution modes with different characteristics:</p>
-<p><img src="../media/01_Overview_1.svg" alt="Mermaid Diagram"></p>
-<a id="backtest-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode<a href="#backtest-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
-<li><strong>Entry Point:</strong> <code>Backtest.run(symbol, {strategyName, exchangeName, frameName})</code></li>
-<li><strong>Execution:</strong> Iterates through historical timeframes generated by <code>ClientFrame</code></li>
-<li><strong>Fast-Forward:</strong> Uses <code>backtest()</code> method to simulate signal outcomes with future candles</li>
-<li><strong>Memory:</strong> Streams results via async generator, no accumulation</li>
-<li><strong>Output:</strong> Only yields <code>IStrategyTickResultClosed</code> (completed signals)</li>
-</ul>
-<p><strong>Key Classes:</strong></p>
+<a id="execution-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Modes<a href="#execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides three primary execution modes with distinct characteristics:</p>
+<a id="execution-mode-comparison" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Mode Comparison<a href="#execution-mode-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/01_Overview_1.svg" alt="Mermaid Diagram"></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Entry Point</th>
+<th>Execution Pattern</th>
+<th>Output</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Backtest</strong></td>
+<td><code>Backtest.run(symbol, {strategyName, exchangeName, frameName})</code></td>
+<td>Finite loop over historical timeframes</td>
+<td><code>IStrategyTickResultClosed</code> only</td>
+<td>Strategy validation with historical data</td>
+</tr>
+<tr>
+<td><strong>Live</strong></td>
+<td><code>Live.run(symbol, {strategyName, exchangeName})</code></td>
+<td>Infinite loop with 1-minute intervals</td>
+<td><code>IStrategyTickResult</code> (idle/opened/active/closed)</td>
+<td>Real-time trading with crash recovery</td>
+</tr>
+<tr>
+<td><strong>Walker</strong></td>
+<td><code>Walker.run(symbol, {walkerName})</code></td>
+<td>Iterates strategies, runs Backtest for each</td>
+<td><code>IWalkerResults</code> with ranked strategies</td>
+<td>A/B testing and strategy selection</td>
+</tr>
+</tbody>
+</table>
+<a id="key-differences" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Differences<a href="#key-differences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest Mode:</strong></p>
 <ul>
-<li><a href="">BacktestLogicPrivateService</a> - Orchestrates timeframe iteration</li>
-<li><a href="">FrameGlobalService</a> - Generates timestamp arrays</li>
-<li><a href="">ClientFrame</a> - Timeframe generation logic</li>
-<li><a href="">BacktestMarkdownService</a> - Accumulates results for reporting</li>
+<li>Uses <code>ClientStrategy.backtest(candles)</code> for fast-forward simulation</li>
+<li>Generates timeframes via <code>ClientFrame.getTimeframe()</code> based on <code>IFrameSchema</code></li>
+<li>No persistence required (stateless)</li>
+<li>Memory-efficient streaming via async generators</li>
 </ul>
-<a id="live-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode<a href="#live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
-<li><strong>Entry Point:</strong> <code>Live.run(symbol, {strategyName, exchangeName})</code></li>
-<li><strong>Execution:</strong> Infinite loop with 1-minute intervals</li>
-<li><strong>Real-Time:</strong> Monitors signals against VWAP from last 5 candles</li>
-<li><strong>Persistence:</strong> Atomic writes to disk before state changes</li>
-<li><strong>Recovery:</strong> Resumes from last persisted state on crash/restart</li>
-<li><strong>Output:</strong> Yields <code>IStrategyTickResult</code> (idle/opened/active/closed)</li>
-</ul>
-<p><strong>Key Classes:</strong></p>
+<p><strong>Live Mode:</strong></p>
 <ul>
-<li><a href="">LiveLogicPrivateService</a> - Orchestrates infinite loop</li>
-<li><a href="">PersistSignalAdapter</a> - Crash-safe persistence</li>
-<li><a href="">LiveMarkdownService</a> - Accumulates events for reporting</li>
+<li>Uses only <code>ClientStrategy.tick()</code> with real-time VWAP from <code>ClientExchange.getAveragePrice()</code></li>
+<li>Atomic persistence via <code>PersistSignalAdapter.writeValue()</code> at state transitions</li>
+<li>Crash recovery via <code>waitForInit()</code> pattern in <a href="">src/client/ClientStrategy.ts</a></li>
+<li>Interval throttling via <code>_lastSignalTimestamp</code> checks</li>
+</ul>
+<p><strong>Walker Mode:</strong></p>
+<ul>
+<li>Orchestrates multiple <code>Backtest.run()</code> executions</li>
+<li>Compares strategies using configurable metrics: <code>sharpeRatio</code>, <code>winRate</code>, <code>avgPnl</code>, <code>totalPnl</code>, <code>certaintyRatio</code>, <code>expectedYearlyReturns</code></li>
+<li>Emits progress events via <code>progressEmitter</code> in <a href="">src/config/emitters.ts</a></li>
+<li>Generates comparison reports via <code>WalkerMarkdownService</code></li>
 </ul>
 <hr>
 <a id="core-components" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Components<a href="#core-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="client-layer-business-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Client Layer (Business Logic)<a href="#client-layer-business-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The client layer contains pure business logic without dependency injection:</p>
@@ -163,51 +187,70 @@
 </ul>
 </li>
 </ol>
-<p>For detailed service layer documentation, see <a href="design_18_service_layer.html">Service Layer</a>.</p>
+<p>For detailed service layer documentation, see <a href="design_36_service_layer.html">Service Layer</a>.</p>
 <hr>
-<a id="signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle<a href="#signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signals transition through four states in a type-safe discriminated union:</p>
-<p><img src="../media/01_Overview_4.svg" alt="Mermaid Diagram"></p>
-<a id="signal-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Types<a href="#signal-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Discriminated union - type-safe state handling</span><br/><span class="hl-6">type</span><span class="hl-1"> </span><span class="hl-10">IStrategyTickResult</span><span class="hl-1"> = </span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultIdle</span><span class="hl-1">      </span><span class="hl-5">// action: &quot;idle&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultOpened</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;opened&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultActive</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;active&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultClosed</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;closed&quot;</span>
+<a id="signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle<a href="#signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signals transition through six states in a type-safe discriminated union:</p>
+<a id="signal-state-machine" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal State Machine<a href="#signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/01_Overview_4.svg" alt="Mermaid Diagram"></p>
+<a id="signal-type-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Type Hierarchy<a href="#signal-type-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework defines signal states as a discriminated union in <a href="">types.d.ts:654-770</a>:</p>
+<pre><code class="typescript"><span class="hl-6">type</span><span class="hl-1"> </span><span class="hl-10">IStrategyTickResult</span><span class="hl-1"> = </span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultIdle</span><span class="hl-1">         </span><span class="hl-5">// action: &quot;idle&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultScheduled</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;scheduled&quot; (new in v1.x)</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultOpened</span><span class="hl-1">       </span><span class="hl-5">// action: &quot;opened&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultActive</span><span class="hl-1">       </span><span class="hl-5">// action: &quot;active&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultClosed</span><span class="hl-1">       </span><span class="hl-5">// action: &quot;closed&quot;</span><br/><span class="hl-1">  | </span><span class="hl-10">IStrategyTickResultCancelled</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;cancelled&quot; (new in v1.x)</span>
 </code><button type="button">Copy</button></pre>
 
-<p><strong>Key Interfaces:</strong></p>
 <table>
 <thead>
 <tr>
 <th>State</th>
-<th>Interface</th>
-<th>Properties</th>
 <th>When Yielded</th>
+<th>Key Properties</th>
+<th>Lifecycle Callbacks</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Idle</td>
-<td><code>IStrategyTickResultIdle</code></td>
-<td><code>signal: null</code></td>
-<td>Backtest: never, Live: yes</td>
+<td><code>idle</code></td>
+<td>Live: always when no signal, Backtest: never</td>
+<td><code>signal: null</code>, <code>currentPrice</code></td>
+<td><code>onIdle()</code></td>
 </tr>
 <tr>
-<td>Opened</td>
-<td><code>IStrategyTickResultOpened</code></td>
-<td><code>signal: ISignalRow</code></td>
-<td>Both modes</td>
+<td><code>scheduled</code></td>
+<td>Both: when <code>priceOpen</code> specified in <code>ISignalDto</code></td>
+<td><code>signal: IScheduledSignalRow</code>, <code>currentPrice</code></td>
+<td><code>onSchedule()</code></td>
 </tr>
 <tr>
-<td>Active</td>
-<td><code>IStrategyTickResultActive</code></td>
-<td><code>signal, currentPrice</code></td>
-<td>Backtest: never, Live: no</td>
+<td><code>opened</code></td>
+<td>Both: when position activated</td>
+<td><code>signal: ISignalRow</code>, <code>currentPrice</code></td>
+<td><code>onOpen()</code></td>
 </tr>
 <tr>
-<td>Closed</td>
-<td><code>IStrategyTickResultClosed</code></td>
-<td><code>signal, pnl, closeReason</code></td>
-<td>Both modes</td>
+<td><code>active</code></td>
+<td>Live: every tick while monitoring, Backtest: never</td>
+<td><code>signal: ISignalRow</code>, <code>currentPrice</code></td>
+<td><code>onActive()</code></td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td>Both: when TP/SL/time triggered</td>
+<td><code>pnl: IStrategyPnL</code>, <code>closeReason</code>, <code>closeTimestamp</code></td>
+<td><code>onClose()</code></td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>Both: when scheduled signal times out or SL hit before entry</td>
+<td><code>signal: IScheduledSignalRow</code>, <code>closeTimestamp</code></td>
+<td><code>onCancel()</code></td>
 </tr>
 </tbody>
 </table>
-<p>For complete signal lifecycle details, see <a href="design_23_signal_lifecycle.html">Signal Lifecycle</a>.</p>
+<a id="scheduled-signal-behavior" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Scheduled Signal Behavior<a href="#scheduled-signal-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When <code>getSignal()</code> returns <code>ISignalDto</code> with <code>priceOpen</code> specified:</p>
+<ol>
+<li>Signal enters <code>scheduled</code> state with <code>_isScheduled: true</code> flag</li>
+<li>Framework monitors <code>currentPrice</code> against <code>priceOpen</code> each tick</li>
+<li><strong>Activation:</strong> If price reaches <code>priceOpen</code>, signal transitions to <code>opened</code></li>
+<li><strong>Cancellation:</strong> If timeout (<code>CC_SCHEDULE_AWAIT_MINUTES</code>) or <code>priceStopLoss</code> hit first, signal transitions to <code>cancelled</code></li>
+<li><strong>Tracking:</strong> Schedule statistics available via <code>Schedule.getData()</code> in <a href="">src/classes/Schedule.ts</a></li>
+</ol>
 <hr>
 <a id="configuration-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration System<a href="#configuration-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a registration-then-execution pattern:</p>
 <p><img src="../media/01_Overview_5.svg" alt="Mermaid Diagram"></p>
@@ -244,7 +287,7 @@
 <li><strong>Routing:</strong> <code>MethodContextService</code> provides schema names for lookup</li>
 <li><strong>Flexibility:</strong> Multiple strategies/exchanges can coexist</li>
 </ul>
-<p>For configuration details, see <a href="design_09_configuration_functions.html">Configuration Functions</a>.</p>
+<p>For configuration details, see <a href="design_15_configuration_functions.html">Configuration Functions</a>.</p>
 <hr>
 <a id="dependency-injection-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Architecture<a href="#dependency-injection-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses symbol-based dependency injection with scoped context propagation:</p>
 <p><img src="../media/01_Overview_6.svg" alt="Mermaid Diagram"></p>
@@ -259,7 +302,7 @@
 <li>Type-safe context access</li>
 <li>Scoped to async execution boundaries</li>
 </ul>
-<p>For DI system details, see <a href="design_06_dependency_injection_system.html">Dependency Injection System</a>.</p>
+<p>For DI system details, see <a href="design_11_dependency_injection_system.html">Dependency Injection System</a>.</p>
 <hr>
 <a id="technology-stack" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Technology Stack<a href="#technology-stack" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="core-dependencies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Dependencies<a href="#core-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
 <thead>
@@ -356,17 +399,17 @@
 <li>Corrupted file detection and cleanup</li>
 </ul>
 <p><strong>Persistence Location:</strong> <a href="">src/classes/Persist.ts</a></p>
-<p>For error handling patterns, see <a href="design_41_error_handling.html">Error Handling</a>.</p>
+<p>For error handling patterns, see <a href="design_77_error_handling.html">Error Handling</a>.</p>
 <hr>
 <a id="next-steps" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>To use the framework:</p>
 <ol>
 <li><strong>Installation:</strong> <code>npm install backtest-kit</code> - see <a href="design_03_installation_and_setup.html">Installation and Setup</a></li>
-<li><strong>Configuration:</strong> Register schemas with <code>addStrategy()</code>, <code>addExchange()</code>, <code>addFrame()</code> - see <a href="design_09_configuration_functions.html">Configuration Functions</a></li>
-<li><strong>Backtesting:</strong> Use <code>Backtest.run()</code> for historical testing - see <a href="design_10_backtest_api.html">Backtest API</a></li>
-<li><strong>Live Trading:</strong> Use <code>Live.run()</code> for production deployment - see <a href="design_11_live_trading_api.html">Live Trading API</a></li>
-<li><strong>Reporting:</strong> Generate markdown reports with <code>getReport()</code> and <code>dump()</code> - see <a href="design_36_reporting_and_analytics.html">Reporting and Analytics</a></li>
+<li><strong>Configuration:</strong> Register schemas with <code>addStrategy()</code>, <code>addExchange()</code>, <code>addFrame()</code> - see <a href="design_15_configuration_functions.html">Configuration Functions</a></li>
+<li><strong>Backtesting:</strong> Use <code>Backtest.run()</code> for historical testing - see <a href="design_17_backtest_api.html">Backtest API</a></li>
+<li><strong>Live Trading:</strong> Use <code>Live.run()</code> for production deployment - see <a href="design_18_live_trading_api.html">Live Trading API</a></li>
+<li><strong>Reporting:</strong> Generate markdown reports with <code>getReport()</code> and <code>dump()</code> - see <a href="design_67_reporting_and_analytics.html">Reporting and Analytics</a></li>
 </ol>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#overview"><span>Overview</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#framework-purpose"><span>Framework <wbr/>Purpose</span></a></li><li><a href="#four-layer-architecture"><span>Four-<wbr/>Layer <wbr/>Architecture</span></a></li><li><ul><li><a href="#layer-responsibilities"><span>Layer <wbr/>Responsibilities</span></a></li></ul></li><li><a href="#execution-modes"><span>Execution <wbr/>Modes</span></a></li><li><ul><li><a href="#backtest-mode"><span>Backtest <wbr/>Mode</span></a></li><li><a href="#live-mode"><span>Live <wbr/>Mode</span></a></li></ul></li><li><a href="#core-components"><span>Core <wbr/>Components</span></a></li><li><ul><li><a href="#client-layer-business-logic"><span>Client <wbr/>Layer (<wbr/>Business <wbr/>Logic)</span></a></li><li><a href="#service-orchestration-layer"><span>Service <wbr/>Orchestration <wbr/>Layer</span></a></li></ul></li><li><a href="#signal-lifecycle"><span>Signal <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#signal-types"><span>Signal <wbr/>Types</span></a></li></ul></li><li><a href="#configuration-system"><span>Configuration <wbr/>System</span></a></li><li><ul><li><a href="#registration-apis"><span>Registration APIs</span></a></li></ul></li><li><a href="#dependency-injection-architecture"><span>Dependency <wbr/>Injection <wbr/>Architecture</span></a></li><li><ul><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li></ul></li><li><a href="#technology-stack"><span>Technology <wbr/>Stack</span></a></li><li><ul><li><a href="#core-dependencies"><span>Core <wbr/>Dependencies</span></a></li><li><a href="#build-system"><span>Build <wbr/>System</span></a></li></ul></li><li><a href="#data-flow-overview"><span>Data <wbr/>Flow <wbr/>Overview</span></a></li><li><ul><li><a href="#backtest-execution-flow"><span>Backtest <wbr/>Execution <wbr/>Flow</span></a></li><li><a href="#live-execution-flow"><span>Live <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#memory-and-performance"><span>Memory and <wbr/>Performance</span></a></li><li><ul><li><a href="#memory-efficiency"><span>Memory <wbr/>Efficiency</span></a></li><li><a href="#performance-characteristics"><span>Performance <wbr/>Characteristics</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#signal-validation"><span>Signal <wbr/>Validation</span></a></li><li><a href="#persistence-errors"><span>Persistence <wbr/>Errors</span></a></li></ul></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#overview"><span>Overview</span></a><ul><li><a href="#core-capabilities"><span>Core <wbr/>Capabilities</span></a></li><li><a href="#system-architecture"><span>System <wbr/>Architecture</span></a></li><li><ul><li><a href="#high-level-system-diagram"><span>High-<wbr/>Level <wbr/>System <wbr/>Diagram</span></a></li><li><a href="#layer-responsibilities"><span>Layer <wbr/>Responsibilities</span></a></li></ul></li><li><a href="#execution-modes"><span>Execution <wbr/>Modes</span></a></li><li><ul><li><a href="#execution-mode-comparison"><span>Execution <wbr/>Mode <wbr/>Comparison</span></a></li><li><a href="#key-differences"><span>Key <wbr/>Differences</span></a></li></ul></li><li><a href="#core-components"><span>Core <wbr/>Components</span></a></li><li><ul><li><a href="#client-layer-business-logic"><span>Client <wbr/>Layer (<wbr/>Business <wbr/>Logic)</span></a></li><li><a href="#service-orchestration-layer"><span>Service <wbr/>Orchestration <wbr/>Layer</span></a></li></ul></li><li><a href="#signal-lifecycle"><span>Signal <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#signal-state-machine"><span>Signal <wbr/>State <wbr/>Machine</span></a></li><li><a href="#signal-type-hierarchy"><span>Signal <wbr/>Type <wbr/>Hierarchy</span></a></li><li><a href="#scheduled-signal-behavior"><span>Scheduled <wbr/>Signal <wbr/>Behavior</span></a></li></ul></li><li><a href="#configuration-system"><span>Configuration <wbr/>System</span></a></li><li><ul><li><a href="#registration-apis"><span>Registration APIs</span></a></li></ul></li><li><a href="#dependency-injection-architecture"><span>Dependency <wbr/>Injection <wbr/>Architecture</span></a></li><li><ul><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li></ul></li><li><a href="#technology-stack"><span>Technology <wbr/>Stack</span></a></li><li><ul><li><a href="#core-dependencies"><span>Core <wbr/>Dependencies</span></a></li><li><a href="#build-system"><span>Build <wbr/>System</span></a></li></ul></li><li><a href="#data-flow-overview"><span>Data <wbr/>Flow <wbr/>Overview</span></a></li><li><ul><li><a href="#backtest-execution-flow"><span>Backtest <wbr/>Execution <wbr/>Flow</span></a></li><li><a href="#live-execution-flow"><span>Live <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#memory-and-performance"><span>Memory and <wbr/>Performance</span></a></li><li><ul><li><a href="#memory-efficiency"><span>Memory <wbr/>Efficiency</span></a></li><li><a href="#performance-characteristics"><span>Performance <wbr/>Characteristics</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#signal-validation"><span>Signal <wbr/>Validation</span></a></li><li><a href="#persistence-errors"><span>Persistence <wbr/>Errors</span></a></li></ul></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

@@ -1,0 +1,428 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/10_layer_responsibilities | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_10_layer_responsibilities.html">design/10_layer_responsibilities</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="layer-responsibilities" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Layer Responsibilities<a href="#layer-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document describes the six-layer service architecture of backtest-kit and the responsibilities of each layer. The framework follows a clean architecture pattern with strict separation of concerns, dependency injection, and unidirectional data flow from public API down to infrastructure.</p>
+<p>For information about how dependency injection works across these layers, see <a href="design_11_dependency_injection_system.html">Dependency Injection System</a>. For details on how context flows through the layers, see <a href="design_12_context_propagation.html">Context Propagation</a>.</p>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest-kit framework organizes services into six distinct layers, each with specific responsibilities. Services are bound via dependency injection using Symbol-based tokens defined in <a href="">src/lib/core/types.ts:1-81</a>.</p>
+<p><strong>Layer Organization Diagram</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="layer-1-public-api" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 1: Public API<a href="#layer-1-public-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Public API layer provides the user-facing functions for component registration and execution. These functions have no business logic and immediately delegate to Global Services.</p>
+<a id="registration-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration Functions<a href="#registration-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Component registration functions are exposed in <a href="">src/function/add.ts:1-342</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+<th>Delegates To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>addStrategy()</code></td>
+<td>Register strategy schema</td>
+<td><code>StrategyValidationService.addStrategy()</code><br/><code>StrategySchemaService.register()</code></td>
+</tr>
+<tr>
+<td><code>addExchange()</code></td>
+<td>Register exchange schema</td>
+<td><code>ExchangeValidationService.addExchange()</code><br/><code>ExchangeSchemaService.register()</code></td>
+</tr>
+<tr>
+<td><code>addFrame()</code></td>
+<td>Register timeframe schema</td>
+<td><code>FrameValidationService.addFrame()</code><br/><code>FrameSchemaService.register()</code></td>
+</tr>
+<tr>
+<td><code>addRisk()</code></td>
+<td>Register risk profile</td>
+<td><code>RiskValidationService.addRisk()</code><br/><code>RiskSchemaService.register()</code></td>
+</tr>
+<tr>
+<td><code>addSizing()</code></td>
+<td>Register sizing method</td>
+<td><code>SizingValidationService.addSizing()</code><br/><code>SizingSchemaService.register()</code></td>
+</tr>
+<tr>
+<td><code>addWalker()</code></td>
+<td>Register strategy comparison</td>
+<td><code>WalkerValidationService.addWalker()</code><br/><code>WalkerSchemaService.register()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="query-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Query Functions<a href="#query-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Component listing functions are exposed in <a href="">src/function/list.ts:1-218</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Purpose</th>
+<th>Delegates To</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listStrategies()</code></td>
+<td>Get all strategy schemas</td>
+<td><code>StrategyValidationService.list()</code></td>
+</tr>
+<tr>
+<td><code>listExchanges()</code></td>
+<td>Get all exchange schemas</td>
+<td><code>ExchangeValidationService.list()</code></td>
+</tr>
+<tr>
+<td><code>listFrames()</code></td>
+<td>Get all frame schemas</td>
+<td><code>FrameValidationService.list()</code></td>
+</tr>
+<tr>
+<td><code>listRisks()</code></td>
+<td>Get all risk schemas</td>
+<td><code>RiskValidationService.list()</code></td>
+</tr>
+<tr>
+<td><code>listSizings()</code></td>
+<td>Get all sizing schemas</td>
+<td><code>SizingValidationService.list()</code></td>
+</tr>
+<tr>
+<td><code>listWalkers()</code></td>
+<td>Get all walker schemas</td>
+<td><code>WalkerValidationService.list()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="execution-classes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Classes<a href="#execution-classes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Execution entry points provide static methods for running backtests and live trading:</p>
+<ul>
+<li><code>Backtest.run()</code> / <code>Backtest.background()</code> - Historical simulation</li>
+<li><code>Live.run()</code> / <code>Live.background()</code> - Real-time trading</li>
+<li><code>Walker.run()</code> / <code>Walker.background()</code> - Multi-strategy comparison</li>
+</ul>
+<p>These delegate to corresponding Global Services which wrap Logic Services with validation.</p>
+<hr>
+<a id="layer-2-logic-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 2: Logic Services<a href="#layer-2-logic-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logic Services orchestrate the core execution flow. They are split into Public and Private services to separate context management from core logic.</p>
+<a id="public-logic-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Public Logic Services<a href="#public-logic-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Public logic services wrap execution in context and provide the public interface:</p>
+<p><strong>Logic Service Responsibilities</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_1.svg" alt="Mermaid Diagram"></p>
+<p>Each public service:</p>
+<ol>
+<li>Accepts context parameters (strategyName, exchangeName, frameName)</li>
+<li>Wraps private service call with <code>MethodContextService.runAsyncIterator()</code></li>
+<li>Returns async generator from private service</li>
+</ol>
+<p><strong>Example from BacktestLogicPublicService</strong>:</p>
+<p>The public service receives context and wraps the private service:</p>
+<pre><code><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1"> }) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-0">runAsyncIterator</span><span class="hl-1">(</span><br/><span class="hl-1">    () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">backtestLogicPrivateService</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">),</span><br/><span class="hl-1">    { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1"> }</span><br/><span class="hl-1">  )</span><br/><span class="hl-1">}</span>
+</code><button>Copy</button></pre>
+
+<a id="private-logic-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Private Logic Services<a href="#private-logic-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Private logic services contain the core execution orchestration:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Responsibility</th>
+<th>Key Methods</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestLogicPrivateService</code></td>
+<td>Iterate timeframes, call strategy.tick(), yield signals</td>
+<td><code>run()</code>, emits to <code>signalBacktestEmitter</code></td>
+</tr>
+<tr>
+<td><code>LiveLogicPrivateService</code></td>
+<td>Infinite loop, Date.now() progression, persistence</td>
+<td><code>run()</code>, emits to <code>signalLiveEmitter</code></td>
+</tr>
+<tr>
+<td><code>WalkerLogicPrivateService</code></td>
+<td>Run multiple strategies, compare metrics</td>
+<td><code>run()</code>, emits to <code>walkerEmitter</code></td>
+</tr>
+</tbody>
+</table>
+<p>These services have dependencies on:</p>
+<ul>
+<li><code>StrategyGlobalService</code> - Strategy operations</li>
+<li><code>ExchangeGlobalService</code> - Market data (backtest only)</li>
+<li><code>FrameGlobalService</code> - Timeframe generation (backtest only)</li>
+<li>Markdown services - Report generation</li>
+</ul>
+<hr>
+<a id="layer-3-connection-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 3: Connection Services<a href="#layer-3-connection-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Connection Services manage memoized client instances. Each service creates and caches client instances by component name, ensuring only one instance exists per registered component.</p>
+<a id="service-registry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Registry<a href="#service-registry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services are defined in <a href="">src/lib/core/types.ts:10-16</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">connectionServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategyConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategyConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="memoization-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization Pattern<a href="#memoization-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Connection Service Architecture</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_2.svg" alt="Mermaid Diagram"></p>
+<p>Each Connection Service:</p>
+<ol>
+<li><strong>Retrieves schema</strong> from corresponding Schema Service</li>
+<li><strong>Checks memoization cache</strong> by component name</li>
+<li><strong>Creates client instance</strong> if not cached, injecting dependencies</li>
+<li><strong>Returns memoized instance</strong> for subsequent calls</li>
+</ol>
+<p>Connection services inject their dependencies into client constructors:</p>
+<ul>
+<li><code>StrategyConnectionService</code> injects <code>RiskConnectionService</code> and <code>ExchangeConnectionService</code></li>
+<li><code>ExchangeConnectionService</code> injects <code>ExecutionContextService</code></li>
+<li><code>RiskConnectionService</code> injects <code>RiskSchemaService</code></li>
+<li><code>FrameConnectionService</code> injects <code>FrameSchemaService</code></li>
+<li><code>SizingConnectionService</code> injects <code>SizingSchemaService</code></li>
+</ul>
+<hr>
+<a id="layer-4-client-classes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 4: Client Classes<a href="#layer-4-client-classes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Client Classes contain pure business logic without dependency injection dependencies. They implement the core algorithms and state management.</p>
+<a id="client-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Client Responsibilities<a href="#client-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Client Class Hierarchy</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_3.svg" alt="Mermaid Diagram"></p>
+<table>
+<thead>
+<tr>
+<th>Client Class</th>
+<th>Primary Responsibility</th>
+<th>Key State</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClientStrategy</code></td>
+<td>Signal lifecycle management, tick/backtest execution</td>
+<td><code>_pendingSignal</code>, <code>_lastSignalTimestamp</code></td>
+</tr>
+<tr>
+<td><code>ClientExchange</code></td>
+<td>Market data fetching, VWAP calculation, formatting</td>
+<td>Stateless (delegates to schema functions)</td>
+</tr>
+<tr>
+<td><code>ClientRisk</code></td>
+<td>Position tracking, custom validation execution</td>
+<td><code>_activePositions</code> Map</td>
+</tr>
+<tr>
+<td><code>ClientFrame</code></td>
+<td>Timeframe generation for backtesting</td>
+<td>Stateless</td>
+</tr>
+<tr>
+<td><code>ClientSizing</code></td>
+<td>Position size calculation</td>
+<td>Stateless</td>
+</tr>
+</tbody>
+</table>
+<a id="pure-business-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pure Business Logic<a href="#pure-business-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client classes have NO direct dependency injection. Instead:</p>
+<ol>
+<li><strong>Constructor parameters</strong> are simple values or functions from schemas</li>
+<li><strong>Service dependencies</strong> are passed via Connection Service injection</li>
+<li><strong>Prototype methods</strong> are used for memory efficiency (not arrow functions)</li>
+</ol>
+<p>Example: <code>ClientStrategy</code> receives schema functions and other clients as constructor parameters, not DI symbols.</p>
+<hr>
+<a id="layer-5-schema--validation-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 5: Schema &amp; Validation Services<a href="#layer-5-schema--validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema and Validation Services manage component registration and runtime validation. They use a parallel service structure with distinct responsibilities.</p>
+<a id="schema-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Services<a href="#schema-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Schema Services store component configurations using the <code>ToolRegistry</code> pattern:</p>
+<p><strong>Schema Service Pattern</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_4.svg" alt="Mermaid Diagram"></p>
+<p>Each Schema Service provides:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register(name, schema)</code></td>
+<td>Store component configuration</td>
+</tr>
+<tr>
+<td><code>get(name)</code></td>
+<td>Retrieve configuration by name</td>
+</tr>
+<tr>
+<td><code>validateShallow(schema)</code></td>
+<td>Check schema structure and types</td>
+</tr>
+<tr>
+<td><code>override(name, partial)</code></td>
+<td>Update existing schema</td>
+</tr>
+</tbody>
+</table>
+<p>Schema services are defined in <a href="">src/lib/core/types.ts:18-25</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">schemaServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategySchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="validation-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Services<a href="#validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation Services perform runtime existence checks with memoization:</p>
+<p><strong>Validation Service Pattern</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_5.svg" alt="Mermaid Diagram"></p>
+<p>Each Validation Service provides:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>addStrategy(name, schema)</code></td>
+<td>Register component for validation</td>
+</tr>
+<tr>
+<td><code>validate(name)</code></td>
+<td>Check existence and dependencies</td>
+</tr>
+<tr>
+<td><code>list()</code></td>
+<td>Return all registered schemas</td>
+</tr>
+</tbody>
+</table>
+<p>Validation services are defined in <a href="">src/lib/core/types.ts:59-66</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">validationServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategyValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategyValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskValidationService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskValidationService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example Validation Flow</strong>:</p>
+<p>When <code>BacktestLogicPublicService</code> starts execution:</p>
+<ol>
+<li>Calls <code>StrategyValidationService.validate(strategyName)</code></li>
+<li>Calls <code>ExchangeValidationService.validate(exchangeName)</code></li>
+<li>Calls <code>FrameValidationService.validate(frameName)</code></li>
+<li>If strategy has <code>riskName</code>, validates via <code>RiskValidationService.validate(riskName)</code></li>
+</ol>
+<hr>
+<a id="layer-6-markdown-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer 6: Markdown Services<a href="#layer-6-markdown-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Markdown Services subscribe to event emitters and accumulate data for report generation. Each execution mode has a dedicated markdown service.</p>
+<a id="service-registry-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Registry<a href="#service-registry-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Markdown services are defined in <a href="">src/lib/core/types.ts:50-57</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">markdownServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">backtestMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;backtestMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">liveMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;liveMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">scheduleMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;scheduleMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">performanceMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;performanceMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">heatMarkdownService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;heatMarkdownService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="event-subscription-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Subscription Pattern<a href="#event-subscription-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Markdown Service Data Flow</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_6.svg" alt="Mermaid Diagram"></p>
+<p>Each Markdown Service:</p>
+<ol>
+<li><strong>Subscribes to emitter</strong> during initialization</li>
+<li><strong>Accumulates events</strong> in memoized storage by strategy/walker name</li>
+<li><strong>Limits event queue</strong> (e.g., <code>LiveMarkdownService</code> max 250 events)</li>
+<li><strong>Calculates statistics</strong> on demand via <code>getData()</code></li>
+<li><strong>Formats markdown</strong> via <code>getReport()</code></li>
+<li><strong>Writes to disk</strong> via <code>dump()</code></li>
+</ol>
+<a id="report-storage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Storage<a href="#report-storage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Storage is memoized per component:</p>
+<ul>
+<li><code>BacktestMarkdownService</code> - One storage per (strategyName, exchangeName, frameName)</li>
+<li><code>LiveMarkdownService</code> - One storage per (strategyName, exchangeName)</li>
+<li><code>WalkerMarkdownService</code> - One storage per walkerName</li>
+</ul>
+<hr>
+<a id="cross-cutting-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cross-Cutting Services<a href="#cross-cutting-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Three services span all layers and provide infrastructure concerns.</p>
+<a id="loggerservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">LoggerService<a href="#loggerservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>LoggerService</code> provides logging infrastructure with automatic context injection:</p>
+<p><img src="../media/10_Layer_Responsibilities_7.svg" alt="Mermaid Diagram"></p>
+<p>Injected into nearly every service via <a href="">src/lib/core/types.ts:1-3</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;loggerService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="executioncontextservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ExecutionContextService<a href="#executioncontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ExecutionContextService</code> manages execution-time parameters using <code>di-scoped</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td>Trading pair (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>when</code></td>
+<td>Current timestamp (Date for live, historical for backtest)</td>
+</tr>
+<tr>
+<td><code>backtest</code></td>
+<td>Boolean flag indicating execution mode</td>
+</tr>
+</tbody>
+</table>
+<p>Used by client classes to access current execution context without explicit parameter passing.</p>
+<a id="methodcontextservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MethodContextService<a href="#methodcontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>MethodContextService</code> manages component selection using <code>di-scoped</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td>Active strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td>Active exchange identifier</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td>Active frame identifier (backtest only)</td>
+</tr>
+</tbody>
+</table>
+<p>Used by Connection Services to resolve which component instance to return.</p>
+<hr>
+<a id="layer-interaction-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Layer Interaction Patterns<a href="#layer-interaction-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registration-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration Flow<a href="#registration-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Component Registration Pattern</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_8.svg" alt="Mermaid Diagram"></p>
+<ol>
+<li>Public API function receives schema</li>
+<li>Validation Service stores for runtime checks</li>
+<li>Schema Service validates structure and stores in registry</li>
+</ol>
+<a id="execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest Execution Pattern</strong></p>
+<p><img src="../media/10_Layer_Responsibilities_9.svg" alt="Mermaid Diagram"></p>
+<ol>
+<li>Public service wraps with MethodContext</li>
+<li>Private service gets client from Connection Service</li>
+<li>Connection Service returns memoized instance</li>
+<li>Private service calls client methods</li>
+<li>Results yielded to user</li>
+</ol>
+<a id="data-flow-direction" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Flow Direction<a href="#data-flow-direction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All data flows unidirectionally down the layers:</p>
+<pre><code><span class="hl-4">Layer</span><span class="hl-1"> </span><span class="hl-8">1</span><span class="hl-1"> (</span><span class="hl-4">Public</span><span class="hl-1"> </span><span class="hl-7">API</span><span class="hl-1">)</span><br/><span class="hl-1">    ↓ </span><span class="hl-4">Delegates</span><br/><span class="hl-4">Layer</span><span class="hl-1"> </span><span class="hl-8">2</span><span class="hl-1"> (</span><span class="hl-4">Logic</span><span class="hl-1"> </span><span class="hl-4">Services</span><span class="hl-1">)</span><br/><span class="hl-1">    ↓ </span><span class="hl-4">Requests</span><span class="hl-1"> </span><span class="hl-4">Instances</span><br/><span class="hl-4">Layer</span><span class="hl-1"> </span><span class="hl-8">3</span><span class="hl-1"> (</span><span class="hl-4">Connection</span><span class="hl-1"> </span><span class="hl-4">Services</span><span class="hl-1">)</span><br/><span class="hl-1">    ↓ </span><span class="hl-4">Creates</span><span class="hl-1">/</span><span class="hl-4">Returns</span><br/><span class="hl-4">Layer</span><span class="hl-1"> </span><span class="hl-8">4</span><span class="hl-1"> (</span><span class="hl-4">Client</span><span class="hl-1"> </span><span class="hl-4">Classes</span><span class="hl-1">)</span><br/><span class="hl-1">    ↓ </span><span class="hl-4">Uses</span><br/><span class="hl-4">Layer</span><span class="hl-1"> </span><span class="hl-8">5</span><span class="hl-1"> (</span><span class="hl-4">Schemas</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p>Events flow horizontally to Layer 6 (Markdown Services) for reporting.</p>
+<hr>
+<a id="service-binding" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Binding<a href="#service-binding" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All services are bound in <a href="">src/lib/core/provide.ts:1-111</a> using the <code>provide()</code> function from the DI container. Services are organized in blocks matching their layer:</p>
+<pre><code class="typescript"><span class="hl-5">// Base Services (Cross-cutting)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">LoggerService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Context Services (Cross-cutting)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">ExecutionContextService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">MethodContextService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Connection Services (Layer 3)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategyConnectionService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeConnectionService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">ExchangeConnectionService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Schema Services (Layer 5)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategySchemaService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Global Services (Layer 2 wrappers)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyGlobalService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategyGlobalService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Logic Services (Layer 2)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">backtestLogicPrivateService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">BacktestLogicPrivateService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">BacktestLogicPublicService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Markdown Services (Layer 6)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">BacktestMarkdownService</span><span class="hl-1">());</span><br/><br/><span class="hl-5">// Validation Services (Layer 5)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategyValidationService</span><span class="hl-1">());</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All services are then exported as a single object in <a href="">src/lib/index.ts:152-162</a>:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">backtest</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">baseServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">contextServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">connectionServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">globalServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPrivateServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPublicServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">markdownServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">validationServices</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#layer-responsibilities"><span>Layer <wbr/>Responsibilities</span></a><ul><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><a href="#layer-1-public-api"><span>Layer 1: <wbr/>Public API</span></a></li><li><ul><li><a href="#registration-functions"><span>Registration <wbr/>Functions</span></a></li><li><a href="#query-functions"><span>Query <wbr/>Functions</span></a></li><li><a href="#execution-classes"><span>Execution <wbr/>Classes</span></a></li></ul></li><li><a href="#layer-2-logic-services"><span>Layer 2: <wbr/>Logic <wbr/>Services</span></a></li><li><ul><li><a href="#public-logic-services"><span>Public <wbr/>Logic <wbr/>Services</span></a></li><li><a href="#private-logic-services"><span>Private <wbr/>Logic <wbr/>Services</span></a></li></ul></li><li><a href="#layer-3-connection-services"><span>Layer 3: <wbr/>Connection <wbr/>Services</span></a></li><li><ul><li><a href="#service-registry"><span>Service <wbr/>Registry</span></a></li><li><a href="#memoization-pattern"><span>Memoization <wbr/>Pattern</span></a></li></ul></li><li><a href="#layer-4-client-classes"><span>Layer 4: <wbr/>Client <wbr/>Classes</span></a></li><li><ul><li><a href="#client-responsibilities"><span>Client <wbr/>Responsibilities</span></a></li><li><a href="#pure-business-logic"><span>Pure <wbr/>Business <wbr/>Logic</span></a></li></ul></li><li><a href="#layer-5-schema--validation-services"><span>Layer 5: <wbr/>Schema &amp; <wbr/>Validation <wbr/>Services</span></a></li><li><ul><li><a href="#schema-services"><span>Schema <wbr/>Services</span></a></li><li><a href="#validation-services"><span>Validation <wbr/>Services</span></a></li></ul></li><li><a href="#layer-6-markdown-services"><span>Layer 6: <wbr/>Markdown <wbr/>Services</span></a></li><li><ul><li><a href="#service-registry-1"><span>Service <wbr/>Registry</span></a></li><li><a href="#event-subscription-pattern"><span>Event <wbr/>Subscription <wbr/>Pattern</span></a></li><li><a href="#report-storage"><span>Report <wbr/>Storage</span></a></li></ul></li><li><a href="#cross-cutting-services"><span>Cross-<wbr/>Cutting <wbr/>Services</span></a></li><li><ul><li><a href="#loggerservice"><span>Logger<wbr/>Service</span></a></li><li><a href="#executioncontextservice"><span>Execution<wbr/>Context<wbr/>Service</span></a></li><li><a href="#methodcontextservice"><span>Method<wbr/>Context<wbr/>Service</span></a></li></ul></li><li><a href="#layer-interaction-patterns"><span>Layer <wbr/>Interaction <wbr/>Patterns</span></a></li><li><ul><li><a href="#registration-flow"><span>Registration <wbr/>Flow</span></a></li><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><a href="#data-flow-direction"><span>Data <wbr/>Flow <wbr/>Direction</span></a></li></ul></li><li><a href="#service-binding"><span>Service <wbr/>Binding</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

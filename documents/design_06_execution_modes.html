@@ -1,0 +1,313 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/06_execution_modes | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_06_execution_modes.html">design/06_execution_modes</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="execution-modes" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Execution Modes<a href="#execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page describes the three execution modes available in backtest-kit: <strong>Backtest</strong>, <strong>Live</strong>, and <strong>Walker</strong>. Each mode orchestrates strategy execution differently to serve distinct use cases. For details on how to register strategies and exchanges, see <a href="design_08_component_registration.html">Component Registration</a>. For information about signal state transitions within these modes, see <a href="design_07_signal_lifecycle_overview.html">Signal Lifecycle Overview</a>.</p>
+<p>The framework provides three execution classes:</p>
+<ul>
+<li><code>Backtest</code> - Historical simulation with deterministic results</li>
+<li><code>Live</code> - Real-time trading with crash recovery</li>
+<li><code>Walker</code> - Multi-strategy comparison for optimization</li>
+</ul>
+<p>All three modes share the same strategy code but execute it in different contexts with different time progression models.</p>
+<a id="mode-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Mode Comparison<a href="#mode-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Backtest</th>
+<th>Live</th>
+<th>Walker</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Execution Pattern</strong></td>
+<td>Finite iteration over timeframe</td>
+<td>Infinite loop</td>
+<td>Sequential backtest runs</td>
+</tr>
+<tr>
+<td><strong>Time Progression</strong></td>
+<td>Historical timestamps from <code>Frame.getTimeframe()</code></td>
+<td>Real-time <code>Date.now()</code></td>
+<td>Historical per strategy</td>
+</tr>
+<tr>
+<td><strong>Context Flag</strong></td>
+<td><code>backtest=true</code></td>
+<td><code>backtest=false</code></td>
+<td><code>backtest=true</code></td>
+</tr>
+<tr>
+<td><strong>Yielded Results</strong></td>
+<td>Closed signals only</td>
+<td>Opened, closed, cancelled</td>
+<td>Progress updates</td>
+</tr>
+<tr>
+<td><strong>Entry Point</strong></td>
+<td><code>Backtest.run()</code> / <code>Backtest.background()</code></td>
+<td><code>Live.run()</code> / <code>Live.background()</code></td>
+<td><code>Walker.run()</code> / <code>Walker.background()</code></td>
+</tr>
+<tr>
+<td><strong>Orchestration Service</strong></td>
+<td><code>BacktestLogicPrivateService</code></td>
+<td><code>LiveLogicPrivateService</code></td>
+<td><code>WalkerLogicPrivateService</code></td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>None (in-memory only)</td>
+<td>Atomic file writes via <code>PersistSignalAdapter</code></td>
+<td>None (per backtest run)</td>
+</tr>
+<tr>
+<td><strong>Completion</strong></td>
+<td>When timeframe exhausted</td>
+<td>Never (infinite)</td>
+<td>When all strategies tested</td>
+</tr>
+<tr>
+<td><strong>Fast-Forward</strong></td>
+<td>Yes via <code>strategy.backtest()</code></td>
+<td>No</td>
+<td>Yes (per strategy)</td>
+</tr>
+<tr>
+<td><strong>Primary Use Case</strong></td>
+<td>Strategy validation</td>
+<td>Production trading</td>
+<td>Strategy optimization</td>
+</tr>
+</tbody>
+</table>
+<a id="backtest-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest Execution Flow<a href="#backtest-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/06_Execution_Modes_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Backtest Execution Flow Diagram</strong> - Shows how <code>BacktestLogicPrivateService</code> iterates through historical timeframes and fast-forwards through signal lifetimes using the <code>backtest()</code> method.</p>
+<a id="key-characteristics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Characteristics<a href="#key-characteristics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Timeframe Iteration</strong>: Backtest mode gets a discrete array of timestamps from <code>Frame.getTimeframe()</code> and iterates through them sequentially. Each timestamp represents when <code>strategy.tick()</code> should be called.</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">timeframes</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">frameGlobalService</span><span class="hl-1">.</span><span class="hl-0">getTimeframe</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">frameName</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Fast-Forward Optimization</strong>: When a signal opens, backtest mode fetches the next N candles (where N = <code>minuteEstimatedTime</code>) and passes them to <code>strategy.backtest()</code>. This method scans through candles to detect take profit or stop loss hits without calling <code>tick()</code> for every timestamp.</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">exchangeGlobalService</span><span class="hl-1">.</span><span class="hl-0">getNextCandles</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">true</span><br/><span class="hl-1">);</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">backtestResult</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">strategyGlobalService</span><span class="hl-1">.</span><span class="hl-0">backtest</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">candles</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">true</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Timeframe Skipping</strong>: After a signal closes, backtest mode skips all intermediate timeframes until <code>closeTimestamp</code>, avoiding redundant processing:</p>
+<pre><code class="typescript"><span class="hl-3">while</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">timeframes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">  </span><span class="hl-4">timeframes</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">].</span><span class="hl-0">getTime</span><span class="hl-1">() &lt; </span><span class="hl-4">backtestResult</span><span class="hl-1">.</span><span class="hl-4">closeTimestamp</span><br/><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">i</span><span class="hl-1">++;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Scheduled Signal Handling</strong>: For scheduled signals (limit orders), backtest mode requests additional candles to monitor activation: <code>CC_SCHEDULE_AWAIT_MINUTES + minuteEstimatedTime + 1</code>. The <code>backtest()</code> method first checks if <code>priceOpen</code> is reached within the timeout window, then monitors TP/SL if activated.</p>
+<a id="memory-efficiency" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Efficiency<a href="#memory-efficiency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Backtest mode uses async generators to stream results, avoiding array accumulation:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Yields results one at a time</span><br/><span class="hl-1">  </span><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">timeframes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// ... process signal</span><br/><span class="hl-1">    </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">backtestResult</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This allows processing years of data without exhausting memory. Consumers can break early for conditional termination:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &lt; -</span><span class="hl-8">10</span><span class="hl-1">) </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Early exit</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live Execution Flow<a href="#live-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/06_Execution_Modes_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Live Execution Flow Diagram</strong> - Shows how <code>LiveLogicPrivateService</code> runs an infinite loop with real-time clock progression and crash-safe persistence.</p>
+<a id="key-characteristics-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Characteristics<a href="#key-characteristics-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Infinite Loop Pattern</strong>: Live mode never completes. It runs <code>while (true)</code> with sleep intervals between ticks:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">TICK_TTL</span><span class="hl-1"> = </span><span class="hl-8">1</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1_000</span><span class="hl-1"> + </span><span class="hl-8">1</span><span class="hl-1">; </span><span class="hl-5">// 60 seconds + 1ms</span><br/><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-6">true</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">when</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(); </span><span class="hl-5">// Real-time progression</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">strategyGlobalService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-6">false</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Yield opened/closed/cancelled, skip idle/active</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1"> || </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1"> || </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;cancelled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Crash Recovery</strong>: On startup, <code>ClientStrategy.waitForInit()</code> reads persisted signal state from disk. If a pending signal exists, it's restored and continues monitoring:</p>
+<pre><code class="typescript"><span class="hl-4">async</span><span class="hl-1"> </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">initial</span><span class="hl-1">: </span><span class="hl-4">boolean</span><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-6">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-0">if</span><span class="hl-1"> (</span><span class="hl-4">await</span><span class="hl-1"> this.persistSignalAdapter.hasValue(this.entityId)) {</span><br/><span class="hl-1">    </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">_signal</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">persistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">readValue</span><span class="hl-1">(</span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">entityId</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal restored, continue from last state</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Atomic Persistence</strong>: Every state transition writes to disk atomically via <code>PersistSignalAdapter.writeValue()</code>. This ensures no signal is duplicated or lost on crash. The persistence layer uses temporary files with atomic rename for crash-safety.</p>
+<p><strong>Real-Time Monitoring</strong>: Unlike backtest mode which uses historical candles for fast-forward, live mode calls <code>getAveragePrice()</code> on every tick to check if take profit or stop loss is hit. This uses VWAP from the last 5 1-minute candles.</p>
+<a id="scheduled-signal-timing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Scheduled Signal Timing<a href="#scheduled-signal-timing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For scheduled signals in live mode, <code>minuteEstimatedTime</code> is counted from <code>pendingAt</code> (activation time), not <code>scheduledAt</code> (creation time). This ensures the signal runs for the full duration after activation:</p>
+<pre><code class="typescript"><span class="hl-5">// Scheduled signal lifecycle</span><br/><span class="hl-11">scheduledAt</span><span class="hl-1">: </span><span class="hl-8">1704067200000</span><span class="hl-1">  </span><span class="hl-5">// Signal created</span><br/><span class="hl-11">pendingAt</span><span class="hl-1">:   </span><span class="hl-8">1704070800000</span><span class="hl-1">  </span><span class="hl-5">// Activated 1 hour later</span><br/><span class="hl-11">closeAt</span><span class="hl-1">:     </span><span class="hl-8">1704157200000</span><span class="hl-1">  </span><span class="hl-5">// Closes minuteEstimatedTime after pendingAt</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This was a critical bug fix to prevent premature closure causing financial losses on fees. The test suite verifies this behavior in <a href="">test/e2e/timing.test.mjs:34-153</a>.</p>
+<a id="walker-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Execution Flow<a href="#walker-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/06_Execution_Modes_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Walker Execution Flow Diagram</strong> - Shows how <code>WalkerLogicPrivateService</code> orchestrates multiple backtests sequentially and selects the best strategy by comparing metrics.</p>
+<a id="key-characteristics-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Characteristics<a href="#key-characteristics-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Sequential Backtest Execution</strong>: Walker mode runs <code>Backtest.run()</code> for each strategy in the list, consuming all results before moving to the next:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">strategyName</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">strategies</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Run full backtest for this strategy</span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">_</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">frameName</span><br/><span class="hl-1">  })) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Consume all results</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Get statistics after completion</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-5">// Compare metrics...</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Metric-Based Comparison</strong>: The walker schema specifies which metric to use for comparison (default: <code>sharpeRatio</code>). Available metrics include:</p>
+<ul>
+<li><code>sharpeRatio</code> - Risk-adjusted return (avgPnl / stdDev)</li>
+<li><code>annualizedSharpeRatio</code> - Sharpe × √365</li>
+<li><code>winRate</code> - Percentage of winning trades</li>
+<li><code>avgPnl</code> - Average PNL per trade</li>
+<li><code>totalPnl</code> - Cumulative PNL</li>
+<li><code>certaintyRatio</code> - avgWin / |avgLoss|</li>
+</ul>
+<p><strong>Progress Events</strong>: Walker emits progress events after each strategy completes, enabling real-time progress tracking:</p>
+<pre><code class="typescript"><span class="hl-4">walkerEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">currentStrategy</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategiesTested:</span><span class="hl-1"> </span><span class="hl-4">i</span><span class="hl-1"> + </span><span class="hl-8">1</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">progress:</span><span class="hl-1"> (</span><span class="hl-4">i</span><span class="hl-1"> + </span><span class="hl-8">1</span><span class="hl-1">) / </span><span class="hl-4">totalStrategies</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy:</span><span class="hl-1"> </span><span class="hl-4">currentBest</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric:</span><span class="hl-1"> </span><span class="hl-4">currentBestValue</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>State Isolation</strong>: Each backtest run in walker mode starts with cleared state for markdown services, strategy, and risk profiles. This ensures strategies don't interfere with each other.</p>
+<a id="walker-result-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Result Structure<a href="#walker-result-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker returns comparison data with all tested strategies sorted by metric:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IWalkerResults</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">metric</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategies</span><span class="hl-1">: </span><span class="hl-10">Array</span><span class="hl-1">&lt;{</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">stats</span><span class="hl-1">: </span><span class="hl-10">BacktestStatistics</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">metric</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">  }&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The markdown report includes a comparison table showing all metrics side-by-side for strategy selection.</p>
+<a id="context-propagation-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Propagation Patterns<a href="#context-propagation-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All three execution modes use the same context propagation architecture but with different parameters:</p>
+<p><img src="../media/06_Execution_Modes_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Context Propagation Across Modes</strong> - Shows how both <code>MethodContext</code> and <code>ExecutionContext</code> wrap execution in all three modes.</p>
+<a id="context-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Types<a href="#context-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>MethodContext</strong> - Identifies which components to use:</p>
+<ul>
+<li><code>strategyName</code> - Which strategy to execute</li>
+<li><code>exchangeName</code> - Which exchange to use for data</li>
+<li><code>frameName</code> - Which timeframe to use (backtest only)</li>
+</ul>
+<p><strong>ExecutionContext</strong> - Provides runtime parameters:</p>
+<ul>
+<li><code>symbol</code> - Trading pair being processed</li>
+<li><code>when</code> - Current timestamp (historical or real-time)</li>
+<li><code>backtest</code> - Boolean flag for mode identification</li>
+</ul>
+<p>The key difference between modes is the value of <code>when</code> and <code>backtest</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>when</th>
+<th>backtest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td><code>timeframes[i]</code> from Frame</td>
+<td><code>true</code></td>
+</tr>
+<tr>
+<td>Live</td>
+<td><code>new Date()</code></td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td>Walker</td>
+<td><code>timeframes[i]</code> per strategy</td>
+<td><code>true</code></td>
+</tr>
+</tbody>
+</table>
+<a id="event-emission-differences" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Emission Differences<a href="#event-emission-differences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each mode emits events to different subjects for filtered consumption:</p>
+<p><img src="../media/06_Execution_Modes_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Event Emission Architecture</strong> - Shows how signals route through global and mode-specific emitters for filtered consumption.</p>
+<a id="subscription-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Subscription Patterns<a href="#subscription-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Users can subscribe to all events or mode-specific events:</p>
+<pre><code class="typescript"><span class="hl-5">// All modes</span><br/><span class="hl-0">listenSignal</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Backtest only</span><br/><span class="hl-0">listenSignalBacktest</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Backtest PNL:&quot;</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Live only</span><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Live signal opened:&quot;</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All listeners use queued processing to ensure sequential execution even with async callbacks, preventing race conditions.</p>
+<a id="choosing-the-right-mode" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Choosing the Right Mode<a href="#choosing-the-right-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Recommended Mode</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Strategy development</td>
+<td>Backtest</td>
+<td>Fast iteration with deterministic results</td>
+</tr>
+<tr>
+<td>Parameter optimization</td>
+<td>Walker</td>
+<td>Automated comparison of multiple configurations</td>
+</tr>
+<tr>
+<td>Strategy validation</td>
+<td>Backtest</td>
+<td>Verify logic against historical data</td>
+</tr>
+<tr>
+<td>Paper trading</td>
+<td>Live</td>
+<td>Test real-time execution without risk</td>
+</tr>
+<tr>
+<td>Production trading</td>
+<td>Live</td>
+<td>Execute actual trades with crash recovery</td>
+</tr>
+<tr>
+<td>Performance comparison</td>
+<td>Walker</td>
+<td>Identify best strategy from candidates</td>
+</tr>
+<tr>
+<td>Backtesting multiple symbols</td>
+<td>Backtest (sequential runs)</td>
+<td>Run same strategy across different symbols</td>
+</tr>
+<tr>
+<td>Multi-timeframe analysis</td>
+<td>Backtest (multiple Frame schemas)</td>
+<td>Compare performance across timeframes</td>
+</tr>
+</tbody>
+</table>
+<a id="hybrid-workflows" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Hybrid Workflows<a href="#hybrid-workflows" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Common patterns combine multiple modes:</p>
+<ol>
+<li>
+<p><strong>Development → Validation → Optimization</strong></p>
+<ul>
+<li>Develop strategy logic</li>
+<li>Run <code>Backtest.run()</code> for initial validation</li>
+<li>Use <code>Walker.run()</code> to optimize parameters</li>
+<li>Deploy best strategy with <code>Live.run()</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Paper Trading → Production</strong></p>
+<ul>
+<li>Run <code>Live.run()</code> with test credentials</li>
+<li>Verify crash recovery by stopping/starting process</li>
+<li>Monitor <code>Schedule.getData()</code> for cancellation rate</li>
+<li>Switch to production credentials when validated</li>
+</ul>
+</li>
+<li>
+<p><strong>Multi-Symbol Scanning</strong></p>
+<ul>
+<li>Run <code>Backtest.run()</code> for each symbol</li>
+<li>Use <code>Heat.getData()</code> to compare portfolio-wide performance</li>
+<li>Select best-performing symbols for live trading</li>
+</ul>
+</li>
+</ol>
+<a id="performance-metrics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Metrics<a href="#performance-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All modes emit performance events for profiling:</p>
+<pre><code class="typescript"><span class="hl-4">performanceEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp:</span><span class="hl-1"> </span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">(),</span><br/><span class="hl-1">  </span><span class="hl-4">previousTimestamp:</span><span class="hl-1"> </span><span class="hl-4">lastEventTime</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">metricType:</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest_signal&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;backtest_timeframe&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;backtest_total&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;live_tick&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">duration:</span><span class="hl-1"> </span><span class="hl-4">performance</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">startTime</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">backtest:</span><span class="hl-1"> </span><span class="hl-4">boolean</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Available metric types:</p>
+<ul>
+<li><code>backtest_signal</code> - Time to process one signal (tick + backtest)</li>
+<li><code>backtest_timeframe</code> - Time to process one timeframe iteration</li>
+<li><code>backtest_total</code> - Total backtest duration</li>
+<li><code>live_tick</code> - Time to process one live tick</li>
+</ul>
+<p>These metrics enable bottleneck detection and optimization of strategy logic or data fetching.</p>
+<hr>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#execution-modes"><span>Execution <wbr/>Modes</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#mode-comparison"><span>Mode <wbr/>Comparison</span></a></li><li><a href="#backtest-execution-flow"><span>Backtest <wbr/>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#key-characteristics"><span>Key <wbr/>Characteristics</span></a></li><li><a href="#memory-efficiency"><span>Memory <wbr/>Efficiency</span></a></li></ul></li><li><a href="#live-execution-flow"><span>Live <wbr/>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#key-characteristics-1"><span>Key <wbr/>Characteristics</span></a></li><li><a href="#scheduled-signal-timing"><span>Scheduled <wbr/>Signal <wbr/>Timing</span></a></li></ul></li><li><a href="#walker-execution-flow"><span>Walker <wbr/>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#key-characteristics-2"><span>Key <wbr/>Characteristics</span></a></li><li><a href="#walker-result-structure"><span>Walker <wbr/>Result <wbr/>Structure</span></a></li></ul></li><li><a href="#context-propagation-patterns"><span>Context <wbr/>Propagation <wbr/>Patterns</span></a></li><li><ul><li><a href="#context-types"><span>Context <wbr/>Types</span></a></li></ul></li><li><a href="#event-emission-differences"><span>Event <wbr/>Emission <wbr/>Differences</span></a></li><li><ul><li><a href="#subscription-patterns"><span>Subscription <wbr/>Patterns</span></a></li></ul></li><li><a href="#choosing-the-right-mode"><span>Choosing the <wbr/>Right <wbr/>Mode</span></a></li><li><ul><li><a href="#hybrid-workflows"><span>Hybrid <wbr/>Workflows</span></a></li></ul></li><li><a href="#performance-metrics"><span>Performance <wbr/>Metrics</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

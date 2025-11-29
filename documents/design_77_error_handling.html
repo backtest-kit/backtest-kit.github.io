@@ -1,0 +1,206 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/77_error_handling | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_77_error_handling.html">design/77_error_handling</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="error-handling" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document describes the framework's error handling infrastructure, including error propagation channels, background task error management, risk validation error handling, and event-based error subscription patterns.</p>
+<p>Error handling in backtest-kit is built on a pub-sub event system using <code>Subject</code> emitters from <code>functools-kit</code>. Errors are caught at execution boundaries and propagated to subscribers via two dedicated error channels: <code>errorEmitter</code> for general background execution failures and <code>validationSubject</code> for risk validation failures.</p>
+<p>For information about the general event system architecture, see <a href="design_13_event_system.html">Event System</a>. For risk validation logic, see <a href="design_65_risk_validation.html">Risk Validation</a>. For logging configuration, see <a href="design_76_logging_system.html">Logging System</a>.</p>
+<hr>
+<a id="error-propagation-channels" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Propagation Channels<a href="#error-propagation-channels" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides two distinct error emitter channels, each handling specific error categories:</p>
+<table>
+<thead>
+<tr>
+<th>Error Emitter</th>
+<th>Purpose</th>
+<th>Source Operations</th>
+<th>Event Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>errorEmitter</code></td>
+<td>General execution errors</td>
+<td><code>Backtest.background()</code>, <code>Live.background()</code>, <code>Walker.background()</code></td>
+<td><code>Error</code></td>
+</tr>
+<tr>
+<td><code>validationSubject</code></td>
+<td>Risk validation failures</td>
+<td><code>ClientRisk.checkSignal()</code> validation function throws</td>
+<td><code>Error</code></td>
+</tr>
+</tbody>
+</table>
+<a id="erroremitter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">errorEmitter<a href="#erroremitter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>errorEmitter</code> handles errors from background execution tasks. When <code>Backtest.background()</code>, <code>Live.background()</code>, or <code>Walker.background()</code> encounter unhandled exceptions, they are caught and propagated through this channel.</p>
+<p><strong>Declaration</strong>: <a href="">src/config/emitters.ts:28-31</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">errorEmitter</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Subject</span><span class="hl-1">&lt;</span><span class="hl-10">Error</span><span class="hl-1">&gt;();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="validationsubject" class="tsd-anchor"></a><h3 class="tsd-anchor-link">validationSubject<a href="#validationsubject" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>validationSubject</code> handles errors thrown by custom risk validation functions. When risk validation logic throws an error during signal checking, it is caught and emitted separately to allow targeted debugging of validation failures.</p>
+<p><strong>Declaration</strong>: <a href="">src/config/emitters.ts:75-79</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">validationSubject</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Subject</span><span class="hl-1">&lt;</span><span class="hl-10">Error</span><span class="hl-1">&gt;();</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="background-task-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Background Task Error Handling<a href="#background-task-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Background execution methods (<code>*.background()</code>) wrap async generators in try-catch blocks and propagate errors to <code>errorEmitter</code>. This ensures that errors in infinite loops or long-running backtests don't crash the process silently.</p>
+<a id="error-catching-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Catching Pattern<a href="#error-catching-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest.background()</strong>:</p>
+<p><a href="">src/classes/Backtest.ts:114-117</a></p>
+<pre><code class="typescript"><span class="hl-0">task</span><span class="hl-1">().</span><span class="hl-0">catch</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><br/><span class="hl-1">  </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-0">getErrorMessage</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)))</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Live.background()</strong>:</p>
+<p><a href="">src/classes/Live.ts:130-132</a></p>
+<pre><code class="typescript"><span class="hl-0">task</span><span class="hl-1">().</span><span class="hl-0">catch</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><br/><span class="hl-1">  </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-0">getErrorMessage</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)))</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Walker.background()</strong>:</p>
+<p><a href="">src/classes/Walker.ts:135-137</a></p>
+<pre><code class="typescript"><span class="hl-0">task</span><span class="hl-1">().</span><span class="hl-0">catch</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><br/><span class="hl-1">  </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-0">getErrorMessage</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)))</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="error-message-extraction" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Message Extraction<a href="#error-message-extraction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All background tasks use <code>getErrorMessage()</code> from <code>functools-kit</code> to normalize error objects into consistent <code>Error</code> instances with string messages. This handles cases where thrown values are not Error objects.</p>
+<hr>
+<a id="background-task-error-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Background Task Error Flow<a href="#background-task-error-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/77_Error_Handling_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Background Task Error Propagation</strong></p>
+<p>This diagram shows how errors in background execution are caught, normalized, and propagated to user error handlers through <code>errorEmitter</code>.</p>
+<hr>
+<a id="risk-validation-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Validation Error Handling<a href="#risk-validation-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk validation errors are handled separately from general execution errors. When custom validation functions throw errors during <code>ClientRisk.checkSignal()</code>, they are caught and emitted to <code>validationSubject</code> while allowing execution to continue.</p>
+<a id="validation-error-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Error Flow<a href="#validation-error-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Risk validation functions are user-defined and can throw errors to reject signals. These errors are not considered fatal execution errors but rather validation rejections that should be logged and monitored.</p>
+<p>The framework catches validation errors at the risk checking boundary and:</p>
+<ol>
+<li>Emits error to <code>validationSubject</code> for debugging/monitoring</li>
+<li>Returns <code>false</code> from <code>checkSignal()</code> to reject the signal</li>
+<li>Allows strategy execution to continue</li>
+</ol>
+<p>This pattern enables strategies to continue running even when validation logic has issues, while still providing visibility into validation failures.</p>
+<hr>
+<a id="error-listening-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Listening Patterns<a href="#error-listening-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides two listener functions for subscribing to error events with queued async processing.</p>
+<a id="listenerror" class="tsd-anchor"></a><h3 class="tsd-anchor-link">listenError<a href="#listenerror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Subscribes to general background execution errors with sequential processing.</p>
+<p><strong>Function Signature</strong>: <a href="">src/function/event.ts:232-235</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">listenError</span><span class="hl-1">(</span><span class="hl-0">fn</span><span class="hl-1">: (</span><span class="hl-4">error</span><span class="hl-1">: </span><span class="hl-10">Error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">void</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code>fn</code>: Callback function receiving <code>Error</code> objects from background task failures</li>
+</ul>
+<p><strong>Returns</strong>: Unsubscribe function to stop listening</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenError</span><span class="hl-1">, </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenError</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&quot;Background execution error:&quot;</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">.</span><span class="hl-4">message</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-5">// Send to monitoring service</span><br/><span class="hl-1">  </span><span class="hl-0">reportToSentry</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: stop listening</span><br/><span class="hl-0">unsubscribe</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="listenvalidation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">listenValidation<a href="#listenvalidation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Subscribes to risk validation errors with sequential processing.</p>
+<p><strong>Function Signature</strong>: <a href="">src/function/event.ts:649-652</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">listenValidation</span><span class="hl-1">(</span><span class="hl-0">fn</span><span class="hl-1">: (</span><span class="hl-4">error</span><span class="hl-1">: </span><span class="hl-10">Error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">void</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code>fn</code>: Callback function receiving <code>Error</code> objects from validation function throws</li>
+</ul>
+<p><strong>Returns</strong>: Unsubscribe function to stop listening</p>
+<p><strong>Usage Example</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenValidation</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenValidation</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&quot;Risk validation error:&quot;</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">.</span><span class="hl-4">message</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-5">// Debug validation logic issues</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">.</span><span class="hl-4">message</span><span class="hl-1">.</span><span class="hl-0">includes</span><span class="hl-1">(</span><span class="hl-2">&quot;portfolio limit&quot;</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;Portfolio limit validation failing&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: stop listening</span><br/><span class="hl-0">unsubscribe</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="queued-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Queued Processing<a href="#queued-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both error listeners use <code>queued()</code> wrapper from <code>functools-kit</code> to ensure errors are processed sequentially even if callbacks are async. This prevents race conditions in error logging or reporting.</p>
+<p><a href="">src/function/event.ts:234</a> and <a href="">src/function/event.ts:651</a></p>
+<pre><code class="typescript"><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-0">queued</span><span class="hl-1">(</span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fn</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)));</span><br/><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">validationSubject</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-0">queued</span><span class="hl-1">(</span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fn</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">)));</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="error-handling-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling Architecture<a href="#error-handling-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/77_Error_Handling_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Error Handling System Architecture</strong></p>
+<p>This diagram shows the complete error handling pipeline from error sources through capture, normalization, emission, subscription, and user handling.</p>
+<hr>
+<a id="error-to-code-entity-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error-to-Code Entity Mapping<a href="#error-to-code-entity-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/77_Error_Handling_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Error Handling Code Entity Mapping</strong></p>
+<p>This diagram maps error types to their corresponding code entities, showing where errors originate and how they flow through specific functions and classes.</p>
+<hr>
+<a id="integration-with-logging-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Logging System<a href="#integration-with-logging-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Error handling complements but does not replace the logging system. While errors are emitted through dedicated channels, the framework's logging interface provides a <code>warn()</code> method for non-fatal issues that don't require error propagation.</p>
+<a id="iloggerwarn" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ILogger.warn()<a href="#iloggerwarn" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ILogger</code> interface includes a <code>warn()</code> method for recording potentially problematic situations that don't prevent execution:</p>
+<p><a href="">types.d.ts:61-66</a></p>
+<pre><code class="typescript"><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-4">topic</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-4">any</span><span class="hl-1">[]): </span><span class="hl-6">void</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li>Missing optional data</li>
+<li>Unexpected conditions that don't break functionality</li>
+<li>Deprecated API usage</li>
+<li>Performance degradation warnings</li>
+</ul>
+<a id="error-vs-warning-guidelines" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error vs Warning Guidelines<a href="#error-vs-warning-guidelines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Handler</th>
+<th>Propagation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Background task throws</td>
+<td><code>errorEmitter.next()</code></td>
+<td>Yes, to <code>listenError()</code> subscribers</td>
+</tr>
+<tr>
+<td>Validation function throws</td>
+<td><code>validationSubject.next()</code></td>
+<td>Yes, to <code>listenValidation()</code> subscribers</td>
+</tr>
+<tr>
+<td>Recoverable issue</td>
+<td><code>logger.warn()</code></td>
+<td>No, logged only</td>
+</tr>
+<tr>
+<td>Fatal issue requiring stop</td>
+<td><code>throw new Error()</code></td>
+<td>Yes, caught by background task wrapper</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="error-handling-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling Lifecycle<a href="#error-handling-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/77_Error_Handling_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Error Handling Sequence</strong></p>
+<p>This sequence diagram illustrates the temporal flow of error handling from background task failure through emission and queued processing in user handlers.</p>
+<hr>
+<a id="export-locations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Export Locations<a href="#export-locations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All error handling components are exported from the main module:</p>
+<p><a href="">src/index.ts:11</a></p>
+<pre><code class="typescript"><span class="hl-4">listenError</span><span class="hl-1">,</span>
+</code><button type="button">Copy</button></pre>
+
+<p><a href="">src/index.ts:23</a></p>
+<pre><code class="typescript"><span class="hl-4">listenValidation</span><span class="hl-1">,</span>
+</code><button type="button">Copy</button></pre>
+
+<p><a href="">src/index.ts:126</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">*</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-4">emitters</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./config/emitters&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Users can access error emitters directly if needed:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">emitters</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">emitters</span><span class="hl-1">.</span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Direct subscription without wrapper</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#error-handling"><span>Error <wbr/>Handling</span></a><ul><li><a href="#error-propagation-channels"><span>Error <wbr/>Propagation <wbr/>Channels</span></a></li><li><ul><li><a href="#erroremitter"><span>error<wbr/>Emitter</span></a></li><li><a href="#validationsubject"><span>validation<wbr/>Subject</span></a></li></ul></li><li><a href="#background-task-error-handling"><span>Background <wbr/>Task <wbr/>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#error-catching-pattern"><span>Error <wbr/>Catching <wbr/>Pattern</span></a></li><li><a href="#error-message-extraction"><span>Error <wbr/>Message <wbr/>Extraction</span></a></li></ul></li><li><a href="#background-task-error-flow"><span>Background <wbr/>Task <wbr/>Error <wbr/>Flow</span></a></li><li><a href="#risk-validation-error-handling"><span>Risk <wbr/>Validation <wbr/>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#validation-error-flow"><span>Validation <wbr/>Error <wbr/>Flow</span></a></li></ul></li><li><a href="#error-listening-patterns"><span>Error <wbr/>Listening <wbr/>Patterns</span></a></li><li><ul><li><a href="#listenerror"><span>listen<wbr/>Error</span></a></li><li><a href="#listenvalidation"><span>listen<wbr/>Validation</span></a></li><li><a href="#queued-processing"><span>Queued <wbr/>Processing</span></a></li></ul></li><li><a href="#error-handling-architecture"><span>Error <wbr/>Handling <wbr/>Architecture</span></a></li><li><a href="#error-to-code-entity-mapping"><span>Error-<wbr/>to-<wbr/>Code <wbr/>Entity <wbr/>Mapping</span></a></li><li><a href="#integration-with-logging-system"><span>Integration with <wbr/>Logging <wbr/>System</span></a></li><li><ul><li><a href="#iloggerwarn"><span>ILogger.warn()</span></a></li><li><a href="#error-vs-warning-guidelines"><span>Error vs <wbr/>Warning <wbr/>Guidelines</span></a></li></ul></li><li><a href="#error-handling-lifecycle"><span>Error <wbr/>Handling <wbr/>Lifecycle</span></a></li><li><a href="#export-locations"><span>Export <wbr/>Locations</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

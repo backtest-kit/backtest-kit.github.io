@@ -1,0 +1,358 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/62_walker_reports | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_62_walker_reports.html">design/62_walker_reports</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="walker-reports" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Walker Reports<a href="#walker-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the reporting and data retrieval functionality for Walker mode, which provides multi-strategy comparison results and performance rankings. Walker reports aggregate backtest statistics from multiple strategies and present them in a unified format for analysis.</p>
+<p>For information about Walker execution flow and strategy iteration, see <a href="design_60_walker_execution_flow.html">Walker Execution Flow</a>. For details on how strategies are compared and ranked, see <a href="design_61_strategy_comparison.html">Strategy Comparison</a>.</p>
+<hr>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker reports provide structured access to multi-strategy comparison results through three primary APIs:</p>
+<ol>
+<li><strong><code>Walker.getData()</code></strong> - Returns raw comparison data as structured objects</li>
+<li><strong><code>Walker.getReport()</code></strong> - Generates formatted markdown reports with tables</li>
+<li><strong><code>Walker.dump()</code></strong> - Persists reports to disk</li>
+</ol>
+<p>These APIs are thin wrappers around <code>WalkerMarkdownService</code>, which accumulates strategy results during walker execution and formats them for consumption.</p>
+<hr>
+<a id="walker-report-data-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Report Data Flow<a href="#walker-report-data-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram shows how walker reports are generated from strategy execution through to final output:</p>
+<p><img src="../media/62_Walker_Reports_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="walkergetdata---structured-results" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker.getData() - Structured Results<a href="#walkergetdata---structured-results" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Walker.getData()</code> method returns raw comparison data as a structured object without formatting. This is useful for programmatic access to walker results.</p>
+<a id="method-signature" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Signature<a href="#method-signature" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">WalkerName</span><br/><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">IWalkerResults</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Parameters<a href="#parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>WalkerName</code></td>
+<td>Walker schema name registered via <code>addWalker()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="return-type-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Return Type Structure<a href="#return-type-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The method returns an <code>IWalkerResults</code> object containing:</p>
+<ul>
+<li><strong><code>bestStrategy</code></strong> - Name of the strategy with the highest metric value</li>
+<li><strong><code>bestMetric</code></strong> - The highest metric value achieved</li>
+<li><strong><code>strategies</code></strong> - Array of strategy comparison results, each containing:
+<ul>
+<li><code>strategyName</code> - Strategy identifier</li>
+<li><code>stats</code> - Full <code>BacktestStatistics</code> object (see <a href="design_68_markdown_report_generation.html">Backtest Reports</a>)</li>
+<li><code>metric</code> - The specific metric value used for comparison</li>
+</ul>
+</li>
+</ul>
+<a id="implementation-details" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/62_Walker_Reports_1.svg" alt="Mermaid Diagram"></p>
+<p>The method performs the following steps:</p>
+<ol>
+<li>Logs the invocation with <code>loggerService.info()</code></li>
+<li>Retrieves walker schema using <code>walkerSchemaService.get(walkerName)</code></li>
+<li>Extracts <code>metric</code> field from schema (defaults to <code>&quot;sharpeRatio&quot;</code> if not specified)</li>
+<li>Delegates to <code>walkerMarkdownService.getData()</code> with symbol, walker name, metric, and context</li>
+<li>Returns structured results object</li>
+</ol>
+<a id="usage-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage Example<a href="#usage-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>From the README, the typical usage pattern:</p>
+<pre><code class="typescript"><span class="hl-5">// Get raw comparison data</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">results</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;btc-walker&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">results</span><span class="hl-1">);</span><br/><span class="hl-5">// Returns:</span><br/><span class="hl-5">// {</span><br/><span class="hl-5">//   bestStrategy: &quot;strategy-b&quot;,</span><br/><span class="hl-5">//   bestMetric: 1.85,</span><br/><span class="hl-5">//   strategies: [</span><br/><span class="hl-5">//     { strategyName: &quot;strategy-a&quot;, stats: { sharpeRatio: 1.23, ... }, metric: 1.23 },</span><br/><span class="hl-5">//     { strategyName: &quot;strategy-b&quot;, stats: { sharpeRatio: 1.85, ... }, metric: 1.85 },</span><br/><span class="hl-5">//     { strategyName: &quot;strategy-c&quot;, stats: { sharpeRatio: 0.98, ... }, metric: 0.98 }</span><br/><span class="hl-5">//   ]</span><br/><span class="hl-5">// }</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="walkergetreport---markdown-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker.getReport() - Markdown Generation<a href="#walkergetreport---markdown-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Walker.getReport()</code> method generates a formatted markdown report with comparison tables and performance rankings.</p>
+<a id="method-signature-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Signature<a href="#method-signature-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">WalkerName</span><br/><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Structure<a href="#report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The generated markdown report includes:</p>
+<ol>
+<li><strong>Header</strong> - Walker name and symbol</li>
+<li><strong>Summary Section</strong> - Best strategy and metric value</li>
+<li><strong>Comparison Table</strong> - All strategies with key metrics</li>
+<li><strong>Footer Statistics</strong> - Total strategies tested, execution details</li>
+</ol>
+<a id="report-generation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Generation Flow<a href="#report-generation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/62_Walker_Reports_2.svg" alt="Mermaid Diagram"></p>
+<a id="implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation<a href="#implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The method follows this delegation chain:</p>
+<ol>
+<li><code>Walker.getReport()</code> validates inputs and logs invocation</li>
+<li>Retrieves walker schema to extract <code>exchangeName</code>, <code>frameName</code>, and <code>metric</code></li>
+<li>Delegates to <code>walkerMarkdownService.getReport()</code> with full context</li>
+<li>Returns formatted markdown string</li>
+</ol>
+<hr>
+<a id="walkerdump---report-persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker.dump() - Report Persistence<a href="#walkerdump---report-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Walker.dump()</code> method saves the generated markdown report to disk with automatic directory creation.</p>
+<a id="method-signature-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Signature<a href="#method-signature-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">WalkerName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1">?: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-6">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="parameters-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Parameters<a href="#parameters-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Required</td>
+<td>Trading pair symbol</td>
+</tr>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>WalkerName</code></td>
+<td>Required</td>
+<td>Walker schema name</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td><code>string</code></td>
+<td><code>&quot;./logs/walker&quot;</code></td>
+<td>Directory path for report output</td>
+</tr>
+</tbody>
+</table>
+<a id="file-naming-convention" class="tsd-anchor"></a><h3 class="tsd-anchor-link">File Naming Convention<a href="#file-naming-convention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Reports are saved with the following pattern:</p>
+<pre><code><span class="hl-1">{</span><span class="hl-4">path</span><span class="hl-1">}/{</span><span class="hl-4">walkerName</span><span class="hl-1">}.</span><span class="hl-4">md</span>
+</code><button>Copy</button></pre>
+
+<p>For example:</p>
+<ul>
+<li>Default: <code>./logs/walker/btc-walker.md</code></li>
+<li>Custom: <code>./custom/path/btc-walker.md</code></li>
+</ul>
+<a id="implementation-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation<a href="#implementation-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/62_Walker_Reports_3.svg" alt="Mermaid Diagram"></p>
+<p>The method performs atomic file writes to prevent corruption:</p>
+<ol>
+<li>Creates target directory with <code>mkdir(dir, { recursive: true })</code></li>
+<li>Generates full report content via <code>getReport()</code></li>
+<li>Writes to disk with <code>writeFile()</code> in UTF-8 encoding</li>
+<li>Logs success or error messages to console</li>
+</ol>
+<a id="usage-example-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage Example<a href="#usage-example-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Save to default path: ./logs/walker/my-walker.md</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Save to custom path: ./custom/path/my-walker.md</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="comparison-metrics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Comparison Metrics<a href="#comparison-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker reports support multiple metrics for strategy ranking. The metric is specified in the walker schema via the <code>metric</code> field.</p>
+<a id="available-metrics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Available Metrics<a href="#available-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Calculation</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sharpeRatio</code></td>
+<td><code>number</code></td>
+<td>Risk-adjusted return</td>
+<td><code>avgPnl / stdDev</code></td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><code>annualizedSharpeRatio</code></td>
+<td><code>number</code></td>
+<td>Annualized Sharpe</td>
+<td><code>sharpeRatio × √365</code></td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><code>winRate</code></td>
+<td><code>number</code></td>
+<td>Win percentage</td>
+<td><code>(winCount / totalSignals) × 100</code></td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><code>avgPnl</code></td>
+<td><code>number</code></td>
+<td>Average PNL percentage</td>
+<td><code>sum(pnl) / totalSignals</code></td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><code>totalPnl</code></td>
+<td><code>number</code></td>
+<td>Cumulative PNL percentage</td>
+<td><code>sum(pnl)</code></td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><code>certaintyRatio</code></td>
+<td><code>number</code></td>
+<td>Win/loss ratio</td>
+<td>`avgWin /</td>
+<td>avgLoss</td>
+</tr>
+<tr>
+<td><code>expectedYearlyReturns</code></td>
+<td><code>number</code></td>
+<td>Projected annual returns</td>
+<td><code>avgPnl × (365 / avgDurationDays)</code></td>
+<td>Higher is better</td>
+</tr>
+</tbody>
+</table>
+<a id="default-metric" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Default Metric<a href="#default-metric" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If no metric is specified in the walker schema, <code>&quot;sharpeRatio&quot;</code> is used as the default:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">metric</span><span class="hl-1"> = </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">metric</span><span class="hl-1"> || </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="metric-selection-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Metric Selection Example<a href="#metric-selection-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker schema with custom metric:</p>
+<pre><code class="typescript"><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;btc-walker&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;strategy-a&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-b&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-c&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">, </span><span class="hl-5">// Metric for strategy comparison</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onComplete</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">results</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best strategy:&quot;</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">bestStrategy</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best metric:&quot;</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">bestMetric</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="report-format-and-tables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Format and Tables<a href="#report-format-and-tables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker reports use markdown tables to present comparison data in a structured format.</p>
+<a id="comparison-table-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comparison Table Structure<a href="#comparison-table-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The comparison table ranks strategies by the selected metric and displays key performance indicators:</p>
+<p><img src="../media/62_Walker_Reports_4.svg" alt="Mermaid Diagram"></p>
+<a id="example-report-output" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example Report Output<a href="#example-report-output" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>From the README documentation:</p>
+<pre><code class="markdown"># Walker Report: btc-walker (BTCUSDT)
+
+**Best Strategy:** strategy-b
+**Best Metric (sharpeRatio):** 1.85
+
+| Rank | Strategy | Sharpe Ratio | Win Rate | Avg PNL | Total PNL | Trades |
+|------|----------|--------------|----------|---------|-----------|--------|
+| 1    | strategy-b | 1.85 | 68.5% | +1.45% | +12.30% | 38 |
+| 2    | strategy-a | 1.23 | 72.3% | +0.34% | +15.50% | 45 |
+| 3    | strategy-c | 0.98 | 65.2% | +1.20% | +10.20% | 25 |
+
+**Total Strategies:** 3
+**Exchange:** binance
+**Frame:** 1d-backtest
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="integration-with-event-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Event System<a href="#integration-with-event-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker reports integrate with the event system to provide real-time updates and completion notifications.</p>
+<a id="event-flow-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Flow Diagram<a href="#event-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/62_Walker_Reports_5.svg" alt="Mermaid Diagram"></p>
+<a id="event-types-and-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Types and Usage<a href="#event-types-and-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Emitter</th>
+<th>Purpose</th>
+<th>Payload</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Walker Progress</td>
+<td><code>walkerEmitter</code></td>
+<td>Emitted after each strategy completes</td>
+<td><code>WalkerContract</code> with progress</td>
+</tr>
+<tr>
+<td>Walker Complete</td>
+<td><code>walkerCompleteSubject</code></td>
+<td>Emitted when all strategies finish</td>
+<td><code>IWalkerResults</code> with rankings</td>
+</tr>
+<tr>
+<td>Background Done</td>
+<td><code>doneWalkerSubject</code></td>
+<td>Emitted when <code>Walker.background()</code> finishes</td>
+<td><code>DoneContract</code> with context</td>
+</tr>
+</tbody>
+</table>
+<a id="event-listener-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listener Example<a href="#event-listener-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenWalkerComplete</span><span class="hl-1">, </span><span class="hl-4">Walker</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Listen to walker completion</span><br/><span class="hl-0">listenWalkerComplete</span><span class="hl-1">((</span><span class="hl-4">results</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Walker completed:&quot;</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">bestStrategy</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">); </span><span class="hl-5">// Save report</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Run walker in background</span><br/><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;btc-walker&quot;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="report-data-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Data Lifecycle<a href="#report-data-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram illustrates the complete lifecycle of walker report data from execution through persistence:</p>
+<p><img src="../media/62_Walker_Reports_6.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="api-reference-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">API Reference Summary<a href="#api-reference-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="walker-class-public-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Class Public Methods<a href="#walker-class-public-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Return Type</th>
+<th>Description</th>
+<th>Default Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Walker.getData(symbol, walkerName)</code></td>
+<td><code>Promise&lt;IWalkerResults&gt;</code></td>
+<td>Returns structured comparison data</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>Walker.getReport(symbol, walkerName)</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generates markdown report string</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>Walker.dump(symbol, walkerName, path?)</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Saves report to disk</td>
+<td><code>./logs/walker</code></td>
+</tr>
+<tr>
+<td><code>Walker.run(symbol, context)</code></td>
+<td><code>AsyncGenerator</code></td>
+<td>Runs walker with progress updates</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>Walker.background(symbol, context)</code></td>
+<td><code>Function</code></td>
+<td>Runs walker in background, returns cancel function</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<a id="method-call-chain" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Call Chain<a href="#method-call-chain" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/62_Walker_Reports_7.svg" alt="Mermaid Diagram"></p>
+<p>All walker report methods follow this delegation pattern:</p>
+<ol>
+<li>User calls <code>Walker.method()</code></li>
+<li><code>Walker</code> logs invocation</li>
+<li><code>Walker</code> retrieves schema</li>
+<li><code>Walker</code> delegates to <code>WalkerMarkdownService</code></li>
+<li><code>WalkerMarkdownService</code> queries <code>BacktestMarkdownService</code> for each strategy</li>
+<li>Results are aggregated and formatted</li>
+</ol>
+<hr>
+<a id="clear-operation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Clear Operation<a href="#clear-operation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker markdown service supports clearing accumulated data, similar to backtest and live services:</p>
+<pre><code class="typescript"><span class="hl-5">// Clear data for specific walker</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// This is done automatically in Walker.run() before execution</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>Walker.run()</code> method automatically clears walker markdown data before execution to ensure fresh results:</p>
+<pre><code class="typescript"><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#walker-reports"><span>Walker <wbr/>Reports</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#walker-report-data-flow"><span>Walker <wbr/>Report <wbr/>Data <wbr/>Flow</span></a></li><li><a href="#walkergetdata---structured-results"><span>Walker.get<wbr/>Data() -<wbr/> <wbr/>Structured <wbr/>Results</span></a></li><li><ul><li><a href="#method-signature"><span>Method <wbr/>Signature</span></a></li><li><a href="#parameters"><span>Parameters</span></a></li><li><a href="#return-type-structure"><span>Return <wbr/>Type <wbr/>Structure</span></a></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li><li><a href="#usage-example"><span>Usage <wbr/>Example</span></a></li></ul></li><li><a href="#walkergetreport---markdown-generation"><span>Walker.get<wbr/>Report() -<wbr/> <wbr/>Markdown <wbr/>Generation</span></a></li><li><ul><li><a href="#method-signature-1"><span>Method <wbr/>Signature</span></a></li><li><a href="#report-structure"><span>Report <wbr/>Structure</span></a></li><li><a href="#report-generation-flow"><span>Report <wbr/>Generation <wbr/>Flow</span></a></li><li><a href="#implementation"><span>Implementation</span></a></li></ul></li><li><a href="#walkerdump---report-persistence"><span>Walker.dump() -<wbr/> <wbr/>Report <wbr/>Persistence</span></a></li><li><ul><li><a href="#method-signature-2"><span>Method <wbr/>Signature</span></a></li><li><a href="#parameters-1"><span>Parameters</span></a></li><li><a href="#file-naming-convention"><span>File <wbr/>Naming <wbr/>Convention</span></a></li><li><a href="#implementation-1"><span>Implementation</span></a></li><li><a href="#usage-example-1"><span>Usage <wbr/>Example</span></a></li></ul></li><li><a href="#comparison-metrics"><span>Comparison <wbr/>Metrics</span></a></li><li><ul><li><a href="#available-metrics"><span>Available <wbr/>Metrics</span></a></li><li><a href="#default-metric"><span>Default <wbr/>Metric</span></a></li><li><a href="#metric-selection-example"><span>Metric <wbr/>Selection <wbr/>Example</span></a></li></ul></li><li><a href="#report-format-and-tables"><span>Report <wbr/>Format and <wbr/>Tables</span></a></li><li><ul><li><a href="#comparison-table-structure"><span>Comparison <wbr/>Table <wbr/>Structure</span></a></li><li><a href="#example-report-output"><span>Example <wbr/>Report <wbr/>Output</span></a></li></ul></li><li><a href="#integration-with-event-system"><span>Integration with <wbr/>Event <wbr/>System</span></a></li><li><ul><li><a href="#event-flow-diagram"><span>Event <wbr/>Flow <wbr/>Diagram</span></a></li><li><a href="#event-types-and-usage"><span>Event <wbr/>Types and <wbr/>Usage</span></a></li><li><a href="#event-listener-example"><span>Event <wbr/>Listener <wbr/>Example</span></a></li></ul></li><li><a href="#report-data-lifecycle"><span>Report <wbr/>Data <wbr/>Lifecycle</span></a></li><li><a href="#api-reference-summary"><span>API <wbr/>Reference <wbr/>Summary</span></a></li><li><ul><li><a href="#walker-class-public-methods"><span>Walker <wbr/>Class <wbr/>Public <wbr/>Methods</span></a></li><li><a href="#method-call-chain"><span>Method <wbr/>Call <wbr/>Chain</span></a></li></ul></li><li><a href="#clear-operation"><span>Clear <wbr/>Operation</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
