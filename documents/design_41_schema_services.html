@@ -1,0 +1,515 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/41_schema_services | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_41_schema_services.html">design/41_schema_services</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="schema-services" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Schema Services<a href="#schema-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Schema Services implement the registry pattern for storing configuration schemas in the backtest-kit framework. These services act as in-memory storage for strategy, exchange, and frame configurations registered at application startup via <code>addStrategy()</code>, <code>addExchange()</code>, and <code>addFrame()</code> functions. They provide lookup capabilities for Connection Services (see <a href="design_24_strategy_schemas.html">5.1</a>) which create runtime instances based on registered schemas.</p>
+<p>For information about how registered schemas are instantiated into client objects, see <a href="design_24_strategy_schemas.html">Connection Services</a>. For details on schema interfaces and registration functions, see <a href="design_15_configuration_functions.html">Configuration Functions</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides six schema services, each managing a specific domain's configuration registry:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+<th>Schema Interface</th>
+<th>Registration Function</th>
+<th>Storage Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StrategySchemaService</code></td>
+<td>Stores strategy configurations</td>
+<td><code>IStrategySchema</code></td>
+<td><code>addStrategy()</code></td>
+<td><code>strategyName</code></td>
+</tr>
+<tr>
+<td><code>ExchangeSchemaService</code></td>
+<td>Stores exchange configurations</td>
+<td><code>IExchangeSchema</code></td>
+<td><code>addExchange()</code></td>
+<td><code>exchangeName</code></td>
+</tr>
+<tr>
+<td><code>FrameSchemaService</code></td>
+<td>Stores frame configurations</td>
+<td><code>IFrameSchema</code></td>
+<td><code>addFrame()</code></td>
+<td><code>frameName</code></td>
+</tr>
+<tr>
+<td><code>WalkerSchemaService</code></td>
+<td>Stores walker configurations</td>
+<td><code>IWalkerSchema</code></td>
+<td><code>addWalker()</code></td>
+<td><code>walkerName</code></td>
+</tr>
+<tr>
+<td><code>SizingSchemaService</code></td>
+<td>Stores sizing configurations</td>
+<td><code>ISizingSchema</code></td>
+<td><code>addSizing()</code></td>
+<td><code>sizingName</code></td>
+</tr>
+<tr>
+<td><code>RiskSchemaService</code></td>
+<td>Stores risk configurations</td>
+<td><code>IRiskSchema</code></td>
+<td><code>addRisk()</code></td>
+<td><code>riskName</code></td>
+</tr>
+</tbody>
+</table>
+<p>All schema services follow identical patterns: singleton registration, <code>ToolRegistry</code>-based storage (from <code>functools-kit</code>), and name-based lookup. They are instantiated once during framework initialization and shared across all execution contexts.</p>
+<hr>
+<a id="schema-service-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Service Architecture<a href="#schema-service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram illustrates the relationship between registration functions, schema services, and connection services:</p>
+<p><img src="../media/41_Schema_Services_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Schema Service Registry Pattern</strong></p>
+<p>This architecture separates registration (startup time) from instantiation (runtime). Users register schemas once during application initialization using <code>add*()</code> functions. Connection Services query these registries on-demand using <code>get()</code> methods to create memoized client instances. All schema services use <code>ToolRegistry</code> from <code>functools-kit</code> for type-safe storage and retrieval.</p>
+<hr>
+<a id="strategyschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">StrategySchemaService<a href="#strategyschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>StrategySchemaService</code> manages the registry of strategy configurations. Each strategy is identified by a unique <code>strategyName</code> and contains signal generation logic and lifecycle callbacks.</p>
+<a id="storage-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses a <code>Map&lt;StrategyName, IStrategySchema&gt;</code> to store registered strategies. The map key is the strategy name, and the value is the complete schema object.</p>
+<a id="istrategyschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IStrategySchema Interface<a href="#istrategyschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The strategy schema interface defines:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IStrategySchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-10">StrategyName</span><span class="hl-1">;           </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">    </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-10">SignalInterval</span><span class="hl-1">;             </span><span class="hl-5">// Throttling interval (1m, 5m, 1h, etc.)</span><br/><span class="hl-1">    </span><span class="hl-0">getSignal</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">ISignalDto</span><span class="hl-1"> | </span><span class="hl-10">null</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Signal generator</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">Partial</span><span class="hl-1">&lt;</span><span class="hl-10">IStrategyCallbacks</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Optional lifecycle hooks</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Field Descriptions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier used for registry lookup and routing</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>SignalInterval</code></td>
+<td>Minimum time between <code>getSignal()</code> calls for throttling</td>
+</tr>
+<tr>
+<td><code>getSignal</code></td>
+<td><code>async function</code></td>
+<td>Signal generation logic, returns <code>null</code> or validated <code>ISignalDto</code></td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>object</code> (optional)</td>
+<td>Lifecycle hooks: <code>onTick</code>, <code>onOpen</code>, <code>onActive</code>, <code>onIdle</code>, <code>onClose</code></td>
+</tr>
+</tbody>
+</table>
+<a id="registration-via-addstrategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addStrategy()<a href="#registration-via-addstrategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addStrategy()</code> function registers a strategy schema into <code>StrategySchemaService</code>:</p>
+<p><img src="../media/41_Schema_Services_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Strategy Schema Registration Flow</strong></p>
+<p>The registration process validates that <code>strategyName</code> is unique and stores the schema for later retrieval by <code>StrategyConnectionService</code>.</p>
+<hr>
+<a id="exchangeschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ExchangeSchemaService<a href="#exchangeschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ExchangeSchemaService</code> manages the registry of exchange data sources. Each exchange provides candle data fetching, price formatting, and quantity formatting logic.</p>
+<a id="storage-structure-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses a <code>Map&lt;ExchangeName, IExchangeSchema&gt;</code> to store registered exchanges. The map key is the exchange name, and the value is the complete schema object.</p>
+<a id="iexchangeschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IExchangeSchema Interface<a href="#iexchangeschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The exchange schema interface defines:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IExchangeSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">ExchangeName</span><span class="hl-1">;  </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">    </span><span class="hl-0">getCandles</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-10">CandleInterval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">) </span><br/><span class="hl-1">        =&gt; </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">ICandleData</span><span class="hl-1">[]&gt;;</span><br/><span class="hl-1">    </span><span class="hl-0">formatQuantity</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-0">formatPrice</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">Partial</span><span class="hl-1">&lt;</span><span class="hl-10">IExchangeCallbacks</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Optional onCandleData hook</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Field Descriptions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier used for registry lookup and routing</td>
+</tr>
+<tr>
+<td><code>getCandles</code></td>
+<td><code>async function</code></td>
+<td>Fetches historical OHLCV candle data from exchange/database</td>
+</tr>
+<tr>
+<td><code>formatQuantity</code></td>
+<td><code>async function</code></td>
+<td>Formats quantity values to exchange precision rules</td>
+</tr>
+<tr>
+<td><code>formatPrice</code></td>
+<td><code>async function</code></td>
+<td>Formats price values to exchange precision rules</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>object</code> (optional)</td>
+<td>Lifecycle hooks: <code>onCandleData</code> for logging/monitoring</td>
+</tr>
+</tbody>
+</table>
+<a id="registration-via-addexchange" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addExchange()<a href="#registration-via-addexchange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addExchange()</code> function registers an exchange schema into <code>ExchangeSchemaService</code>:</p>
+<p><img src="../media/41_Schema_Services_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Exchange Schema Registration Flow</strong></p>
+<p>The registration process validates that <code>exchangeName</code> is unique and stores the schema for later retrieval by <code>ExchangeConnectionService</code>.</p>
+<hr>
+<a id="frameschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">FrameSchemaService<a href="#frameschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>FrameSchemaService</code> manages the registry of timeframe configurations for backtesting. Each frame defines the start date, end date, and interval for timestamp generation.</p>
+<a id="storage-structure-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses a <code>Map&lt;FrameName, IFrameSchema&gt;</code> to store registered frames. The map key is the frame name, and the value is the complete schema object.</p>
+<a id="iframeschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IFrameSchema Interface<a href="#iframeschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The frame schema interface defines:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IFrameSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-10">FrameName</span><span class="hl-1">;       </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">    </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-10">FrameInterval</span><span class="hl-1">;    </span><span class="hl-5">// Timestamp interval (1m, 1h, 1d, etc.)</span><br/><span class="hl-1">    </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">;            </span><span class="hl-5">// Backtest period start (inclusive)</span><br/><span class="hl-1">    </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">;              </span><span class="hl-5">// Backtest period end (inclusive)</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">Partial</span><span class="hl-1">&lt;</span><span class="hl-10">IFrameCallbacks</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Optional onTimeframe hook</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Field Descriptions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier used for registry lookup and routing</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>FrameInterval</code></td>
+<td>Time spacing between generated timestamps</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Beginning of backtest period (inclusive boundary)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>End of backtest period (inclusive boundary)</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>object</code> (optional)</td>
+<td>Lifecycle hooks: <code>onTimeframe</code> called after generation</td>
+</tr>
+</tbody>
+</table>
+<a id="registration-via-addframe" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addFrame()<a href="#registration-via-addframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addFrame()</code> function registers a frame schema into <code>FrameSchemaService</code>:</p>
+<p><img src="../media/41_Schema_Services_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Frame Schema Registration Flow</strong></p>
+<p>The registration process validates that <code>frameName</code> is unique and stores the schema for later retrieval by <code>FrameConnectionService</code>.</p>
+<hr>
+<a id="walkerschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">WalkerSchemaService<a href="#walkerschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>WalkerSchemaService</code> manages the registry of walker configurations for strategy comparison. Each walker defines a list of strategies to compare, the exchange and frame to use, and the metric for ranking.</p>
+<a id="storage-structure-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses <code>ToolRegistry&lt;IWalkerSchema&gt;</code> from <code>functools-kit</code> to store registered walkers. The registry is keyed by <code>walkerName</code>.</p>
+<a id="iwalkerschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IWalkerSchema Interface<a href="#iwalkerschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The walker schema interface defines:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IWalkerSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-10">WalkerName</span><span class="hl-1">;         </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">ExchangeName</span><span class="hl-1">;     </span><span class="hl-5">// Exchange to use for all strategies</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-10">FrameName</span><span class="hl-1">;           </span><span class="hl-5">// Frame to use for all strategies</span><br/><span class="hl-1">    </span><span class="hl-4">strategies</span><span class="hl-1">: </span><span class="hl-10">StrategyName</span><span class="hl-1">[];     </span><span class="hl-5">// Array of strategy names to compare</span><br/><span class="hl-1">    </span><span class="hl-4">metric</span><span class="hl-1">?: </span><span class="hl-10">WalkerMetric</span><span class="hl-1">;          </span><span class="hl-5">// Ranking metric (default: &quot;sharpeRatio&quot;)</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">Partial</span><span class="hl-1">&lt;</span><span class="hl-10">IWalkerCallbacks</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Optional lifecycle hooks</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Field Descriptions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier used for registry lookup and routing</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Exchange name to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Frame name to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>strategies</code></td>
+<td><code>string[]</code></td>
+<td>List of strategy names to execute and compare</td>
+</tr>
+<tr>
+<td><code>metric</code></td>
+<td><code>string</code> (optional)</td>
+<td>Metric for ranking strategies (sharpeRatio, totalPnl, winRate, etc.)</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>object</code> (optional)</td>
+<td>Lifecycle hooks: <code>onStrategyComplete</code>, <code>onComplete</code></td>
+</tr>
+</tbody>
+</table>
+<a id="registration-via-addwalker" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addWalker()<a href="#registration-via-addwalker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addWalker()</code> function registers a walker schema into <code>WalkerSchemaService</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// src/function/add.ts</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">addWalker</span><span class="hl-1">(</span><span class="hl-4">walkerSchema</span><span class="hl-1">: </span><span class="hl-10">IWalkerSchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-7">ADD_WALKER_METHOD_NAME</span><span class="hl-1">, { </span><span class="hl-4">walkerSchema</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerValidationService</span><span class="hl-1">.</span><span class="hl-0">addWalker</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerSchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The registration process validates that <code>walkerName</code> is unique and stores the schema for later retrieval by <code>WalkerLogicPrivateService</code>.</p>
+<hr>
+<a id="sizingschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">SizingSchemaService<a href="#sizingschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>SizingSchemaService</code> manages the registry of position sizing configurations. Each sizing schema defines the method and parameters for calculating position sizes.</p>
+<a id="storage-structure-4" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses <code>ToolRegistry&lt;ISizingSchema&gt;</code> from <code>functools-kit</code> to store registered sizing configurations. The registry is keyed by <code>sizingName</code>.</p>
+<a id="isizingschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ISizingSchema Interface<a href="#isizingschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The sizing schema is a discriminated union based on the <code>method</code> field:</p>
+<pre><code class="typescript"><span class="hl-6">type</span><span class="hl-1"> </span><span class="hl-10">ISizingSchema</span><span class="hl-1"> = </span><br/><span class="hl-1">  | </span><span class="hl-10">IFixedPercentageSizing</span><span class="hl-1"> </span><br/><span class="hl-1">  | </span><span class="hl-10">IKellyCriterionSizing</span><span class="hl-1"> </span><br/><span class="hl-1">  | </span><span class="hl-10">IAtrBasedSizing</span><span class="hl-1">;</span><br/><br/><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IFixedPercentageSizing</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">method</span><span class="hl-1">: </span><span class="hl-2">&quot;fixed-percentage&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-10">SizingName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">riskPercentage</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;        </span><span class="hl-5">// % of account to risk per trade</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionPercentage</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">minPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IKellyCriterionSizing</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">method</span><span class="hl-1">: </span><span class="hl-2">&quot;kelly-criterion&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-10">SizingName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">kellyMultiplier</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;      </span><span class="hl-5">// Default: 0.25 (quarter Kelly)</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionPercentage</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">minPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IAtrBasedSizing</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">method</span><span class="hl-1">: </span><span class="hl-2">&quot;atr-based&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-10">SizingName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">riskPercentage</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">atrMultiplier</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;        </span><span class="hl-5">// Default: 2</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionPercentage</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">minPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">maxPositionSize</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="registration-via-addsizing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addSizing()<a href="#registration-via-addsizing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addSizing()</code> function registers a sizing schema into <code>SizingSchemaService</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// src/function/add.ts</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">addSizing</span><span class="hl-1">(</span><span class="hl-4">sizingSchema</span><span class="hl-1">: </span><span class="hl-10">ISizingSchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-7">ADD_SIZING_METHOD_NAME</span><span class="hl-1">, { </span><span class="hl-4">sizingSchema</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">sizingValidationService</span><span class="hl-1">.</span><span class="hl-0">addSizing</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchema</span><span class="hl-1">.</span><span class="hl-4">sizingName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">sizingSchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchema</span><span class="hl-1">.</span><span class="hl-4">sizingName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="riskschemaservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">RiskSchemaService<a href="#riskschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>RiskSchemaService</code> manages the registry of risk management configurations. Each risk schema defines position limits and custom validation functions.</p>
+<a id="storage-structure-5" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Structure<a href="#storage-structure-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The service uses <code>ToolRegistry&lt;IRiskSchema&gt;</code> from <code>functools-kit</code> to store registered risk configurations. The registry is keyed by <code>riskName</code>.</p>
+<a id="iriskschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IRiskSchema Interface<a href="#iriskschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The risk schema interface defines:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IRiskSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-10">RiskName</span><span class="hl-1">;                    </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">    </span><span class="hl-4">maxConcurrentPositions</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;       </span><span class="hl-5">// Optional position limit</span><br/><span class="hl-1">    </span><span class="hl-4">validations</span><span class="hl-1">?: </span><span class="hl-10">IRiskValidation</span><span class="hl-1">[];       </span><span class="hl-5">// Optional custom checks</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">Partial</span><span class="hl-1">&lt;</span><span class="hl-10">IRiskCallbacks</span><span class="hl-1">&gt;;   </span><span class="hl-5">// Optional lifecycle hooks</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IRiskValidation</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">validate</span><span class="hl-1">: (</span><span class="hl-4">payload</span><span class="hl-1">: </span><span class="hl-10">IRiskValidationPayload</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">docDescription</span><span class="hl-1">?: </span><span class="hl-10">string</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Field Descriptions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>riskName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier used for registry lookup</td>
+</tr>
+<tr>
+<td><code>maxConcurrentPositions</code></td>
+<td><code>number</code> (optional)</td>
+<td>Maximum open positions across all strategies sharing this risk profile</td>
+</tr>
+<tr>
+<td><code>validations</code></td>
+<td><code>array</code> (optional)</td>
+<td>Custom validation functions with access to portfolio state</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>object</code> (optional)</td>
+<td>Lifecycle hooks: <code>onRejected</code>, <code>onAllowed</code></td>
+</tr>
+</tbody>
+</table>
+<a id="registration-via-addrisk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration via addRisk()<a href="#registration-via-addrisk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>addRisk()</code> function registers a risk schema into <code>RiskSchemaService</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// src/function/add.ts</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">addRisk</span><span class="hl-1">(</span><span class="hl-4">riskSchema</span><span class="hl-1">: </span><span class="hl-10">IRiskSchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-7">ADD_RISK_METHOD_NAME</span><span class="hl-1">, { </span><span class="hl-4">riskSchema</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><span class="hl-1">.</span><span class="hl-0">addRisk</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchema</span><span class="hl-1">.</span><span class="hl-4">riskName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">riskSchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchema</span><span class="hl-1">.</span><span class="hl-4">riskName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Risk schemas enable portfolio-level risk management where multiple strategies can share the same risk limits. The <code>ClientRisk</code> class tracks active positions across all strategies using the same <code>riskName</code>.</p>
+<hr>
+<a id="schema-lookup-and-retrieval" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Lookup and Retrieval<a href="#schema-lookup-and-retrieval" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema Services provide lookup methods that Connection Services call to retrieve registered configurations. The lookup pattern is identical across all three services.</p>
+<a id="lookup-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lookup Pattern<a href="#lookup-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/41_Schema_Services_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Schema Lookup Flow</strong></p>
+<p>The <code>MethodContextService</code> (see <a href="design_08_component_registration.html">2.3</a>) provides the schema name as a routing key. Connection Services query Schema Services by name, retrieve the schema, and pass it to client constructors for instantiation.</p>
+<a id="common-schema-service-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Schema Service Methods<a href="#common-schema-service-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All schema services use <code>ToolRegistry</code> from <code>functools-kit</code> and implement these methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>register()</code></td>
+<td><code>name: string, schema: ISchema</code></td>
+<td><code>void</code></td>
+<td>Registers a new schema in the ToolRegistry</td>
+</tr>
+<tr>
+<td><code>get()</code></td>
+<td><code>name: string</code></td>
+<td><code>ISchema</code></td>
+<td>Retrieves a registered schema by name</td>
+</tr>
+<tr>
+<td><code>has()</code></td>
+<td><code>name: string</code></td>
+<td><code>boolean</code></td>
+<td>Checks if a schema name is registered</td>
+</tr>
+<tr>
+<td><code>override()</code></td>
+<td><code>name: string, partial: Partial&lt;ISchema&gt;</code></td>
+<td><code>void</code></td>
+<td>Updates an existing schema with partial changes</td>
+</tr>
+<tr>
+<td><code>validateShallow()</code></td>
+<td><code>schema: ISchema</code></td>
+<td><code>void</code></td>
+<td>Validates required fields before registration</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>ToolRegistry</code> pattern from <code>functools-kit</code> provides type-safe storage with built-in validation. It ensures that:</p>
+<ol>
+<li>Schema names are unique (duplicate registrations throw errors)</li>
+<li>Retrieved schemas exist (missing schemas throw errors)</li>
+<li>Type safety is maintained throughout the registration and retrieval process</li>
+</ol>
+<p><strong>Error Handling:</strong> If <code>get()</code> is called with an unregistered name, <code>ToolRegistry</code> throws an error indicating the missing configuration. This fail-fast behavior ensures configuration errors are detected early in the application lifecycle.</p>
+<hr>
+<a id="integration-with-dependency-injection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Dependency Injection<a href="#integration-with-dependency-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema Services are registered in the DI container as singletons, ensuring a single registry instance is shared across the entire application.</p>
+<a id="service-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Registration<a href="#service-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>provide.ts</code> file registers all six schema services in the DI container:</p>
+<pre><code class="typescript"><span class="hl-5">// src/lib/core/provide.ts (lines 62-67)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">ExchangeSchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategySchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">frameSchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">FrameSchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">walkerSchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">WalkerSchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingSchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">SizingSchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskSchemaService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">RiskSchemaService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each factory function creates a new service instance. The DI container (<code>di-kit</code>) ensures these factories are called only once, implementing the singleton pattern.</p>
+<a id="symbol-definitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Symbol Definitions<a href="#symbol-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>types.ts</code> file defines unique symbols for each schema service:</p>
+<pre><code class="typescript"><span class="hl-5">// src/lib/core/types.ts (lines 18-25)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">schemaServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategySchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;walkerSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">sizingSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskSchemaService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskSchemaService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These symbols serve as keys in the DI container, preventing naming collisions and enabling type-safe injection.</p>
+<a id="service-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Injection<a href="#service-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>index.ts</code> file injects all schema services into the <code>backtest</code> aggregator object:</p>
+<pre><code class="typescript"><span class="hl-5">// src/lib/index.ts (lines 80-90)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">schemaServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeSchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">ExchangeSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">strategySchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">StrategySchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">frameSchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">FrameSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">frameSchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">walkerSchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">WalkerSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">walkerSchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">sizingSchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">SizingSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingSchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">riskSchemaService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-10">RiskSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskSchemaService</span><span class="hl-1">),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">backtest</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other services</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This makes all schema services accessible via <code>backtest.*SchemaService</code> for advanced use cases requiring direct registry access.</p>
+<hr>
+<a id="complete-registration-and-instantiation-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Complete Registration and Instantiation Flow<a href="#complete-registration-and-instantiation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram shows the complete lifecycle from user registration to client instantiation:</p>
+<p><img src="../media/41_Schema_Services_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Complete Schema Registration and Instantiation Flow</strong></p>
+<p>The registration phase occurs at application startup, storing schemas in the registry. The instantiation phase occurs at runtime when Logic Services require client instances. Connection Services query Schema Services, create clients, and memoize them for reuse.</p>
+<hr>
+<a id="design-rationale" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Design Rationale<a href="#design-rationale" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registry-pattern-benefits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registry Pattern Benefits<a href="#registry-pattern-benefits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The registry pattern provides several architectural advantages:</p>
+<ol>
+<li><strong>Separation of Configuration and Execution</strong>: Schemas are registered at startup, instances created on-demand at runtime</li>
+<li><strong>Multiple Configurations</strong>: Multiple strategies/exchanges/frames can coexist without conflicts</li>
+<li><strong>Dynamic Routing</strong>: <code>MethodContextService</code> provides routing keys to select the correct schema at runtime</li>
+<li><strong>Testability</strong>: Services can be instantiated with mock schemas for unit testing</li>
+<li><strong>Hot-Swapping</strong>: New schemas can be registered without restarting (though not currently exposed)</li>
+</ol>
+<a id="singleton-registry-instances" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Singleton Registry Instances<a href="#singleton-registry-instances" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Schema Services are singletons because:</p>
+<ol>
+<li><strong>Global State</strong>: Configuration registries must be shared across all execution contexts</li>
+<li><strong>Performance</strong>: Single Map instance avoids redundant storage overhead</li>
+<li><strong>Consistency</strong>: All Connection Services see the same registered schemas</li>
+<li><strong>Thread Safety</strong>: JavaScript's single-threaded model ensures no race conditions</li>
+</ol>
+<a id="map-data-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Map Data Structure<a href="#map-data-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>Map&lt;string, ISchema&gt;</code> data structure is chosen because:</p>
+<ol>
+<li><strong>O(1) Lookup</strong>: Fast retrieval by name during runtime execution</li>
+<li><strong>Key Type Safety</strong>: String keys match schema name types</li>
+<li><strong>Iteration Support</strong>: <code>getAllSchemas()</code> can iterate over values</li>
+<li><strong>Uniqueness Guarantee</strong>: Map keys enforce unique schema names</li>
+</ol>
+<hr>
+<a id="usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Patterns<a href="#usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="basic-schema-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Schema Registration<a href="#basic-schema-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Register schemas during application initialization before calling <code>Backtest.run()</code> or <code>Live.run()</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// Register exchange data source</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch from API or database</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">candleData</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">2</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">8</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Register strategy</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal generation logic</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalDto</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Register backtest frame</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;jan-2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-31&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="multi-strategy-pattern-with-walker" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Strategy Pattern with Walker<a href="#multi-strategy-pattern-with-walker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Register multiple strategies and use a walker to compare them:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Long-only momentum logic</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-short&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Short-only momentum logic</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Compare strategies using walker</span><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;jan-2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;momentum-long&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;momentum-short&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Walker automatically backtests both and ranks them</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walker:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">); </span><span class="hl-5">// Contains rankings and performance metrics</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="multi-exchange-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Exchange Pattern<a href="#multi-exchange-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Register multiple exchanges for different data sources:</p>
+<pre><code class="typescript"><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getCandles:</span><span class="hl-1"> </span><span class="hl-0">async</span><span class="hl-1"> (...) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fetchFromBinance</span><span class="hl-1">(...),</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;coinbase&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getCandles:</span><span class="hl-1"> </span><span class="hl-0">async</span><span class="hl-1"> (...) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fetchFromCoinbase</span><span class="hl-1">(...),</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Compare strategy performance across exchanges</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchange:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frame:</span><span class="hl-1"> </span><span class="hl-2">&quot;jan-2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Binance results</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchange:</span><span class="hl-1"> </span><span class="hl-2">&quot;coinbase&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frame:</span><span class="hl-1"> </span><span class="hl-2">&quot;jan-2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Coinbase results</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="position-sizing-and-risk-management" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Sizing and Risk Management<a href="#position-sizing-and-risk-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Register sizing and risk schemas for portfolio management:</p>
+<pre><code class="typescript"><span class="hl-5">// Register position sizing method</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">method:</span><span class="hl-1"> </span><span class="hl-2">&quot;fixed-percentage&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskPercentage:</span><span class="hl-1"> </span><span class="hl-8">1</span><span class="hl-1">,  </span><span class="hl-5">// Risk 1% of account per trade</span><br/><span class="hl-1">  </span><span class="hl-4">maxPositionPercentage:</span><span class="hl-1"> </span><span class="hl-8">10</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Register risk limits shared across strategies</span><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;portfolio-risk&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxConcurrentPositions:</span><span class="hl-1"> </span><span class="hl-8">5</span><span class="hl-1">,  </span><span class="hl-5">// Max 5 open positions</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-0">validate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-4">params</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">portfolio</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getPortfolioState</span><span class="hl-1">();</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">portfolio</span><span class="hl-1">.</span><span class="hl-4">drawdown</span><span class="hl-1"> &gt; </span><span class="hl-8">20</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Portfolio drawdown exceeds 20%&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">docDescription:</span><span class="hl-1"> </span><span class="hl-2">&quot;Prevents trading during high drawdown&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Strategies reference sizing and risk by name</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;portfolio-risk&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal generation logic</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema Services implement validation to prevent common configuration errors:</p>
+<a id="duplicate-name-detection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Duplicate Name Detection<a href="#duplicate-name-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Attempting to register a schema with an existing name throws an error:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Error: Strategy &quot;momentum&quot; already registered</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,  </span><span class="hl-5">// Duplicate name</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="missing-schema-detection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Missing Schema Detection<a href="#missing-schema-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Attempting to instantiate a client with an unregistered schema name throws an error:</p>
+<pre><code class="typescript"><span class="hl-5">// No strategy registered with name &quot;nonexistent&quot;</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;nonexistent&quot;</span><span class="hl-1">,  </span><span class="hl-5">// Error thrown here</span><br/><span class="hl-1">  </span><span class="hl-4">exchange:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frame:</span><span class="hl-1"> </span><span class="hl-2">&quot;jan-2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="schema-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Validation<a href="#schema-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each schema service's <code>validateShallow()</code> method validates required fields during registration:</p>
+<ul>
+<li><code>StrategySchemaService</code>: Validates <code>strategyName</code>, <code>interval</code>, <code>getSignal</code> are present</li>
+<li><code>ExchangeSchemaService</code>: Validates <code>exchangeName</code>, <code>getCandles</code>, <code>formatPrice</code>, <code>formatQuantity</code> are present</li>
+<li><code>FrameSchemaService</code>: Validates <code>frameName</code>, <code>interval</code>, <code>startDate</code>, <code>endDate</code> are present and dates are valid</li>
+<li><code>WalkerSchemaService</code>: Validates <code>walkerName</code>, <code>exchangeName</code>, <code>frameName</code>, <code>strategies</code> array are present</li>
+<li><code>SizingSchemaService</code>: Validates <code>sizingName</code>, <code>method</code>, and method-specific parameters are present</li>
+<li><code>RiskSchemaService</code>: Validates <code>riskName</code> is present and custom validations are functions</li>
+</ul>
+<p>The <code>validateShallow()</code> method performs type checking and ensures required fields exist before allowing registration. Deeper validation (e.g., verifying referenced strategies exist) is performed by Validation Services (see <a href="design_42_validation_services.html">7.4</a>).</p>
+<hr>
+<a id="relationship-with-other-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Relationship with Other Services<a href="#relationship-with-other-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema Services interact with multiple layers of the architecture:</p>
+<table>
+<thead>
+<tr>
+<th>Service Layer</th>
+<th>Relationship</th>
+<th>Direction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Connection Services</strong></td>
+<td>Consumers of schema registries</td>
+<td>Connection Services query Schema Services</td>
+</tr>
+<tr>
+<td><strong>Public API Functions</strong></td>
+<td>Producers to schema registries</td>
+<td><code>add*()</code> functions register schemas</td>
+</tr>
+<tr>
+<td><strong>Logic Services</strong></td>
+<td>Indirect consumers via Connection layer</td>
+<td>Logic Services use Connection Services, which query Schema Services</td>
+</tr>
+<tr>
+<td><strong>Global Services</strong></td>
+<td>Indirect consumers via Connection layer</td>
+<td>Global Services use Connection Services, which query Schema Services</td>
+</tr>
+</tbody>
+</table>
+<p>Schema Services have no dependencies on other services—they are pure registries with no outbound calls to other components. This makes them the foundational layer of the service architecture.</p>
+<p>For more information:</p>
+<ul>
+<li>Connection Services usage: <a href="design_24_strategy_schemas.html">Connection Services</a></li>
+<li>Registration API details: <a href="design_15_configuration_functions.html">Configuration Functions</a></li>
+<li>Runtime orchestration: <a href="design_27_risk_schemas.html">Logic Services</a></li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#schema-services"><span>Schema <wbr/>Services</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#schema-service-architecture"><span>Schema <wbr/>Service <wbr/>Architecture</span></a></li><li><a href="#strategyschemaservice"><span>Strategy<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure"><span>Storage <wbr/>Structure</span></a></li><li><a href="#istrategyschema-interface"><span>IStrategy<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addstrategy"><span>Registration via add<wbr/>Strategy()</span></a></li></ul></li><li><a href="#exchangeschemaservice"><span>Exchange<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure-1"><span>Storage <wbr/>Structure</span></a></li><li><a href="#iexchangeschema-interface"><span>IExchange<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addexchange"><span>Registration via add<wbr/>Exchange()</span></a></li></ul></li><li><a href="#frameschemaservice"><span>Frame<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure-2"><span>Storage <wbr/>Structure</span></a></li><li><a href="#iframeschema-interface"><span>IFrame<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addframe"><span>Registration via add<wbr/>Frame()</span></a></li></ul></li><li><a href="#walkerschemaservice"><span>Walker<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure-3"><span>Storage <wbr/>Structure</span></a></li><li><a href="#iwalkerschema-interface"><span>IWalker<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addwalker"><span>Registration via add<wbr/>Walker()</span></a></li></ul></li><li><a href="#sizingschemaservice"><span>Sizing<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure-4"><span>Storage <wbr/>Structure</span></a></li><li><a href="#isizingschema-interface"><span>ISizing<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addsizing"><span>Registration via add<wbr/>Sizing()</span></a></li></ul></li><li><a href="#riskschemaservice"><span>Risk<wbr/>Schema<wbr/>Service</span></a></li><li><ul><li><a href="#storage-structure-5"><span>Storage <wbr/>Structure</span></a></li><li><a href="#iriskschema-interface"><span>IRisk<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#registration-via-addrisk"><span>Registration via add<wbr/>Risk()</span></a></li></ul></li><li><a href="#schema-lookup-and-retrieval"><span>Schema <wbr/>Lookup and <wbr/>Retrieval</span></a></li><li><ul><li><a href="#lookup-pattern"><span>Lookup <wbr/>Pattern</span></a></li><li><a href="#common-schema-service-methods"><span>Common <wbr/>Schema <wbr/>Service <wbr/>Methods</span></a></li></ul></li><li><a href="#integration-with-dependency-injection"><span>Integration with <wbr/>Dependency <wbr/>Injection</span></a></li><li><ul><li><a href="#service-registration"><span>Service <wbr/>Registration</span></a></li><li><a href="#symbol-definitions"><span>Symbol <wbr/>Definitions</span></a></li><li><a href="#service-injection"><span>Service <wbr/>Injection</span></a></li></ul></li><li><a href="#complete-registration-and-instantiation-flow"><span>Complete <wbr/>Registration and <wbr/>Instantiation <wbr/>Flow</span></a></li><li><a href="#design-rationale"><span>Design <wbr/>Rationale</span></a></li><li><ul><li><a href="#registry-pattern-benefits"><span>Registry <wbr/>Pattern <wbr/>Benefits</span></a></li><li><a href="#singleton-registry-instances"><span>Singleton <wbr/>Registry <wbr/>Instances</span></a></li><li><a href="#map-data-structure"><span>Map <wbr/>Data <wbr/>Structure</span></a></li></ul></li><li><a href="#usage-patterns"><span>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#basic-schema-registration"><span>Basic <wbr/>Schema <wbr/>Registration</span></a></li><li><a href="#multi-strategy-pattern-with-walker"><span>Multi-<wbr/>Strategy <wbr/>Pattern with <wbr/>Walker</span></a></li><li><a href="#multi-exchange-pattern"><span>Multi-<wbr/>Exchange <wbr/>Pattern</span></a></li><li><a href="#position-sizing-and-risk-management"><span>Position <wbr/>Sizing and <wbr/>Risk <wbr/>Management</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#duplicate-name-detection"><span>Duplicate <wbr/>Name <wbr/>Detection</span></a></li><li><a href="#missing-schema-detection"><span>Missing <wbr/>Schema <wbr/>Detection</span></a></li><li><a href="#schema-validation"><span>Schema <wbr/>Validation</span></a></li></ul></li><li><a href="#relationship-with-other-services"><span>Relationship with <wbr/>Other <wbr/>Services</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

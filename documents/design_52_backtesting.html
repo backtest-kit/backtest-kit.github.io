@@ -1,0 +1,387 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/52_backtesting | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_52_backtesting.html">design/52_backtesting</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="backtesting" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Backtesting<a href="#backtesting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document describes the backtesting functionality in the backtest-kit framework, which simulates trading strategies against historical market data. Backtesting executes a strategy across a predefined timeframe, generating signals and calculating their profit/loss (PnL) without executing real trades.</p>
+<p>This page covers the high-level backtest orchestration, execution flow, and memory-efficient streaming architecture. For detailed API reference, see <a href="design_11_dependency_injection_system.html">Backtest API</a>. For signal state management, see <a href="design_46_signal_lifecycle.html">Signal Lifecycle</a>. For timeframe generation specifics, see <a href="design_54_timeframe_generation.html">Timeframe Generation</a>. For fast-forward simulation mechanics, see <a href="design_55_fast-forward_simulation.html">Fast-Forward Simulation</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtesting in this framework operates as a <strong>memory-efficient async generator</strong> that streams closed signals without accumulating results in memory. The system iterates through historical timestamps, evaluates strategy signals at each point, and simulates their outcomes using future candle data.</p>
+<a id="key-characteristics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Characteristics<a href="#key-characteristics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Characteristic</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Execution Mode</strong></td>
+<td>Synchronous iteration through historical timestamps</td>
+</tr>
+<tr>
+<td><strong>Memory Model</strong></td>
+<td>Streaming generator (yields results incrementally)</td>
+</tr>
+<tr>
+<td><strong>Data Source</strong></td>
+<td>Historical OHLCV candles via <code>ClientExchange</code></td>
+</tr>
+<tr>
+<td><strong>Signal Processing</strong></td>
+<td>Opens, simulates, and closes signals via <code>ClientStrategy</code></td>
+</tr>
+<tr>
+<td><strong>Time Progression</strong></td>
+<td>Controlled by <code>ClientFrame</code> timeframe array</td>
+</tr>
+<tr>
+<td><strong>Early Termination</strong></td>
+<td>Consumer can break iteration at any time</td>
+</tr>
+</tbody>
+</table>
+<a id="entry-points" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Entry Points<a href="#entry-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Public API</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Run backtest with async iteration</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance-historical&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-2023&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Get accumulated report</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">report</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="architecture-components" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Components<a href="#architecture-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtesting system follows the four-layer architecture with clear separation between orchestration, business logic, and cross-cutting concerns.</p>
+<a id="component-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Component Diagram<a href="#component-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_0.svg" alt="Mermaid Diagram"></p>
+<a id="component-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Component Responsibilities<a href="#component-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Component</th>
+<th>File Path</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestUtils</code></td>
+<td><a href="">src/classes/Backtest.ts</a></td>
+<td>Public API facade with logging</td>
+</tr>
+<tr>
+<td><code>BacktestLogicPublicService</code></td>
+<td><a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts</a></td>
+<td>Context propagation wrapper</td>
+</tr>
+<tr>
+<td><code>BacktestLogicPrivateService</code></td>
+<td><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts</a></td>
+<td>Async generator orchestration</td>
+</tr>
+<tr>
+<td><code>BacktestGlobalService</code></td>
+<td>Service aggregator</td>
+<td>Routes to BacktestLogicPublicService</td>
+</tr>
+<tr>
+<td><code>StrategyGlobalService</code></td>
+<td>Global service layer</td>
+<td>Calls <code>tick()</code> and <code>backtest()</code> on ClientStrategy</td>
+</tr>
+<tr>
+<td><code>ExchangeGlobalService</code></td>
+<td>Global service layer</td>
+<td>Calls <code>getNextCandles()</code> on ClientExchange</td>
+</tr>
+<tr>
+<td><code>FrameGlobalService</code></td>
+<td>Global service layer</td>
+<td>Calls <code>getTimeframe()</code> on ClientFrame</td>
+</tr>
+<tr>
+<td><code>ClientStrategy</code></td>
+<td>Business logic</td>
+<td>Signal generation, validation, simulation</td>
+</tr>
+<tr>
+<td><code>ClientExchange</code></td>
+<td>Business logic</td>
+<td>Historical candle retrieval</td>
+</tr>
+<tr>
+<td><code>ClientFrame</code></td>
+<td>Business logic</td>
+<td>Timeframe timestamp array generation</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtesting follows a deterministic execution pattern that processes each timestamp sequentially, opening and simulating signals as they occur.</p>
+<a id="sequence-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Sequence Diagram<a href="#sequence-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_1.svg" alt="Mermaid Diagram"></p>
+<a id="execution-steps" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Steps<a href="#execution-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li>
+<p><strong>Context Initialization</strong> - <a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:46-66</a></p>
+<ul>
+<li><code>BacktestLogicPublicService</code> wraps the generator with <code>MethodContextService</code></li>
+<li>Context contains <code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code></li>
+<li>Context is implicitly propagated to all service calls</li>
+</ul>
+</li>
+<li>
+<p><strong>Timeframe Retrieval</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:53</a></p>
+<ul>
+<li><code>FrameGlobalService.getTimeframe()</code> returns array of timestamps</li>
+<li>Timestamps represent points in historical time to evaluate strategy</li>
+</ul>
+</li>
+<li>
+<p><strong>Timestamp Iteration</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:57-118</a></p>
+<ul>
+<li>Loop through each timestamp in sequential order</li>
+<li>Index <code>i</code> tracks current position in timeframe array</li>
+</ul>
+</li>
+<li>
+<p><strong>Signal Evaluation</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:60</a></p>
+<ul>
+<li>Call <code>StrategyGlobalService.tick(symbol, when, backtest=true)</code></li>
+<li>Returns <code>IStrategyTickResult</code> with discriminated union type</li>
+</ul>
+</li>
+<li>
+<p><strong>Signal Opening</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:63-79</a></p>
+<ul>
+<li>When <code>result.action === &quot;opened&quot;</code>, signal requires simulation</li>
+<li>Fetch future candles via <code>getNextCandles()</code> for simulation period</li>
+<li><code>signal.minuteEstimatedTime</code> determines how many future minutes to fetch</li>
+</ul>
+</li>
+<li>
+<p><strong>Fast-Forward Simulation</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:92-97</a></p>
+<ul>
+<li>Call <code>StrategyGlobalService.backtest()</code> with future candles</li>
+<li>Simulates signal monitoring without iterating every timestamp</li>
+<li>Always returns <code>IStrategyTickResultClosed</code> with PnL</li>
+</ul>
+</li>
+<li>
+<p><strong>Timestamp Skipping</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:107-112</a></p>
+<ul>
+<li>Skip timestamps until <code>backtestResult.closeTimestamp</code></li>
+<li>Prevents re-evaluating timestamps during active signal period</li>
+<li>Advances index <code>i</code> to resume after signal closes</li>
+</ul>
+</li>
+<li>
+<p><strong>Result Streaming</strong> - <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:114</a></p>
+<ul>
+<li><code>yield backtestResult</code> streams closed result to consumer</li>
+<li>Memory-efficient: no array accumulation</li>
+<li>Consumer can break iteration early</li>
+</ul>
+</li>
+</ol>
+<hr>
+<a id="memory-efficient-streaming" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memory-Efficient Streaming<a href="#memory-efficient-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest system uses async generators to achieve memory efficiency when processing millions of timestamps.</p>
+<a id="streaming-vs-accumulation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Streaming vs Accumulation<a href="#streaming-vs-accumulation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_2.svg" alt="Mermaid Diagram"></p>
+<a id="benefits-of-streaming" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Benefits of Streaming<a href="#benefits-of-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Benefit</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Constant Memory</strong></td>
+<td>Results are not accumulated in memory</td>
+</tr>
+<tr>
+<td><strong>Early Termination</strong></td>
+<td>Consumer can break iteration at any point</td>
+</tr>
+<tr>
+<td><strong>Progressive Processing</strong></td>
+<td>Results available immediately as they're generated</td>
+</tr>
+<tr>
+<td><strong>Large Timeframes</strong></td>
+<td>Can process years of data without memory overflow</td>
+</tr>
+</tbody>
+</table>
+<a id="early-termination-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Early Termination Example<a href="#early-termination-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Consumer controls iteration lifetime</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Early termination based on condition</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &lt; -</span><span class="hl-8">10</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Stop loss threshold reached&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Generator is abandoned</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="context-propagation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Propagation<a href="#context-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtesting uses <code>MethodContextService</code> to implicitly pass configuration context through the call stack without explicit parameters.</p>
+<a id="context-flow-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Flow Diagram<a href="#context-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_3.svg" alt="Mermaid Diagram"></p>
+<a id="context-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Structure<a href="#context-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The context object passed to <code>Backtest.run()</code> contains three schema names:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;  </span><span class="hl-5">// Which strategy to execute</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;  </span><span class="hl-5">// Which exchange to fetch data from</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;     </span><span class="hl-5">// Which timeframe to iterate through</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="context-propagation-mechanism" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Propagation Mechanism<a href="#context-propagation-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Step</th>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Context Specification</td>
+<td><a href="">src/classes/Backtest.ts:37-43</a></td>
+<td>User provides context object</td>
+</tr>
+<tr>
+<td>2. Context Forwarding</td>
+<td><a href="">src/classes/Backtest.ts:49</a></td>
+<td><code>BacktestUtils.run()</code> forwards to <code>BacktestGlobalService</code></td>
+</tr>
+<tr>
+<td>3. Context Injection</td>
+<td><a href="">src/lib/services/logic/public/BacktestLogicPublicService.ts:58-64</a></td>
+<td><code>BacktestLogicPublicService</code> wraps generator with <code>MethodContextService.runAsyncIterator()</code></td>
+</tr>
+<tr>
+<td>4. Scope Boundary</td>
+<td><a href="">src/lib/services/context/MethodContextService.ts:41-45</a></td>
+<td><code>di-scoped</code> creates implicit context scope</td>
+</tr>
+<tr>
+<td>5. Implicit Retrieval</td>
+<td>Service layer</td>
+<td>Global/Connection services read context without explicit parameters</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="report-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Generation<a href="#report-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework passively accumulates closed signals for reporting via <code>BacktestMarkdownService</code>.</p>
+<a id="report-accumulation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Accumulation Flow<a href="#report-accumulation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_4.svg" alt="Mermaid Diagram"></p>
+<a id="report-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Usage<a href="#report-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Run backtest (results are accumulated automatically)</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance-historical&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-2023&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Process results...</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Retrieve accumulated report</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">markdown</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Save report to disk</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="report-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Methods<a href="#report-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>File</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getReport(strategyName)</code></td>
+<td><a href="">src/classes/Backtest.ts:116-121</a></td>
+<td>Returns markdown string with all closed signals</td>
+</tr>
+<tr>
+<td><code>dump(strategyName, path?)</code></td>
+<td><a href="">src/classes/Backtest.ts:138-147</a></td>
+<td>Saves markdown report to filesystem</td>
+</tr>
+</tbody>
+</table>
+<p>For detailed report structure and metrics, see <a href="design_53_backtest_execution_flow.html">Markdown Report Generation</a> and <a href="design_54_timeframe_generation.html">Performance Metrics</a>.</p>
+<hr>
+<a id="background-execution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Background Execution<a href="#background-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>background()</code> method consumes backtest results without exposing them to the caller, useful for running backtests purely for side effects.</p>
+<a id="background-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Background Pattern<a href="#background-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Run backtest in background (no yielded results)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">cancel</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance-historical&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-2023&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Results are not returned, but:</span><br/><span class="hl-5">// - BacktestMarkdownService still accumulates</span><br/><span class="hl-5">// - Event listeners still fire</span><br/><span class="hl-5">// - Logging still occurs</span><br/><br/><span class="hl-5">// Optional: cancel early</span><br/><span class="hl-0">cancel</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="background-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Background Implementation<a href="#background-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>background()</code> method internally consumes the async generator without yielding values:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">background</span><span class="hl-1"> = </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">: {...}) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">iterator</span><span class="hl-1"> = </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">isStopped</span><span class="hl-1"> = </span><span class="hl-6">false</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-0">task</span><span class="hl-1"> = </span><span class="hl-6">async</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-6">true</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-6">const</span><span class="hl-1"> { </span><span class="hl-7">done</span><span class="hl-1"> } = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">iterator</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">();</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">done</span><span class="hl-1"> || </span><span class="hl-4">isStopped</span><span class="hl-1">) </span><span class="hl-3">break</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">task</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> { </span><span class="hl-4">isStopped</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">; }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="integration-with-signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Signal Lifecycle<a href="#integration-with-signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtesting integrates with the signal lifecycle state machine. For complete signal state details, see <a href="design_46_signal_lifecycle.html">Signal Lifecycle</a>.</p>
+<a id="state-transitions-in-backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions in Backtest<a href="#state-transitions-in-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/52_Backtesting_5.svg" alt="Mermaid Diagram"></p>
+<a id="signal-result-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Result Types<a href="#signal-result-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Result Type</th>
+<th>Yielded in Backtest?</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IStrategyTickResultIdle</code></td>
+<td>❌ No</td>
+<td>No signal exists</td>
+</tr>
+<tr>
+<td><code>IStrategyTickResultOpened</code></td>
+<td>❌ No</td>
+<td>Signal opened (internal state)</td>
+</tr>
+<tr>
+<td><code>IStrategyTickResultActive</code></td>
+<td>❌ No</td>
+<td>Signal monitoring (internal state)</td>
+</tr>
+<tr>
+<td><code>IStrategyTickResultClosed</code></td>
+<td>✅ Yes</td>
+<td>Signal closed with PnL</td>
+</tr>
+</tbody>
+</table>
+<p>Only closed signals are yielded in backtest mode because opening immediately triggers fast-forward simulation.</p>
+<hr>
+<a id="key-design-decisions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key Design Decisions<a href="#key-design-decisions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="why-async-generators" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Why Async Generators?<a href="#why-async-generators" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Async generators over arrays</td>
+<td>Constant memory usage, early termination support</td>
+</tr>
+<tr>
+<td>Yield only closed signals</td>
+<td>Opening triggers immediate simulation, no active state</td>
+</tr>
+<tr>
+<td>Skip timestamps during signal</td>
+<td>Avoid redundant tick evaluations</td>
+</tr>
+<tr>
+<td>Stream results immediately</td>
+<td>Progressive processing without blocking</td>
+</tr>
+</tbody>
+</table>
+<a id="why-fast-forward-simulation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Why Fast-Forward Simulation?<a href="#why-fast-forward-simulation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Instead of iterating every minute during a signal's lifetime, <code>backtest()</code> simulates the entire signal outcome in a single call using future candles. This provides:</p>
+<ul>
+<li><strong>Performance</strong>: O(1) call vs O(N) timestamp iterations</li>
+<li><strong>Accuracy</strong>: Uses actual historical OHLCV data for simulation</li>
+<li><strong>Simplicity</strong>: Signal lifecycle managed in one method</li>
+</ul>
+<p>For fast-forward simulation details, see <a href="design_55_fast-forward_simulation.html">Fast-Forward Simulation</a>.</p>
+<hr>
+<a id="usage-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Examples<a href="#usage-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="basic-backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Backtest<a href="#basic-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;moving-average&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance-historical&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;daily-2023&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Closed at </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">closeTimestamp</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`PnL: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-6">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Reason: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">closeReason</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="conditional-termination" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Conditional Termination<a href="#conditional-termination" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">totalPnl</span><span class="hl-1"> = </span><span class="hl-8">0</span><span class="hl-1">;</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;ETHUSDT&quot;</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1"> += </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Stop if cumulative loss exceeds threshold</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">totalPnl</span><span class="hl-1"> &lt; -</span><span class="hl-8">20</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Drawdown limit reached&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">break</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="report-generation-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Generation<a href="#report-generation-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Run backtest (accumulates results)</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Process results...</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Generate report</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">report</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;moving-average&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">report</span><span class="hl-1">); </span><span class="hl-5">// Markdown table with all signals</span><br/><br/><span class="hl-5">// Save to disk</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;moving-average&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports&quot;</span><span class="hl-1">);</span><br/><span class="hl-5">// Writes to: ./reports/moving-average.md</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#backtesting"><span>Backtesting</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#overview"><span>Overview</span></a></li><li><ul><li><a href="#key-characteristics"><span>Key <wbr/>Characteristics</span></a></li><li><a href="#entry-points"><span>Entry <wbr/>Points</span></a></li></ul></li><li><a href="#architecture-components"><span>Architecture <wbr/>Components</span></a></li><li><ul><li><a href="#component-diagram"><span>Component <wbr/>Diagram</span></a></li><li><a href="#component-responsibilities"><span>Component <wbr/>Responsibilities</span></a></li></ul></li><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#sequence-diagram"><span>Sequence <wbr/>Diagram</span></a></li><li><a href="#execution-steps"><span>Execution <wbr/>Steps</span></a></li></ul></li><li><a href="#memory-efficient-streaming"><span>Memory-<wbr/>Efficient <wbr/>Streaming</span></a></li><li><ul><li><a href="#streaming-vs-accumulation"><span>Streaming vs <wbr/>Accumulation</span></a></li><li><a href="#benefits-of-streaming"><span>Benefits of <wbr/>Streaming</span></a></li><li><a href="#early-termination-example"><span>Early <wbr/>Termination <wbr/>Example</span></a></li></ul></li><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li><li><ul><li><a href="#context-flow-diagram"><span>Context <wbr/>Flow <wbr/>Diagram</span></a></li><li><a href="#context-structure"><span>Context <wbr/>Structure</span></a></li><li><a href="#context-propagation-mechanism"><span>Context <wbr/>Propagation <wbr/>Mechanism</span></a></li></ul></li><li><a href="#report-generation"><span>Report <wbr/>Generation</span></a></li><li><ul><li><a href="#report-accumulation-flow"><span>Report <wbr/>Accumulation <wbr/>Flow</span></a></li><li><a href="#report-usage"><span>Report <wbr/>Usage</span></a></li><li><a href="#report-methods"><span>Report <wbr/>Methods</span></a></li></ul></li><li><a href="#background-execution"><span>Background <wbr/>Execution</span></a></li><li><ul><li><a href="#background-pattern"><span>Background <wbr/>Pattern</span></a></li><li><a href="#background-implementation"><span>Background <wbr/>Implementation</span></a></li></ul></li><li><a href="#integration-with-signal-lifecycle"><span>Integration with <wbr/>Signal <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#state-transitions-in-backtest"><span>State <wbr/>Transitions in <wbr/>Backtest</span></a></li><li><a href="#signal-result-types"><span>Signal <wbr/>Result <wbr/>Types</span></a></li></ul></li><li><a href="#key-design-decisions"><span>Key <wbr/>Design <wbr/>Decisions</span></a></li><li><ul><li><a href="#why-async-generators"><span>Why <wbr/>Async <wbr/>Generators?</span></a></li><li><a href="#why-fast-forward-simulation"><span>Why <wbr/>Fast-<wbr/>Forward <wbr/>Simulation?</span></a></li></ul></li><li><a href="#usage-examples"><span>Usage <wbr/>Examples</span></a></li><li><ul><li><a href="#basic-backtest"><span>Basic <wbr/>Backtest</span></a></li><li><a href="#conditional-termination"><span>Conditional <wbr/>Termination</span></a></li><li><a href="#report-generation-1"><span>Report <wbr/>Generation</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

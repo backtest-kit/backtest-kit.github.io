@@ -1,0 +1,291 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/60_interval_throttling | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_60_interval_throttling.html">design/60_interval_throttling</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="interval-throttling" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Interval Throttling<a href="#interval-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document explains the interval throttling mechanism that prevents signal spam by enforcing minimum time gaps between <code>getSignal</code> calls. The throttling system uses <code>INTERVAL_MINUTES</code> mapping and <code>_lastSignalTimestamp</code> tracking to ensure strategies respect their configured signal generation intervals.</p>
+<p>For information about the broader live trading execution loop, see <a href="design_57_live_execution_flow.html">Live Execution Flow</a>. For details on signal generation and validation, see <a href="design_48_signal_generation_and_validation.html">Signal Generation and Validation</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Interval throttling is a critical mechanism that prevents strategies from generating signals too frequently. Each strategy declares a <code>SignalInterval</code> (e.g., &quot;1m&quot;, &quot;5m&quot;, &quot;1h&quot;) which determines the minimum time between consecutive <code>getSignal</code> function calls. The framework enforces this interval by tracking the timestamp of the last signal generation attempt and rejecting premature calls.</p>
+<p><strong>Key Benefits:</strong></p>
+<ul>
+<li><strong>Prevents signal spam</strong> that could overwhelm risk limits</li>
+<li><strong>Reduces computational overhead</strong> by limiting strategy evaluations</li>
+<li><strong>Enforces consistent strategy behavior</strong> between backtest and live modes</li>
+<li><strong>Protects against bugs</strong> in user-defined <code>getSignal</code> functions</li>
+</ul>
+<hr>
+<a id="signalinterval-type" class="tsd-anchor"></a><h2 class="tsd-anchor-link">SignalInterval Type<a href="#signalinterval-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>SignalInterval</code> type defines the allowed throttling intervals:</p>
+<pre><code class="typescript"><span class="hl-6">type</span><span class="hl-1"> </span><span class="hl-10">SignalInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This interval is specified in the strategy schema during registration:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>interval</code></td>
+<td><code>SignalInterval</code></td>
+<td>Yes</td>
+<td>Minimum time between <code>getSignal</code> calls</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Yes</td>
+<td>Unique strategy identifier</td>
+</tr>
+<tr>
+<td><code>getSignal</code></td>
+<td><code>function</code></td>
+<td>Yes</td>
+<td>Signal generation function (throttled)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Strategy Registration:</strong></p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,  </span><span class="hl-5">// Throttle to maximum one signal per 5 minutes</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// This function will only be called every 5 minutes</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> { </span><span class="hl-5">/* signal data */</span><span class="hl-1"> };</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="interval_minutes-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">INTERVAL_MINUTES Mapping<a href="#interval_minutes-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework converts <code>SignalInterval</code> strings to millisecond durations via the <code>INTERVAL_MINUTES</code> constant:</p>
+<p><img src="../media/60_Interval_Throttling_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Mapping Definition:</strong></p>
+<p>The mapping is defined at <a href="">src/client/ClientStrategy.ts:31-38</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">INTERVAL_MINUTES</span><span class="hl-1">: </span><span class="hl-10">Record</span><span class="hl-1">&lt;</span><span class="hl-10">SignalInterval</span><span class="hl-1">, </span><span class="hl-10">number</span><span class="hl-1">&gt; = {</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">1</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">3</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">5</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">15</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">30</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage in Throttling Check:</strong></p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">intervalMinutes</span><span class="hl-1"> = </span><span class="hl-7">INTERVAL_MINUTES</span><span class="hl-1">[</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">interval</span><span class="hl-1">];</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">intervalMs</span><span class="hl-1"> = </span><span class="hl-4">intervalMinutes</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This conversion happens during every throttling check within <code>GET_SIGNAL_FN</code>.</p>
+<hr>
+<a id="_lastsignaltimestamp-tracking" class="tsd-anchor"></a><h2 class="tsd-anchor-link">_lastSignalTimestamp Tracking<a href="#_lastsignaltimestamp-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each <code>ClientStrategy</code> instance maintains a private field <code>_lastSignalTimestamp</code> that records when <code>getSignal</code> was last called:</p>
+<p><img src="../media/60_Interval_Throttling_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Field Declaration:</strong></p>
+<p>The field is declared in <code>ClientStrategy</code> class (not shown in provided excerpts, but referenced at <a href="">src/client/ClientStrategy.ts:201-207</a>):</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-12">_lastSignalTimestamp</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1"> | </span><span class="hl-6">null</span><span class="hl-1"> = </span><span class="hl-6">null</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Update Logic:</strong></p>
+<pre><code class="typescript"><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This assignment occurs immediately before calling the user's <code>getSignal</code> function, ensuring that the timestamp reflects the most recent signal generation attempt.</p>
+<hr>
+<a id="throttling-decision-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling Decision Flow<a href="#throttling-decision-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The throttling check occurs in <code>GET_SIGNAL_FN</code> before calling the user-defined <code>getSignal</code> function:</p>
+<p><img src="../media/60_Interval_Throttling_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Implementation at <a href="">src/client/ClientStrategy.ts:194-208</a>:</strong></p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">intervalMinutes</span><span class="hl-1"> = </span><span class="hl-7">INTERVAL_MINUTES</span><span class="hl-1">[</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">interval</span><span class="hl-1">];</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">intervalMs</span><span class="hl-1"> = </span><span class="hl-4">intervalMinutes</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">;</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Check that enough time has passed since last getSignal</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><br/><span class="hl-1">    </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> !== </span><span class="hl-6">null</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">    </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> &lt; </span><span class="hl-4">intervalMs</span><br/><span class="hl-1">  ) {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Observations:</strong></p>
+<ol>
+<li><strong>First call bypass</strong>: When <code>_lastSignalTimestamp</code> is <code>null</code>, the check is skipped (no delay on strategy startup)</li>
+<li><strong>Early return</strong>: If interval hasn't passed, immediately return <code>null</code> without calling <code>getSignal</code></li>
+<li><strong>Timestamp update</strong>: Always update before calling <code>getSignal</code> to prevent race conditions</li>
+<li><strong>Execution context time</strong>: Uses <code>execution.context.when</code> which is either <code>Date.now()</code> (live) or historical timestamp (backtest)</li>
+</ol>
+<hr>
+<a id="throttling-in-signal-generation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling in Signal Generation Pipeline<a href="#throttling-in-signal-generation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The throttling check is the first gate in the signal generation pipeline:</p>
+<p><img src="../media/60_Interval_Throttling_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Position in Call Stack:</strong></p>
+<ol>
+<li><strong>Entry Point</strong>: <code>ClientStrategy.tick(symbol)</code> or <code>ClientStrategy.backtest(candles)</code></li>
+<li><strong>Throttle Gate</strong>: <code>GET_SIGNAL_FN</code> checks <code>_lastSignalTimestamp</code> immediately</li>
+<li><strong>Downstream Gates</strong>: VWAP fetch → Risk check → User <code>getSignal</code> → Validation</li>
+<li><strong>Result</strong>: Returns <code>IStrategyTickResult</code> (idle if throttled)</li>
+</ol>
+<hr>
+<a id="integration-with-live-trading-mode" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Live Trading Mode<a href="#integration-with-live-trading-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In live trading, throttling operates on real-time clock progression. The live execution loop repeatedly calls <code>tick()</code> with <code>Date.now()</code> as the context timestamp. Throttling prevents excessive <code>getSignal</code> calls during this infinite loop:</p>
+<pre><code class="typescript"><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-6">true</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// ExecutionContext.when = Date.now()</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-5">// Throttling happens inside tick() → GET_SIGNAL_FN</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="integration-with-backtesting-mode" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Backtesting Mode<a href="#integration-with-backtesting-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In backtesting, throttling operates on historical timestamp progression. The backtest loop iterates through discrete timestamps from <code>Frame.getTimeframe()</code>. Throttling ensures that even if the frame interval is &quot;1m&quot; (one tick per minute), a strategy with interval &quot;5m&quot; only evaluates <code>getSignal</code> every 5 minutes:</p>
+<table>
+<thead>
+<tr>
+<th>Frame Timestamp</th>
+<th>Throttle Check</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2024-01-01 00:00</td>
+<td>First call (null)</td>
+<td><strong>Allow</strong> → getSignal()</td>
+</tr>
+<tr>
+<td>2024-01-01 00:01</td>
+<td>1 min &lt; 5 min</td>
+<td>Block → return idle</td>
+</tr>
+<tr>
+<td>2024-01-01 00:02</td>
+<td>2 min &lt; 5 min</td>
+<td>Block → return idle</td>
+</tr>
+<tr>
+<td>2024-01-01 00:03</td>
+<td>3 min &lt; 5 min</td>
+<td>Block → return idle</td>
+</tr>
+<tr>
+<td>2024-01-01 00:04</td>
+<td>4 min &lt; 5 min</td>
+<td>Block → return idle</td>
+</tr>
+<tr>
+<td>2024-01-01 00:05</td>
+<td>5 min &gt;= 5 min</td>
+<td><strong>Allow</strong> → getSignal()</td>
+</tr>
+<tr>
+<td>2024-01-01 00:06</td>
+<td>1 min &lt; 5 min</td>
+<td>Block → return idle</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="throttling-bypass-conditions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling Bypass Conditions<a href="#throttling-bypass-conditions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The throttling mechanism has two bypass conditions where <code>getSignal</code> is <strong>not</strong> called, regardless of interval:</p>
+<a id="1-strategy-stopped" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Strategy Stopped<a href="#1-strategy-stopped" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_isStopped</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>When <code>ClientStrategy.stop()</code> is called (e.g., during graceful shutdown), the <code>_isStopped</code> flag prevents all future <code>getSignal</code> calls. This check occurs <strong>before</strong> the throttling check at <a href="">src/client/ClientStrategy.ts:191-193</a>.</p>
+<a id="2-scheduled-signal-active" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Scheduled Signal Active<a href="#2-scheduled-signal-active" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a scheduled signal is waiting for activation (<code>self._scheduledSignal !== null</code>), the strategy does not generate new signals. This prevents multiple concurrent signals from the same strategy.</p>
+<p><strong>Check Location:</strong></p>
+<p>The scheduled signal check happens in <code>ClientStrategy.tick()</code> before calling <code>GET_SIGNAL_FN</code>. See <a href="design_07_signal_lifecycle_overview.html">Signal Lifecycle Overview</a> for details on scheduled signal behavior.</p>
+<hr>
+<a id="throttling-vs-risk-limits" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling vs. Risk Limits<a href="#throttling-vs-risk-limits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Throttling and risk management serve different purposes:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Throttling</th>
+<th>Risk Management</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Purpose</strong></td>
+<td>Rate limit signal generation</td>
+<td>Portfolio position limits</td>
+</tr>
+<tr>
+<td><strong>Scope</strong></td>
+<td>Per-strategy, per-symbol</td>
+<td>Cross-strategy, portfolio-level</td>
+</tr>
+<tr>
+<td><strong>Timing</strong></td>
+<td>Before <code>getSignal</code> call</td>
+<td>After signal generation</td>
+</tr>
+<tr>
+<td><strong>Configuration</strong></td>
+<td><code>interval</code> in strategy schema</td>
+<td><code>riskName</code> and validations</td>
+</tr>
+<tr>
+<td><strong>Bypass</strong></td>
+<td>None (always enforced)</td>
+<td>Can be disabled (no riskName)</td>
+</tr>
+<tr>
+<td><strong>Failure Mode</strong></td>
+<td>Silent (return null)</td>
+<td>Logged rejection</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Scenario:</strong></p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;scalper&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,      </span><span class="hl-5">// Throttling: max 1 signal/minute</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;aggressive&quot;</span><span class="hl-1">, </span><span class="hl-5">// Risk: check position limits</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;aggressive&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    (</span><span class="hl-4">payload</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-5">// Risk: max 5 concurrent positions across all strategies</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-8">5</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Portfolio limit reached&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Execution Flow:</strong></p>
+<ol>
+<li><strong>00:00:00</strong>: Throttle allows → Risk allows → Signal generated</li>
+<li><strong>00:00:30</strong>: Throttle blocks (30s &lt; 60s) → <code>getSignal</code> not called</li>
+<li><strong>00:01:00</strong>: Throttle allows → Risk blocks (5 positions active) → Signal rejected</li>
+<li><strong>00:02:00</strong>: Throttle allows → Risk allows (4 positions now) → Signal generated</li>
+</ol>
+<hr>
+<a id="code-entity-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code Entity Reference<a href="#code-entity-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>Type</th>
+<th>Location</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SignalInterval</code></td>
+<td>Type</td>
+<td><a href="">src/interfaces/Strategy.interface.ts:11-17</a></td>
+<td>Defines allowed throttling intervals</td>
+</tr>
+<tr>
+<td><code>INTERVAL_MINUTES</code></td>
+<td>Constant</td>
+<td><a href="">src/client/ClientStrategy.ts:31-38</a></td>
+<td>Maps interval strings to minute durations</td>
+</tr>
+<tr>
+<td><code>_lastSignalTimestamp</code></td>
+<td>Field</td>
+<td><code>ClientStrategy</code> class</td>
+<td>Tracks last signal generation time</td>
+</tr>
+<tr>
+<td><code>GET_SIGNAL_FN</code></td>
+<td>Function</td>
+<td><a href="">src/client/ClientStrategy.ts:187-283</a></td>
+<td>Implements throttling logic</td>
+</tr>
+<tr>
+<td><code>IStrategySchema.interval</code></td>
+<td>Property</td>
+<td><a href="">src/interfaces/Strategy.interface.ts:126</a></td>
+<td>Strategy's configured throttle interval</td>
+</tr>
+<tr>
+<td><code>ExecutionContextService.context.when</code></td>
+<td>Property</td>
+<td><a href="">src/lib/services/context/ExecutionContextService.ts</a></td>
+<td>Current timestamp (live or backtest)</td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#interval-throttling"><span>Interval <wbr/>Throttling</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#overview"><span>Overview</span></a></li><li><a href="#signalinterval-type"><span>Signal<wbr/>Interval <wbr/>Type</span></a></li><li><a href="#interval_minutes-mapping"><span>INTERVAL_<wbr/>MINUTES <wbr/>Mapping</span></a></li><li><a href="#_lastsignaltimestamp-tracking"><span>_last<wbr/>Signal<wbr/>Timestamp <wbr/>Tracking</span></a></li><li><a href="#throttling-decision-flow"><span>Throttling <wbr/>Decision <wbr/>Flow</span></a></li><li><a href="#throttling-in-signal-generation-pipeline"><span>Throttling in <wbr/>Signal <wbr/>Generation <wbr/>Pipeline</span></a></li><li><a href="#integration-with-live-trading-mode"><span>Integration with <wbr/>Live <wbr/>Trading <wbr/>Mode</span></a></li><li><a href="#integration-with-backtesting-mode"><span>Integration with <wbr/>Backtesting <wbr/>Mode</span></a></li><li><a href="#throttling-bypass-conditions"><span>Throttling <wbr/>Bypass <wbr/>Conditions</span></a></li><li><ul><li><a href="#1-strategy-stopped"><span>1. <wbr/>Strategy <wbr/>Stopped</span></a></li><li><a href="#2-scheduled-signal-active"><span>2. <wbr/>Scheduled <wbr/>Signal <wbr/>Active</span></a></li></ul></li><li><a href="#throttling-vs-risk-limits"><span>Throttling vs. <wbr/>Risk <wbr/>Limits</span></a></li><li><a href="#code-entity-reference"><span>Code <wbr/>Entity <wbr/>Reference</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,411 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/61_walker_mode | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_61_walker_mode.html">design/61_walker_mode</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="walker-mode" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Walker Mode<a href="#walker-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Walker Mode is a strategy comparison and optimization system that executes multiple backtest runs sequentially and ranks strategies by a configurable performance metric. This mode enables automated strategy selection by comparing historical performance across different strategy implementations for the same market conditions. For information about individual backtest execution, see <a href="design_52_backtesting.html">Backtesting</a>. For live trading execution, see <a href="design_56_live_trading.html">Live Trading</a>.</p>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker Mode orchestrates multiple <a href="design_47_signal_states.html">ClientStrategy</a> instances through the same historical timeframe, collecting performance statistics for each strategy and identifying the best performer based on a selected metric. Unlike Backtest Mode which evaluates a single strategy, Walker Mode provides comparative analysis across strategy variants.</p>
+<p>The walker system consists of three primary components:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>File Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WalkerLogicPrivateService</code></td>
+<td>Orchestrates sequential backtest execution and metric comparison</td>
+<td><a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:1-255</a></td>
+</tr>
+<tr>
+<td><code>WalkerSchema</code></td>
+<td>Defines strategies to compare, metric selection, and callbacks</td>
+<td><a href="">src/interfaces/Walker.interface.ts</a></td>
+</tr>
+<tr>
+<td><code>WalkerMarkdownService</code></td>
+<td>Accumulates results and generates comparative reports</td>
+<td><a href="">src/lib/services/markdown/WalkerMarkdownService.ts</a></td>
+</tr>
+</tbody>
+</table>
+<a id="execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/61_Walker_Mode_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Sequential Strategy Execution and Metric Comparison</strong></p>
+<p>The walker execution follows a strict sequential pattern to ensure fair comparison:</p>
+<ol>
+<li><strong>Initialization</strong>: Retrieves the <code>IWalkerSchema</code> from <code>WalkerSchemaService</code> using the <code>walkerName</code> context parameter <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:88</a></li>
+<li><strong>Strategy Iteration</strong>: Loops through each strategy name in the <code>strategies</code> array <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:107-228</a></li>
+<li><strong>Backtest Execution</strong>: Invokes <code>BacktestLogicPublicService.run()</code> for each strategy with the same <code>exchangeName</code> and <code>frameName</code> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:117-121</a></li>
+<li><strong>Statistics Collection</strong>: Retrieves performance metrics via <code>BacktestMarkdownService.getData()</code> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:165</a></li>
+<li><strong>Metric Comparison</strong>: Extracts the configured metric value and updates <code>bestStrategy</code>/<code>bestMetric</code> if the current strategy outperforms <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:168-186</a></li>
+<li><strong>Progress Emission</strong>: Yields <code>WalkerContract</code> after each strategy completion for real-time monitoring <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:190-227</a></li>
+</ol>
+<a id="walker-schema-definition" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Schema Definition<a href="#walker-schema-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker configuration is registered via <code>addWalker()</code> and must conform to the <code>IWalkerSchema</code> interface:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IWalkerSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-10">WalkerName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategies</span><span class="hl-1">: </span><span class="hl-10">StrategyName</span><span class="hl-1">[];</span><br/><span class="hl-1">  </span><span class="hl-4">metric</span><span class="hl-1">: </span><span class="hl-10">WalkerMetric</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-10">FrameName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-10">IWalkerCallbacks</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Schema Fields</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>WalkerName</code></td>
+<td>Unique identifier for this walker configuration</td>
+</tr>
+<tr>
+<td><code>strategies</code></td>
+<td><code>StrategyName[]</code></td>
+<td>Array of strategy names to compare (order preserved)</td>
+</tr>
+<tr>
+<td><code>metric</code></td>
+<td><code>WalkerMetric</code></td>
+<td>Performance metric used for ranking</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>FrameName</code></td>
+<td>Timeframe to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>IWalkerCallbacks</code></td>
+<td>Optional lifecycle hooks</td>
+</tr>
+</tbody>
+</table>
+<p><strong>IWalkerCallbacks Interface</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Signature</th>
+<th>Invocation Point</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onStrategyStart</code></td>
+<td><code>(strategyName, symbol) =&gt; void</code></td>
+<td>Before each strategy backtest begins <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:109-111</a></td>
+</tr>
+<tr>
+<td><code>onStrategyComplete</code></td>
+<td><code>(strategyName, symbol, stats, metricValue) =&gt; void</code></td>
+<td>After each strategy backtest completes <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:217-224</a></td>
+</tr>
+<tr>
+<td><code>onStrategyError</code></td>
+<td><code>(strategyName, symbol, error) =&gt; void</code></td>
+<td>If a strategy backtest throws an exception <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:143-145</a></td>
+</tr>
+<tr>
+<td><code>onComplete</code></td>
+<td><code>(finalResults) =&gt; void</code></td>
+<td>After all strategies complete with final best results <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:245-248</a></td>
+</tr>
+</tbody>
+</table>
+<a id="metric-selection-and-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Metric Selection and Comparison<a href="#metric-selection-and-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker Mode supports multiple performance metrics for strategy ranking. The metric value is extracted from <code>BacktestStatistics</code> returned by each backtest execution.</p>
+<p><strong>Available Metrics</strong> (<code>WalkerMetric</code> type):</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Description</th>
+<th>Formula/Calculation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sharpeRatio</code></td>
+<td>Risk-adjusted returns (default)</td>
+<td><code>(avgReturn - riskFreeRate) / stdDevReturns</code></td>
+</tr>
+<tr>
+<td><code>sharpeRatioAnnualized</code></td>
+<td>Annualized Sharpe Ratio</td>
+<td><code>sharpeRatio * sqrt(tradingDaysPerYear)</code></td>
+</tr>
+<tr>
+<td><code>winRate</code></td>
+<td>Percentage of profitable trades</td>
+<td><code>winCount / totalTrades * 100</code></td>
+</tr>
+<tr>
+<td><code>avgPnl</code></td>
+<td>Average profit/loss per trade</td>
+<td><code>totalPnl / totalTrades</code></td>
+</tr>
+<tr>
+<td><code>totalPnl</code></td>
+<td>Cumulative profit/loss</td>
+<td>Sum of all trade PnL values</td>
+</tr>
+<tr>
+<td><code>certaintyRatio</code></td>
+<td>Win rate adjusted for trade frequency</td>
+<td>Custom calculation in statistics layer</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Metric Extraction and Validation</strong>:</p>
+<p>The walker extracts the metric value with safety checks for invalid numbers <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:168-176</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">value</span><span class="hl-1"> = </span><span class="hl-4">stats</span><span class="hl-1">[</span><span class="hl-4">metric</span><span class="hl-1">];</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">metricValue</span><span class="hl-1"> =</span><br/><span class="hl-1">  </span><span class="hl-4">value</span><span class="hl-1"> !== </span><span class="hl-6">null</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">  </span><span class="hl-4">value</span><span class="hl-1"> !== </span><span class="hl-6">undefined</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">  </span><span class="hl-6">typeof</span><span class="hl-1"> </span><span class="hl-4">value</span><span class="hl-1"> === </span><span class="hl-2">&quot;number&quot;</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">  !</span><span class="hl-0">isNaN</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">) &amp;&amp;</span><br/><span class="hl-1">  </span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">)</span><br/><span class="hl-1">    ? </span><span class="hl-4">value</span><br/><span class="hl-1">    : </span><span class="hl-6">null</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Comparison Logic</strong>:</p>
+<p>Strategies are compared using a simple &quot;greater is better&quot; rule <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:179-186</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">isBetter</span><span class="hl-1"> =</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1"> === </span><span class="hl-6">null</span><span class="hl-1"> ||</span><br/><span class="hl-1">  (</span><span class="hl-4">metricValue</span><span class="hl-1"> !== </span><span class="hl-6">null</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">metricValue</span><span class="hl-1"> &gt; </span><span class="hl-4">bestMetric</span><span class="hl-1">);</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">isBetter</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">metricValue</span><span class="hl-1"> !== </span><span class="hl-6">null</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1"> = </span><span class="hl-4">metricValue</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1"> = </span><span class="hl-4">strategyName</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>If a strategy produces an invalid metric (NaN, Infinity, null), it is excluded from comparison but does not halt execution.</p>
+<a id="walker-contract-and-progress-tracking" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Contract and Progress Tracking<a href="#walker-contract-and-progress-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/61_Walker_Mode_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: WalkerContract Construction and Event Flow</strong></p>
+<p><strong>WalkerContract Structure</strong>:</p>
+<p>Each iteration yields a <code>WalkerContract</code> object containing <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:190-203</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>string</code></td>
+<td>Walker identifier from context</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Exchange used for all backtests</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Frame used for all backtests</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Symbol being analyzed</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Current strategy that just completed</td>
+</tr>
+<tr>
+<td><code>stats</code></td>
+<td><code>BacktestStatistics</code></td>
+<td>Full statistics for current strategy</td>
+</tr>
+<tr>
+<td><code>metricValue</code></td>
+<td><code>number | null</code></td>
+<td>Current strategy's metric value</td>
+</tr>
+<tr>
+<td><code>metric</code></td>
+<td><code>WalkerMetric</code></td>
+<td>Metric being used for comparison</td>
+</tr>
+<tr>
+<td><code>bestMetric</code></td>
+<td><code>number | null</code></td>
+<td>Best metric value seen so far</td>
+</tr>
+<tr>
+<td><code>bestStrategy</code></td>
+<td><code>string | null</code></td>
+<td>Strategy name with best metric</td>
+</tr>
+<tr>
+<td><code>strategiesTested</code></td>
+<td><code>number</code></td>
+<td>Number of strategies completed</td>
+</tr>
+<tr>
+<td><code>totalStrategies</code></td>
+<td><code>number</code></td>
+<td>Total strategies in array</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Event Emission</strong>:</p>
+<p>Two event channels emit progress updates:</p>
+<ol>
+<li>
+<p><strong><code>progressWalkerEmitter</code></strong> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:206-214</a>: Emits <code>ProgressWalkerContract</code> with progress percentage</p>
+<pre><code class="typescript"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">progressWalkerEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">frameName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies:</span><span class="hl-1"> </span><span class="hl-4">strategies</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">processedStrategies:</span><span class="hl-1"> </span><span class="hl-4">strategiesTested</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">progress:</span><span class="hl-1"> </span><span class="hl-4">strategiesTested</span><span class="hl-1"> / </span><span class="hl-4">strategies</span><span class="hl-1">.</span><span class="hl-4">length</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong><code>walkerEmitter</code></strong> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:226</a>: Emits full <code>WalkerContract</code> after each strategy</p>
+</li>
+<li>
+<p><strong><code>walkerCompleteSubject</code></strong> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:250</a>: Emits final results with best strategy and statistics</p>
+</li>
+</ol>
+<a id="walker-api" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker API<a href="#walker-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The public API provides four methods for walker execution and reporting, mirroring the Backtest API pattern.</p>
+<p><strong>Walker Utility Class Methods</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Return Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Walker.run()</code></td>
+<td><code>AsyncGenerator&lt;WalkerContract&gt;</code></td>
+<td>Execute walker and yield progress after each strategy</td>
+</tr>
+<tr>
+<td><code>Walker.background()</code></td>
+<td><code>() =&gt; void</code></td>
+<td>Execute walker without yielding results, return stop function</td>
+</tr>
+<tr>
+<td><code>Walker.getData()</code></td>
+<td><code>Promise&lt;WalkerStatistics&gt;</code></td>
+<td>Retrieve aggregated statistics for all strategies</td>
+</tr>
+<tr>
+<td><code>Walker.getReport()</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generate markdown report with strategy comparison table</td>
+</tr>
+<tr>
+<td><code>Walker.dump()</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Write report to filesystem</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Walker.run() Usage</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">progress</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;strategy-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Testing </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-6">}</span><span class="hl-2">: </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">metricValue</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Best so far: </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-6">}</span><span class="hl-2"> (</span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestMetric</span><span class="hl-6">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Progress: </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategiesTested</span><span class="hl-6">}</span><span class="hl-2">/</span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">totalStrategies</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The generator yields after each strategy completes, allowing real-time monitoring of the comparison process. The final yield contains the complete results with <code>bestStrategy</code> and <code>bestMetric</code> identified.</p>
+<p><strong>Walker.background() Usage</strong>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stopWalker</span><span class="hl-1"> = </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;strategy-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Walker runs in background consuming the generator</span><br/><span class="hl-5">// Call stopWalker() to terminate early if needed</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This method consumes the walker generator internally without exposing progress events. Useful when only callbacks or final results are needed.</p>
+<p><strong>Walker.getData() Usage</strong>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-comparison&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Strategies tested:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">strategiesCount</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best strategy:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">bestStrategy</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best metric value:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">bestMetric</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;All results:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">results</span><span class="hl-1">); </span><span class="hl-5">// Array of all strategy results</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Returns aggregated statistics including all strategy results ranked by metric value.</p>
+<p><strong>Walker.getReport() Usage</strong>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-comparison&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">markdown</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Generates a markdown table comparing all strategies with their metrics, ranked from best to worst.</p>
+<a id="integration-with-backtest-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Backtest System<a href="#integration-with-backtest-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/61_Walker_Mode_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Walker's Layered Integration with Backtest System</strong></p>
+<p>Walker Mode achieves strategy comparison by orchestrating multiple backtest executions through shared services:</p>
+<p><strong>Context Propagation</strong>:</p>
+<p>For each strategy iteration, walker updates the <code>MethodContextService</code> context <a href="">src/lib/services/logic/public/WalkerLogicPublicService.ts</a>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">,      </span><span class="hl-5">// Different for each iteration</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">,      </span><span class="hl-5">// Same for all strategies</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">          </span><span class="hl-5">// Same for all strategies</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Process backtest results</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This ensures:</p>
+<ul>
+<li>Each strategy gets a separate <code>ClientStrategy</code> instance via memoization keys</li>
+<li>All strategies use the same exchange and timeframe for fair comparison</li>
+<li>Event emissions are tagged with correct strategy name</li>
+</ul>
+<p><strong>Statistics Aggregation</strong>:</p>
+<p>After each backtest completes, walker retrieves statistics from <code>BacktestMarkdownService</code> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:165</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">this</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>BacktestMarkdownService</code> accumulates all signal events emitted by <code>signalBacktestEmitter</code> during the backtest execution, maintaining separate statistics for each strategy name.</p>
+<p><strong>Memoization and Isolation</strong>:</p>
+<p>The <code>StrategyConnectionService</code> uses a composite key <code>${symbol}-${strategyName}</code> to memoize <code>ClientStrategy</code> instances. This ensures:</p>
+<ul>
+<li>Each strategy gets its own isolated state</li>
+<li>Multiple walker runs for the same symbol don't interfere</li>
+<li>Strategy instances persist across multiple walker executions</li>
+</ul>
+<a id="cancellation-and-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cancellation and Error Handling<a href="#cancellation-and-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Walker execution can be interrupted via <code>walkerStopSubject</code> or handle strategy-level errors gracefully.</p>
+<p><strong>Early Termination</strong>:</p>
+<p>Walker listens to the <code>walkerStopSubject</code> stream for cancellation signals <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:96-104</a>:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">listenStop</span><span class="hl-1"> = </span><span class="hl-4">walkerStopSubject</span><br/><span class="hl-1">  .</span><span class="hl-0">filter</span><span class="hl-1">((</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">isOk</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">isOk</span><span class="hl-1"> = </span><span class="hl-4">isOk</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">symbol</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">isOk</span><span class="hl-1"> = </span><span class="hl-4">isOk</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1"> === </span><span class="hl-4">pendingStrategy</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">isOk</span><span class="hl-1">;</span><br/><span class="hl-1">  })</span><br/><span class="hl-1">  .</span><span class="hl-0">map</span><span class="hl-1">(() </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-7">CANCEL_SYMBOL</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">toPromise</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The walker races this promise against each backtest execution <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:127-130</a>:</p>
+<pre><code class="typescript"><span class="hl-4">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">.</span><span class="hl-0">race</span><span class="hl-1">([</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">resolveDocuments</span><span class="hl-1">(</span><span class="hl-4">iterator</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">listenStop</span><span class="hl-1">,</span><br/><span class="hl-1">]);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>If the stop signal fires, walker breaks out of the strategy loop immediately <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:149-157</a>.</p>
+<p><strong>Strategy-Level Error Recovery</strong>:</p>
+<p>If a strategy backtest throws an exception, walker:</p>
+<ol>
+<li>Logs the error via <code>LoggerService</code> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:132-140</a></li>
+<li>Emits the error to <code>errorEmitter</code> <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:141</a></li>
+<li>Invokes <code>onStrategyError</code> callback if provided <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:143-145</a></li>
+<li>Skips the failed strategy with <code>continue</code> statement <a href="">src/lib/services/logic/private/WalkerLogicPrivateService.ts:146</a></li>
+<li>Proceeds to the next strategy in the array</li>
+</ol>
+<p>This graceful degradation ensures that one failing strategy does not abort the entire walker comparison.</p>
+<a id="use-cases-and-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Use Cases and Patterns<a href="#use-cases-and-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>1. Parameter Optimization</strong>:</p>
+<p>Register multiple strategies with different parameter values and compare performance:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ema-cross-fast-10-20&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">context</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">emaStrategy</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">, </span><span class="hl-8">10</span><span class="hl-1">, </span><span class="hl-8">20</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ema-cross-medium-20-50&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">context</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">emaStrategy</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">, </span><span class="hl-8">20</span><span class="hl-1">, </span><span class="hl-8">50</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ema-cross-slow-50-200&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">context</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">emaStrategy</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">, </span><span class="hl-8">50</span><span class="hl-1">, </span><span class="hl-8">200</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ema-optimization&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;ema-cross-fast-10-20&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;ema-cross-medium-20-50&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;ema-cross-slow-50-200&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>2. Real-Time Monitoring</strong>:</p>
+<p>Track progress as each strategy completes:</p>
+<pre><code class="typescript"><span class="hl-0">listenWalker</span><span class="hl-1">((</span><span class="hl-4">progress</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategiesTested</span><span class="hl-6">}</span><span class="hl-2">/</span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">totalStrategies</span><span class="hl-6">}</span><span class="hl-2">] </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Metric: </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">metricValue</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Best: </span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-6">}</span><span class="hl-2"> (</span><span class="hl-6">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestMetric</span><span class="hl-6">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ema-optimization&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>3. Multi-Metric Analysis</strong>:</p>
+<p>Run walker multiple times with different metrics to get comprehensive comparison:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">metrics</span><span class="hl-1">: </span><span class="hl-10">WalkerMetric</span><span class="hl-1">[] = [</span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;winRate&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;totalPnl&quot;</span><span class="hl-1">];</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">metric</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">metrics</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">`analysis-</span><span class="hl-6">${</span><span class="hl-4">metric</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategies:</span><span class="hl-1"> </span><span class="hl-4">strategyList</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">metric</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">_</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">`analysis-</span><span class="hl-6">${</span><span class="hl-4">metric</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-backtest&quot;</span><br/><span class="hl-1">  })) {}</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">`analysis-</span><span class="hl-6">${</span><span class="hl-4">metric</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Best by </span><span class="hl-6">${</span><span class="hl-4">metric</span><span class="hl-6">}</span><span class="hl-2">: </span><span class="hl-6">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>4. AI-Driven Strategy Generation</strong>:</p>
+<p>Walker Mode integrates with the Optimizer system for LLM-generated strategy comparison. See <a href="design_87_ai-powered_strategy_optimization.html">AI-Powered Strategy Optimization</a> for details on the complete pipeline. The optimizer generates multiple strategy variants and uses walker to identify the best performer on test data.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#walker-mode"><span>Walker <wbr/>Mode</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><a href="#walker-schema-definition"><span>Walker <wbr/>Schema <wbr/>Definition</span></a></li><li><a href="#metric-selection-and-comparison"><span>Metric <wbr/>Selection and <wbr/>Comparison</span></a></li><li><a href="#walker-contract-and-progress-tracking"><span>Walker <wbr/>Contract and <wbr/>Progress <wbr/>Tracking</span></a></li><li><a href="#walker-api"><span>Walker API</span></a></li><li><a href="#integration-with-backtest-system"><span>Integration with <wbr/>Backtest <wbr/>System</span></a></li><li><a href="#cancellation-and-error-handling"><span>Cancellation and <wbr/>Error <wbr/>Handling</span></a></li><li><a href="#use-cases-and-patterns"><span>Use <wbr/>Cases and <wbr/>Patterns</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

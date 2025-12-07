@@ -1,0 +1,180 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/92_training_vs_testing_ranges | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_92_training_vs_testing_ranges.html">design/92_training_vs_testing_ranges</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="training-vs-testing-ranges" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Training vs Testing Ranges<a href="#training-vs-testing-ranges" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the <code>rangeTrain</code> and <code>rangeTest</code> configuration parameters in the Optimizer system, which implement walk-forward validation and temporal data splitting for AI-powered strategy generation. These parameters prevent overfitting by segregating historical data into training periods (where the LLM learns market patterns) and testing periods (where generated strategies are validated on unseen data).</p>
+<p>For information about the complete AI optimization pipeline, see <a href="design_87_ai-powered_strategy_optimization.html">AI-Powered Strategy Optimization</a>. For details about LLM integration and prompt engineering, see <a href="design_90_llm_integration.html">LLM Integration</a>. For strategy code generation, see <a href="design_91_strategy_code_generation.html">Strategy Code Generation</a>.</p>
+<hr>
+<a id="purpose-and-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Overview<a href="#purpose-and-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer system uses temporal data splitting to generate robust trading strategies through supervised learning. The <code>rangeTrain</code> array defines multiple historical date ranges that the LLM analyzes to identify market patterns, while <code>rangeTest</code> defines a separate chronologically-later period for out-of-sample validation. This approach mirrors the train-test split methodology in machine learning, adapted for time-series financial data where temporal ordering must be preserved.</p>
+<hr>
+<a id="configuration-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Structure<a href="#configuration-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="rangetrain-array" class="tsd-anchor"></a><h3 class="tsd-anchor-link">RangeTrain Array<a href="#rangetrain-array" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>rangeTrain</code> parameter is an array of date range objects, each representing a distinct training period. Each object contains:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>Human-readable description of the period</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Beginning of the training period (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>End of the training period (inclusive)</td>
+</tr>
+</tbody>
+</table>
+<p><img src="../media/92_Training_vs_Testing_Ranges_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="rangetest-object" class="tsd-anchor"></a><h3 class="tsd-anchor-link">RangeTest Object<a href="#rangetest-object" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>rangeTest</code> parameter is a single date range object with identical structure to each <code>rangeTrain</code> element. It defines the out-of-sample validation period:</p>
+<pre><code class="javascript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">TEST_RANGE</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;1 декабря 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This test range must chronologically follow all training ranges to prevent temporal leakage where future information influences strategy generation.</p>
+<hr>
+<a id="temporal-splitting-methodology" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Temporal Splitting Methodology<a href="#temporal-splitting-methodology" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="walk-forward-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walk-Forward Validation<a href="#walk-forward-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The Optimizer implements walk-forward validation where:</p>
+<ol>
+<li><strong>Multiple Training Windows</strong>: Each <code>rangeTrain</code> element represents a distinct market regime or trading day</li>
+<li><strong>Incremental Learning</strong>: The LLM receives separate prompts for each training period, accumulating diverse market conditions</li>
+<li><strong>Temporal Ordering</strong>: Training ranges precede the test range chronologically</li>
+<li><strong>No Look-Ahead</strong>: The test range contains data unseen during strategy generation</li>
+</ol>
+<p><img src="../media/92_Training_vs_Testing_Ranges_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="data-flow-through-training-and-testing" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Flow Through Training and Testing<a href="#data-flow-through-training-and-testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="training-phase-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Training Phase Execution<a href="#training-phase-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For each element in the <code>rangeTrain</code> array, the Optimizer performs:</p>
+<p><img src="../media/92_Training_vs_Testing_Ranges_2.svg" alt="Mermaid Diagram"></p>
+<p>Each training range generates one strategy recommendation through multi-timeframe analysis. The LLM receives 4 datasets per training range (1h, 30m, 15m, 1m candles), creating a comprehensive market view before producing strategy logic.</p>
+<hr>
+<a id="testing-phase-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testing Phase Execution<a href="#testing-phase-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>After code generation via <code>OptimizerTemplateService</code>, the generated strategies are backtested against <code>rangeTest</code>:</p>
+<p><img src="../media/92_Training_vs_Testing_Ranges_3.svg" alt="Mermaid Diagram"></p>
+<p>The Walker compares all generated strategies exclusively on the <code>rangeTest</code> period, ensuring performance metrics reflect out-of-sample results. Training frames are included in the generated code but not used during Walker execution.</p>
+<hr>
+<a id="overfitting-prevention" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overfitting Prevention<a href="#overfitting-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="temporal-data-segregation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Temporal Data Segregation<a href="#temporal-data-segregation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The separation of <code>rangeTrain</code> and <code>rangeTest</code> prevents several forms of overfitting:</p>
+<table>
+<thead>
+<tr>
+<th>Overfitting Type</th>
+<th>Prevention Mechanism</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Look-Ahead Bias</strong></td>
+<td>Test range chronologically follows all training ranges</td>
+</tr>
+<tr>
+<td><strong>Data Snooping</strong></td>
+<td>LLM never sees test period data during strategy generation</td>
+</tr>
+<tr>
+<td><strong>Regime Optimization</strong></td>
+<td>Multiple training days expose diverse market conditions</td>
+</tr>
+<tr>
+<td><strong>Strategy Specialization</strong></td>
+<td>Walker validates on unseen data, penalizing overfitted strategies</td>
+</tr>
+</tbody>
+</table>
+<p><img src="../media/92_Training_vs_Testing_Ranges_4.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="configuration-example" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Example<a href="#configuration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="complete-optimizer-setup" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Complete Optimizer Setup<a href="#complete-optimizer-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following demonstrates proper <code>rangeTrain</code> and <code>rangeTest</code> configuration:</p>
+<pre><code class="javascript"><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;btc-optimizer&quot;</span><span class="hl-1">,</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Training: 7 consecutive days</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTrain:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;24 ноября 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-24T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-24T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;25 ноября 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-25T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-25T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-5">// ... 5 more days</span><br/><span class="hl-1">  ],</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Testing: Next chronological day</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTest:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;1 декабря 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  },</span><br/><br/><span class="hl-1">  </span><span class="hl-4">source:</span><span class="hl-1"> </span><span class="hl-7">SOURCE_LIST</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getPrompt</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">text</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This configuration trains on November 24-30, 2025 and validates on December 1, 2025, ensuring temporal integrity.</p>
+<hr>
+<a id="integration-with-data-sources" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Data Sources<a href="#integration-with-data-sources" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="multi-timeframe-data-collection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Timeframe Data Collection<a href="#multi-timeframe-data-collection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each training range triggers data collection across all configured sources:</p>
+<p><img src="../media/92_Training_vs_Testing_Ranges_5.svg" alt="Mermaid Diagram"></p>
+<p>The <code>startDate</code> and <code>endDate</code> from each training range are passed directly to <code>source.fetch()</code> methods, ensuring data alignment with the temporal split.</p>
+<hr>
+<a id="best-practices" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="recommended-configurations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Recommended Configurations<a href="#recommended-configurations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Recommendation</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Number of Training Ranges</strong></td>
+<td>5-10 periods</td>
+<td>Captures diverse market conditions without excessive LLM calls</td>
+</tr>
+<tr>
+<td><strong>Range Duration</strong></td>
+<td>1-7 days</td>
+<td>Balances data volume with computational cost</td>
+</tr>
+<tr>
+<td><strong>Training-Test Gap</strong></td>
+<td>Consecutive periods</td>
+<td>Preserves temporal continuity without artificial gaps</td>
+</tr>
+<tr>
+<td><strong>Test Duration</strong></td>
+<td>Same as training ranges</td>
+<td>Ensures comparable statistical significance</td>
+</tr>
+<tr>
+<td><strong>Chronological Order</strong></td>
+<td>Strictly ascending</td>
+<td>Prevents temporal leakage</td>
+</tr>
+</tbody>
+</table>
+<a id="common-pitfalls" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Pitfalls<a href="#common-pitfalls" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Overlapping Ranges</strong>: Ensure <code>rangeTrain[i].endDate &lt; rangeTrain[i+1].startDate</code></li>
+<li><strong>Test Before Training</strong>: Verify <code>max(rangeTrain[i].endDate) &lt; rangeTest.startDate</code></li>
+<li><strong>Insufficient Training Data</strong>: Use at least 5 training ranges for robust learning</li>
+<li><strong>Test Period Too Long</strong>: Extended test ranges increase overfitting risk through multiple market regimes</li>
+</ol>
+<hr>
+<a id="relationship-to-code-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Relationship to Code Generation<a href="#relationship-to-code-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>rangeTrain</code> and <code>rangeTest</code> parameters directly influence the generated code structure. The <code>OptimizerTemplateService</code> creates:</p>
+<pre><code class="javascript"><span class="hl-5">// Generated by getFrameTemplate() for each rangeTrain element</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;24 ноября 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-24T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-11-24T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generated by getFrameTemplate() for rangeTest</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1 декабря 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generated by getWalkerTemplate() referencing rangeTest.note</span><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;strategy-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;strategy-1&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-2&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-3&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1 декабря 2025&quot;</span><span class="hl-1">, </span><span class="hl-5">// References rangeTest.note</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The Walker's <code>frameName</code> parameter links to <code>rangeTest.note</code>, ensuring backtesting occurs only on the validation period.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>rangeTrain</code> and <code>rangeTest</code> configuration implements walk-forward validation for AI-powered strategy generation:</p>
+<ul>
+<li><strong>rangeTrain</strong>: Array of chronologically-ordered date ranges for LLM training</li>
+<li><strong>rangeTest</strong>: Single chronologically-later date range for out-of-sample validation</li>
+<li><strong>Purpose</strong>: Prevent overfitting through temporal data segregation</li>
+<li><strong>Execution</strong>: Each training range generates one strategy via multi-timeframe LLM analysis</li>
+<li><strong>Validation</strong>: Generated strategies compete on the unseen test period</li>
+<li><strong>Integration</strong>: Walker compares strategies exclusively on <code>rangeTest</code> data</li>
+</ul>
+<p>This architecture ensures generated strategies demonstrate robust performance on future unseen data rather than memorizing historical patterns.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#training-vs-testing-ranges"><span>Training vs <wbr/>Testing <wbr/>Ranges</span></a><ul><li><a href="#purpose-and-overview"><span>Purpose and <wbr/>Overview</span></a></li><li><a href="#configuration-structure"><span>Configuration <wbr/>Structure</span></a></li><li><ul><li><a href="#rangetrain-array"><span>Range<wbr/>Train <wbr/>Array</span></a></li><li><a href="#rangetest-object"><span>Range<wbr/>Test <wbr/>Object</span></a></li></ul></li><li><a href="#temporal-splitting-methodology"><span>Temporal <wbr/>Splitting <wbr/>Methodology</span></a></li><li><ul><li><a href="#walk-forward-validation"><span>Walk-<wbr/>Forward <wbr/>Validation</span></a></li></ul></li><li><a href="#data-flow-through-training-and-testing"><span>Data <wbr/>Flow <wbr/>Through <wbr/>Training and <wbr/>Testing</span></a></li><li><ul><li><a href="#training-phase-execution"><span>Training <wbr/>Phase <wbr/>Execution</span></a></li><li><a href="#testing-phase-execution"><span>Testing <wbr/>Phase <wbr/>Execution</span></a></li></ul></li><li><a href="#overfitting-prevention"><span>Overfitting <wbr/>Prevention</span></a></li><li><ul><li><a href="#temporal-data-segregation"><span>Temporal <wbr/>Data <wbr/>Segregation</span></a></li></ul></li><li><a href="#configuration-example"><span>Configuration <wbr/>Example</span></a></li><li><ul><li><a href="#complete-optimizer-setup"><span>Complete <wbr/>Optimizer <wbr/>Setup</span></a></li></ul></li><li><a href="#integration-with-data-sources"><span>Integration with <wbr/>Data <wbr/>Sources</span></a></li><li><ul><li><a href="#multi-timeframe-data-collection"><span>Multi-<wbr/>Timeframe <wbr/>Data <wbr/>Collection</span></a></li></ul></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#recommended-configurations"><span>Recommended <wbr/>Configurations</span></a></li><li><a href="#common-pitfalls"><span>Common <wbr/>Pitfalls</span></a></li></ul></li><li><a href="#relationship-to-code-generation"><span>Relationship to <wbr/>Code <wbr/>Generation</span></a></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

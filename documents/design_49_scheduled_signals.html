@@ -1,0 +1,315 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/49_scheduled_signals | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_49_scheduled_signals.html">design/49_scheduled_signals</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="scheduled-signals" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Scheduled Signals<a href="#scheduled-signals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose<a href="#purpose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the <strong>scheduled signal</strong> feature, which enables delayed entry at specific price levels. Scheduled signals implement limit order behavior by waiting for the market price to reach a target entry point (<code>priceOpen</code>) before activating the position. This differs from immediate signals that open at the current market price.</p>
+<p>For general signal lifecycle concepts, see <a href="design_46_signal_lifecycle.html">Signal Lifecycle Overview</a>. For signal validation rules, see <a href="design_48_signal_generation_and_validation.html">Signal Generation and Validation</a>. For persistence behavior in live mode, see <a href="design_50_signal_persistence.html">Signal Persistence</a>.</p>
+<hr>
+<a id="scheduled-vs-immediate-signals" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled vs Immediate Signals<a href="#scheduled-vs-immediate-signals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signals are created with two different execution modes based on whether <code>priceOpen</code> is specified in the <code>ISignalDto</code> returned by <code>getSignal()</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Signal Type</th>
+<th><code>priceOpen</code> Field</th>
+<th>Opens At</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Immediate</strong></td>
+<td><code>undefined</code> or equals current price</td>
+<td>Current market price (VWAP)</td>
+<td>Execute immediately at market</td>
+</tr>
+<tr>
+<td><strong>Scheduled</strong></td>
+<td>Specified and differs from current price</td>
+<td>Specified <code>priceOpen</code> price</td>
+<td>Wait for better entry price (limit order)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="signal-creation-with-priceopen" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Creation with priceOpen<a href="#signal-creation-with-priceopen" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When <code>getSignal()</code> returns a signal DTO with <code>priceOpen</code> specified, <code>ClientStrategy</code> determines whether to schedule or activate immediately based on current market conditions:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">ISignalDto</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">priceOpen</span><span class="hl-1">?: </span><span class="hl-10">number</span><span class="hl-1">;  </span><span class="hl-5">// If provided, signal becomes scheduled</span><br/><span class="hl-1">  </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">priceStopLoss</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="immediate-activation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Immediate Activation Logic<a href="#immediate-activation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework checks if the specified <code>priceOpen</code> has already been reached by the current price:</p>
+<ul>
+<li><strong>LONG</strong>: If <code>currentPrice &lt;= priceOpen</code>, activate immediately (price already dropped to target)</li>
+<li><strong>SHORT</strong>: If <code>currentPrice &gt;= priceOpen</code>, activate immediately (price already rose to target)</li>
+</ul>
+<p>If activation conditions are met, the signal skips the scheduled phase and opens directly as a regular <code>ISignalRow</code> with <code>_isScheduled: false</code>.</p>
+<hr>
+<a id="scheduled-signal-state-machine" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled Signal State Machine<a href="#scheduled-signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/49_Scheduled_Signals_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Scheduled Signal Flow:</strong></p>
+<ol>
+<li><strong>Creation</strong>: Signal created with <code>_isScheduled: true</code>, written to <code>PersistScheduleAdapter</code></li>
+<li><strong>Monitoring</strong>: <code>tick()</code> checks price activation and cancellation conditions every 61 seconds</li>
+<li><strong>Activation</strong>: When price reaches <code>priceOpen</code> (and SL not hit), performs risk re-check</li>
+<li><strong>Cancellation</strong>: Signal cancelled if timeout (120min), SL hit, or risk check fails at activation</li>
+</ol>
+<hr>
+<a id="price-based-activation-conditions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Price-Based Activation Conditions<a href="#price-based-activation-conditions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The activation check compares current VWAP price against <code>priceOpen</code> and <code>priceStopLoss</code> to determine whether to activate or cancel:</p>
+<p><img src="../media/49_Scheduled_Signals_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Critical Priority Order (Pre-Activation Cancellation):</strong></p>
+<p>StopLoss checks occur <strong>before</strong> <code>priceOpen</code> checks. This prevents activating positions that would immediately close at a loss:</p>
+<ul>
+<li><strong>LONG</strong>: If <code>currentPrice &lt;= priceStopLoss</code>, cancel (don't check if <code>&lt;= priceOpen</code>)</li>
+<li><strong>SHORT</strong>: If <code>currentPrice &gt;= priceStopLoss</code>, cancel (don't check if <code>&gt;= priceOpen</code>)</li>
+</ul>
+<p>This logic ensures scheduled signals only activate when market conditions are favorable.</p>
+<hr>
+<a id="pre-activation-cancellation-mechanisms" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Pre-Activation Cancellation Mechanisms<a href="#pre-activation-cancellation-mechanisms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Scheduled signals can be cancelled <strong>before</strong> opening a position through three mechanisms:</p>
+<a id="1-timeout-cancellation-cc_schedule_await_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Timeout Cancellation (CC_SCHEDULE_AWAIT_MINUTES)<a href="#1-timeout-cancellation-cc_schedule_await_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals expire if <code>priceOpen</code> is not reached within the configured timeout period:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-7">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">; </span><span class="hl-5">// Default: 120 min</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel signal - timeout expired</span><br/><span class="hl-1">  </span><span class="hl-5">// Return IStrategyTickResultCancelled</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Default timeout: <strong>120 minutes</strong> (2 hours)</p>
+<a id="2-stoploss-hit-before-activation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. StopLoss Hit Before Activation<a href="#2-stoploss-hit-before-activation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If market price moves past <code>priceStopLoss</code> before reaching <code>priceOpen</code>, the scheduled signal is cancelled to prevent opening a losing position:</p>
+<ul>
+<li><strong>LONG</strong>: <code>currentPrice &lt;= priceStopLoss</code> → cancel (price dropped too far)</li>
+<li><strong>SHORT</strong>: <code>currentPrice &gt;= priceStopLoss</code> → cancel (price rose too far)</li>
+</ul>
+<p>This implements pre-emptive risk management by detecting when market conditions have deteriorated.</p>
+<a id="3-risk-check-failure-at-activation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Risk Check Failure at Activation<a href="#3-risk-check-failure-at-activation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When price reaches <code>priceOpen</code>, the framework performs a <strong>second</strong> risk check (<code>risk.checkSignal()</code>) at activation time. If risk limits have changed (e.g., other strategies opened positions), activation is rejected:</p>
+<pre><code class="typescript"><span class="hl-5">// Risk check performed twice:</span><br/><span class="hl-5">// 1. At signal creation (before scheduling)</span><br/><span class="hl-5">// 2. At activation time (after price reaches priceOpen)</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">not</span><span class="hl-1">(</span><span class="hl-4">risk</span><span class="hl-1">.</span><span class="hl-0">checkSignal</span><span class="hl-1">({ ... }))) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel signal - risk limits violated</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">setScheduledSignal</span><span class="hl-1">(</span><span class="hl-6">null</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Cancellation Results:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Cancellation Type</th>
+<th>Return Type</th>
+<th>closeTimestamp</th>
+<th>Callbacks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Timeout</td>
+<td><code>IStrategyTickResultCancelled</code></td>
+<td>Current time</td>
+<td><code>onCancel()</code></td>
+</tr>
+<tr>
+<td>StopLoss Hit</td>
+<td><code>IStrategyTickResultIdle</code></td>
+<td>Not set</td>
+<td>None (immediate return to idle)</td>
+</tr>
+<tr>
+<td>Risk Rejected</td>
+<td>No result (returns <code>null</code>)</td>
+<td>N/A</td>
+<td>None (silently cancelled)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="risk-re-validation-at-activation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Re-validation at Activation<a href="#risk-re-validation-at-activation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Scheduled signals implement <strong>two-phase risk validation</strong> to ensure risk limits are still valid when the position actually opens.</p>
+<p><strong>Why Two Checks Are Necessary:</strong></p>
+<ol>
+<li><strong>At Creation</strong>: Validates signal can be scheduled without violating current risk limits</li>
+<li><strong>At Activation</strong>: Re-validates that risk limits are still satisfied after time has passed</li>
+</ol>
+<p>Between creation and activation, portfolio state may change:</p>
+<ul>
+<li>Other strategies may have opened positions (increasing active position count)</li>
+<li>Risk limits may have been dynamically adjusted</li>
+<li>Correlation risks may have increased</li>
+</ul>
+<p>The second check prevents opening positions that would violate updated risk constraints.</p>
+<hr>
+<a id="timing-behavior-scheduledat-vs-pendingat" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timing Behavior: scheduledAt vs pendingAt<a href="#timing-behavior-scheduledat-vs-pendingat" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Scheduled signals track two distinct timestamps that differ in meaning and calculation:</p>
+<table>
+<thead>
+<tr>
+<th>Timestamp Field</th>
+<th>Set At</th>
+<th>Meaning</th>
+<th>Used For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduledAt</code></td>
+<td>Signal creation</td>
+<td>When signal was first generated by <code>getSignal()</code></td>
+<td>Timeout calculation (<code>CC_SCHEDULE_AWAIT_MINUTES</code>)</td>
+</tr>
+<tr>
+<td><code>pendingAt</code></td>
+<td>Activation</td>
+<td>When position actually opened at <code>priceOpen</code></td>
+<td>Position duration calculation (<code>minuteEstimatedTime</code>)</td>
+</tr>
+</tbody>
+</table>
+<a id="initial-state-scheduled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Initial State (Scheduled)<a href="#initial-state-scheduled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">scheduledSignalRow</span><span class="hl-1">: </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-0">randomString</span><span class="hl-1">(),</span><br/><span class="hl-1">  </span><span class="hl-4">scheduledAt:</span><span class="hl-1"> </span><span class="hl-4">currentTime</span><span class="hl-1">,      </span><span class="hl-5">// Signal creation time</span><br/><span class="hl-1">  </span><span class="hl-4">pendingAt:</span><span class="hl-1"> </span><span class="hl-4">currentTime</span><span class="hl-1">,         </span><span class="hl-5">// Initially same as scheduledAt</span><br/><span class="hl-1">  </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="activation-state-converted-to-isignalrow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Activation State (Converted to ISignalRow)<a href="#activation-state-converted-to-isignalrow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">activatedSignal</span><span class="hl-1">: </span><span class="hl-10">ISignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">scheduled</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">pendingAt:</span><span class="hl-1"> </span><span class="hl-4">activationTime</span><span class="hl-1">,  </span><span class="hl-5">// UPDATED to actual activation time</span><br/><span class="hl-1">  </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-6">false</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Critical Distinction:</strong></p>
+<ul>
+<li><strong>Timeout countdown</strong> uses <code>scheduledAt</code>: <code>elapsedTime = currentTime - signal.scheduledAt</code></li>
+<li><strong>Position duration</strong> uses <code>pendingAt</code>: <code>elapsedTime = currentTime - signal.pendingAt</code></li>
+</ul>
+<p>This ensures that:</p>
+<ol>
+<li>Scheduled signals timeout after 120 minutes from creation (not activation)</li>
+<li>Active positions timeout after <code>minuteEstimatedTime</code> from activation (not creation)</li>
+</ol>
+<p><strong>Example Timeline:</strong></p>
+<pre><code><span class="hl-7">T</span><span class="hl-1">=0</span><span class="hl-12">min</span><span class="hl-1">:   </span><span class="hl-0">getSignal</span><span class="hl-1">() </span><span class="hl-4">creates</span><span class="hl-1"> </span><span class="hl-4">scheduled</span><span class="hl-1"> </span><span class="hl-4">signal</span><br/><span class="hl-1">          </span><span class="hl-4">scheduledAt</span><span class="hl-1"> = </span><span class="hl-8">0</span><span class="hl-1">, </span><span class="hl-4">pendingAt</span><span class="hl-1"> = </span><span class="hl-8">0</span><br/><span class="hl-1">          </span><br/><span class="hl-7">T</span><span class="hl-1">=30</span><span class="hl-12">min</span><span class="hl-1">:  </span><span class="hl-4">Price</span><span class="hl-1"> </span><span class="hl-4">monitoring</span><span class="hl-1"> </span><span class="hl-4">continues</span><br/><span class="hl-1">          </span><span class="hl-4">Timeout</span><span class="hl-1"> </span><span class="hl-12">check</span><span class="hl-1">: </span><span class="hl-8">30</span><span class="hl-1"> &lt; </span><span class="hl-8">120</span><span class="hl-1"> (</span><span class="hl-4">continue</span><span class="hl-1">)</span><br/><span class="hl-1">          </span><br/><span class="hl-7">T</span><span class="hl-1">=45</span><span class="hl-12">min</span><span class="hl-1">:  </span><span class="hl-4">Price</span><span class="hl-1"> </span><span class="hl-4">reaches</span><span class="hl-1"> </span><span class="hl-4">priceOpen</span><span class="hl-1">, </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-4">activates</span><br/><span class="hl-1">          </span><span class="hl-4">scheduledAt</span><span class="hl-1"> = </span><span class="hl-8">0</span><span class="hl-1"> (</span><span class="hl-4">unchanged</span><span class="hl-1">)</span><br/><span class="hl-1">          </span><span class="hl-4">pendingAt</span><span class="hl-1"> = </span><span class="hl-8">45</span><span class="hl-1"> (</span><span class="hl-7">UPDATED</span><span class="hl-1">)</span><br/><span class="hl-1">          </span><br/><span class="hl-7">T</span><span class="hl-1">=105</span><span class="hl-12">min</span><span class="hl-1">: </span><span class="hl-4">Position</span><span class="hl-1"> </span><span class="hl-4">monitoring</span><br/><span class="hl-1">          </span><span class="hl-4">Signal</span><span class="hl-1"> </span><span class="hl-4">timeout</span><span class="hl-1"> </span><span class="hl-12">check</span><span class="hl-1">: </span><span class="hl-8">105</span><span class="hl-1"> - </span><span class="hl-8">45</span><span class="hl-1"> = 60</span><span class="hl-0">min</span><span class="hl-1"> (</span><span class="hl-4">continue</span><span class="hl-1"> </span><span class="hl-4">if</span><span class="hl-1"> </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1">=</span><span class="hl-8">120</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<hr>
+<a id="scheduled-signal-lifecycle-in-backtest-vs-live" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled Signal Lifecycle in Backtest vs Live<a href="#scheduled-signal-lifecycle-in-backtest-vs-live" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-mode-behavior" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode Behavior<a href="#backtest-mode-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In backtest mode, scheduled signals are processed through the <code>backtest()</code> method which iterates through historical candles:</p>
+<p><img src="../media/49_Scheduled_Signals_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Differences from Live Mode:</strong></p>
+<ul>
+<li>No actual waiting time - processes candles sequentially</li>
+<li>No risk re-check at activation (backtest assumes static conditions)</li>
+<li>Scheduled signals resolve to either <code>cancelled</code> or <code>closed</code> (never timeout in practice due to frame duration)</li>
+<li>Activation timestamp is precise: <code>candle.timestamp + 60000</code> (next minute after price reached)</li>
+</ul>
+<a id="live-mode-behavior" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode Behavior<a href="#live-mode-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode, scheduled signals are persisted and monitored asynchronously:</p>
+<ol>
+<li><strong>Persistence</strong>: Written to <code>PersistScheduleAdapter</code> immediately after creation</li>
+<li><strong>Monitoring</strong>: <code>tick()</code> called every 61 seconds (<code>TICK_TTL</code>) checks activation/cancellation</li>
+<li><strong>Timeout</strong>: Enforced strictly at 120 minutes from <code>scheduledAt</code></li>
+<li><strong>Risk Re-check</strong>: Performed at activation to validate current portfolio state</li>
+<li><strong>Recovery</strong>: Restored from disk after crash via <code>waitForInit()</code></li>
+</ol>
+<hr>
+<a id="configuration-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Parameters<a href="#configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cc_schedule_await_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_SCHEDULE_AWAIT_MINUTES<a href="#cc_schedule_await_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Maximum time to wait for scheduled signal activation before timeout cancellation.</p>
+<pre><code class="typescript"><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">  </span><span class="hl-5">// Default: 120 minutes</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Configuration Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-8">90</span><span class="hl-1">  </span><span class="hl-5">// Reduce timeout to 90 minutes</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Considerations:</strong></p>
+<ul>
+<li><strong>Shorter timeout</strong> (e.g., 30-60 min): Reduces exposure to stale signals, faster capital recycling</li>
+<li><strong>Longer timeout</strong> (e.g., 180-240 min): Allows more time for price to reach target, fewer cancelled signals</li>
+<li><strong>Risk tradeoff</strong>: Longer timeouts tie up risk limits for inactive scheduled signals</li>
+</ul>
+<p><strong>Timeout Calculation:</strong></p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">;</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-7">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1000</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel scheduled signal</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="scheduled-signal-callbacks" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled Signal Callbacks<a href="#scheduled-signal-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="onschedule" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSchedule<a href="#onschedule" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Called when scheduled signal is created (before activation):</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IStrategyCallbacks</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">onSchedule</span><span class="hl-1">?: (</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-10">boolean</span><br/><span class="hl-1">  ) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;limit-order-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> ({</span><br/><span class="hl-1">    </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">40000</span><span class="hl-1">,  </span><span class="hl-5">// Wait for price to drop to 40k</span><br/><span class="hl-1">    </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">39000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><br/><span class="hl-1">  }),</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onSchedule</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Scheduled LONG at </span><span class="hl-6">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">, current: </span><span class="hl-6">${</span><span class="hl-4">currentPrice</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Waiting for price to drop by </span><span class="hl-6">${</span><span class="hl-4">currentPrice</span><span class="hl-9"> </span><span class="hl-1">-</span><span class="hl-9"> </span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="oncancel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onCancel<a href="#oncancel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Called when scheduled signal is cancelled without opening:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IStrategyCallbacks</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">onCancel</span><span class="hl-1">?: (</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-10">boolean</span><br/><span class="hl-1">  ) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Cancellation Scenarios:</strong></p>
+<ul>
+<li>Timeout: <code>elapsedTime &gt;= CC_SCHEDULE_AWAIT_MINUTES</code></li>
+<li>Pre-activation SL hit: Price moved past <code>priceStopLoss</code> before reaching <code>priceOpen</code></li>
+</ul>
+<p><strong>Example Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-12">callbacks</span><span class="hl-1">: {</span><br/><span class="hl-1">  </span><span class="hl-12">onCancel</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">elapsed</span><span class="hl-1"> = (</span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">) / </span><span class="hl-8">60000</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Scheduled signal cancelled after </span><span class="hl-6">${</span><span class="hl-4">elapsed</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-8">1</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2"> minutes`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Reason: </span><span class="hl-6">${</span><span class="hl-4">elapsed</span><span class="hl-9"> </span><span class="hl-1">&gt;=</span><span class="hl-9"> </span><span class="hl-8">120</span><span class="hl-9"> </span><span class="hl-1">?</span><span class="hl-9"> </span><span class="hl-2">&#39;timeout&#39;</span><span class="hl-9"> </span><span class="hl-1">:</span><span class="hl-9"> </span><span class="hl-2">&#39;SL hit before activation&#39;</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="practical-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Practical Examples<a href="#practical-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="example-1-long-limit-order-buy-on-dip" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 1: LONG Limit Order (Buy on Dip)<a href="#example-1-long-limit-order-buy-on-dip" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Wait for price to drop to $40,000 before opening a LONG position:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;buy-dip-long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentPrice</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt; </span><span class="hl-8">42000</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-5">// Current price too high, wait for dip</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">40000</span><span class="hl-1">,        </span><span class="hl-5">// Open when price drops to 40k</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">42000</span><span class="hl-1">,  </span><span class="hl-5">// Target 5% profit</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">38000</span><span class="hl-1">,    </span><span class="hl-5">// Limit loss to 5%</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">120</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Signal created as scheduled when <code>currentPrice &gt; 40000</code></li>
+<li>Activates when price drops to <code>&lt;= 40000</code></li>
+<li>Cancelled if price drops below <code>38000</code> before reaching <code>40000</code> (pre-activation SL)</li>
+<li>Cancelled if 120 minutes pass without activation (timeout)</li>
+</ul>
+<a id="example-2-short-limit-order-sell-on-pump" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 2: SHORT Limit Order (Sell on Pump)<a href="#example-2-short-limit-order-sell-on-pump" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Wait for price to rise to $44,000 before opening a SHORT position:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;sell-pump-short&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentPrice</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt; </span><span class="hl-8">42000</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-5">// Current price too low, wait for pump</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">44000</span><span class="hl-1">,        </span><span class="hl-5">// Open when price rises to 44k</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">42000</span><span class="hl-1">,  </span><span class="hl-5">// Target 4.5% profit</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">46000</span><span class="hl-1">,    </span><span class="hl-5">// Limit loss to 4.5%</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">120</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Signal created as scheduled when <code>currentPrice &lt; 44000</code></li>
+<li>Activates when price rises to <code>&gt;= 44000</code></li>
+<li>Cancelled if price rises above <code>46000</code> before reaching <code>44000</code> (pre-activation SL)</li>
+<li>Cancelled if 120 minutes pass without activation (timeout)</li>
+</ul>
+<a id="example-3-immediate-activation-with-priceopen" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 3: Immediate Activation with priceOpen<a href="#example-3-immediate-activation-with-priceopen" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If <code>priceOpen</code> is already reached at signal creation, the framework opens immediately:</p>
+<pre><code class="typescript"><span class="hl-12">getSignal</span><span class="hl-1">: </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">currentPrice</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">); </span><span class="hl-5">// 39000</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">40000</span><span class="hl-1">,  </span><span class="hl-5">// currentPrice (39000) &lt;= priceOpen (40000)</span><br/><span class="hl-1">    </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">38000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><br/><span class="hl-1">  };</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Result:</strong> Signal opens <strong>immediately</strong> as <code>ISignalRow</code> (not scheduled) because <code>currentPrice &lt;= priceOpen</code> for LONG. The scheduled phase is skipped entirely.</p>
+<hr>
+<a id="edge-cases-and-safety-mechanisms" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Edge Cases and Safety Mechanisms<a href="#edge-cases-and-safety-mechanisms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="1-immediate-tpsl-after-activation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Immediate TP/SL After Activation<a href="#1-immediate-tpsl-after-activation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If price reaches both <code>priceOpen</code> and TP/SL on the same candle (extreme volatility), the signal activates and closes immediately:</p>
+<pre><code class="typescript"><span class="hl-5">// Candle: low=40500 (activates priceOpen=41000), high=43500 (hits TP=43000)</span><br/><span class="hl-5">// Result: Signal activates at 41000, closes at TP=43000 on same candle</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The framework ensures <code>pendingAt</code> is updated correctly to distinguish between scheduled time and activation time.</p>
+<a id="2-pre-activation-sl-priority" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Pre-Activation SL Priority<a href="#2-pre-activation-sl-priority" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>StopLoss checks occur <strong>before</strong> <code>priceOpen</code> checks to prevent activating losing positions:</p>
+<pre><code class="typescript"><span class="hl-5">// LONG: priceOpen=41000, SL=40000</span><br/><span class="hl-5">// If price drops from 43000 to 39000 (skipping 41000):</span><br/><span class="hl-5">// - Check SL first: 39000 &lt;= 40000 → CANCEL</span><br/><span class="hl-5">// - Never checks if price reached priceOpen</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This prevents the following bad scenario:</p>
+<ul>
+<li>Activate at <code>priceOpen=41000</code></li>
+<li>Immediately close at <code>SL=40000</code></li>
+<li>Lock in guaranteed loss</li>
+</ul>
+<a id="3-risk-check-failure-at-activation-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Risk Check Failure at Activation<a href="#3-risk-check-failure-at-activation-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Even if price reaches <code>priceOpen</code>, activation can still be rejected if risk limits changed:</p>
+<pre><code class="typescript"><span class="hl-5">// T=0: Signal scheduled, risk check passes (0 active positions)</span><br/><span class="hl-5">// T=30: Other strategy opens 5 positions</span><br/><span class="hl-5">// T=45: Price reaches priceOpen</span><br/><span class="hl-5">// Risk check: 5 active positions &gt; maxConcurrentPositions → REJECT</span><br/><span class="hl-5">// Result: Scheduled signal cancelled, never opens</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="4-crash-recovery-in-live-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. Crash Recovery in Live Mode<a href="#4-crash-recovery-in-live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals persist across process restarts:</p>
+<pre><code class="typescript"><span class="hl-5">// Before crash: _scheduledSignal written to PersistScheduleAdapter</span><br/><span class="hl-5">// After restart: waitForInit() restores _scheduledSignal from disk</span><br/><span class="hl-5">// Monitoring resumes: tick() continues checking activation/cancellation</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>onSchedule</code> callback is re-triggered on restoration to notify external systems.</p>
+<hr>
+<a id="performance-characteristics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Characteristics<a href="#performance-characteristics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode<a href="#backtest-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Time Complexity</strong>: O(n) where n = number of candles from signal creation to activation/cancellation</li>
+<li><strong>Memory</strong>: One scheduled signal per strategy (memoized in <code>ClientStrategy._scheduledSignal</code>)</li>
+<li><strong>Overhead</strong>: Minimal - sequential candle iteration with early exit on activation</li>
+</ul>
+<a id="live-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode<a href="#live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Persistence I/O</strong>: One write on creation, one delete on activation/cancellation</li>
+<li><strong>Polling Frequency</strong>: Every 61 seconds (<code>TICK_TTL</code>)</li>
+<li><strong>Timeout Check Cost</strong>: Simple timestamp comparison (&lt; 1ms)</li>
+<li><strong>Risk Re-check</strong>: Full portfolio scan at activation (depends on risk implementation)</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#scheduled-signals"><span>Scheduled <wbr/>Signals</span></a><ul><li><a href="#purpose"><span>Purpose</span></a></li><li><a href="#scheduled-vs-immediate-signals"><span>Scheduled vs <wbr/>Immediate <wbr/>Signals</span></a></li><li><a href="#signal-creation-with-priceopen"><span>Signal <wbr/>Creation with price<wbr/>Open</span></a></li><li><ul><li><a href="#immediate-activation-logic"><span>Immediate <wbr/>Activation <wbr/>Logic</span></a></li></ul></li><li><a href="#scheduled-signal-state-machine"><span>Scheduled <wbr/>Signal <wbr/>State <wbr/>Machine</span></a></li><li><a href="#price-based-activation-conditions"><span>Price-<wbr/>Based <wbr/>Activation <wbr/>Conditions</span></a></li><li><a href="#pre-activation-cancellation-mechanisms"><span>Pre-<wbr/>Activation <wbr/>Cancellation <wbr/>Mechanisms</span></a></li><li><ul><li><a href="#1-timeout-cancellation-cc_schedule_await_minutes"><span>1. <wbr/>Timeout <wbr/>Cancellation (CC_<wbr/>SCHEDULE_<wbr/>AWAIT_<wbr/>MINUTES)</span></a></li><li><a href="#2-stoploss-hit-before-activation"><span>2. <wbr/>Stop<wbr/>Loss <wbr/>Hit <wbr/>Before <wbr/>Activation</span></a></li><li><a href="#3-risk-check-failure-at-activation"><span>3. <wbr/>Risk <wbr/>Check <wbr/>Failure at <wbr/>Activation</span></a></li></ul></li><li><a href="#risk-re-validation-at-activation"><span>Risk <wbr/>Re-<wbr/>validation at <wbr/>Activation</span></a></li><li><a href="#timing-behavior-scheduledat-vs-pendingat"><span>Timing <wbr/>Behavior: scheduled<wbr/>At vs pending<wbr/>At</span></a></li><li><ul><li><a href="#initial-state-scheduled"><span>Initial <wbr/>State (<wbr/>Scheduled)</span></a></li><li><a href="#activation-state-converted-to-isignalrow"><span>Activation <wbr/>State (<wbr/>Converted to ISignal<wbr/>Row)</span></a></li></ul></li><li><a href="#scheduled-signal-lifecycle-in-backtest-vs-live"><span>Scheduled <wbr/>Signal <wbr/>Lifecycle in <wbr/>Backtest vs <wbr/>Live</span></a></li><li><ul><li><a href="#backtest-mode-behavior"><span>Backtest <wbr/>Mode <wbr/>Behavior</span></a></li><li><a href="#live-mode-behavior"><span>Live <wbr/>Mode <wbr/>Behavior</span></a></li></ul></li><li><a href="#configuration-parameters"><span>Configuration <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_schedule_await_minutes"><span>CC_<wbr/>SCHEDULE_<wbr/>AWAIT_<wbr/>MINUTES</span></a></li></ul></li><li><a href="#scheduled-signal-callbacks"><span>Scheduled <wbr/>Signal <wbr/>Callbacks</span></a></li><li><ul><li><a href="#onschedule"><span>on<wbr/>Schedule</span></a></li><li><a href="#oncancel"><span>on<wbr/>Cancel</span></a></li></ul></li><li><a href="#practical-examples"><span>Practical <wbr/>Examples</span></a></li><li><ul><li><a href="#example-1-long-limit-order-buy-on-dip"><span>Example 1: LONG <wbr/>Limit <wbr/>Order (<wbr/>Buy on <wbr/>Dip)</span></a></li><li><a href="#example-2-short-limit-order-sell-on-pump"><span>Example 2: SHORT <wbr/>Limit <wbr/>Order (<wbr/>Sell on <wbr/>Pump)</span></a></li><li><a href="#example-3-immediate-activation-with-priceopen"><span>Example 3: <wbr/>Immediate <wbr/>Activation with price<wbr/>Open</span></a></li></ul></li><li><a href="#edge-cases-and-safety-mechanisms"><span>Edge <wbr/>Cases and <wbr/>Safety <wbr/>Mechanisms</span></a></li><li><ul><li><a href="#1-immediate-tpsl-after-activation"><span>1. <wbr/>Immediate TP/SL <wbr/>After <wbr/>Activation</span></a></li><li><a href="#2-pre-activation-sl-priority"><span>2. <wbr/>Pre-<wbr/>Activation SL <wbr/>Priority</span></a></li><li><a href="#3-risk-check-failure-at-activation-1"><span>3. <wbr/>Risk <wbr/>Check <wbr/>Failure at <wbr/>Activation</span></a></li><li><a href="#4-crash-recovery-in-live-mode"><span>4. <wbr/>Crash <wbr/>Recovery in <wbr/>Live <wbr/>Mode</span></a></li></ul></li><li><a href="#performance-characteristics"><span>Performance <wbr/>Characteristics</span></a></li><li><ul><li><a href="#backtest-mode"><span>Backtest <wbr/>Mode</span></a></li><li><a href="#live-mode"><span>Live <wbr/>Mode</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

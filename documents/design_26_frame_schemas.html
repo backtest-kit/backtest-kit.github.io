@@ -1,10 +1,10 @@
-<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/26_frame_schemas | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_26_frame_schemas.html">design/26_frame_schemas</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="frame-schemas" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Frame Schemas<a href="#frame-schemas" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Frame schemas define backtesting periods by specifying start dates, end dates, and intervals for timestamp generation. They control the temporal boundaries and granularity of historical simulation, enabling strategies to iterate through specific time windows with configurable step sizes.</p>
-<p>For information about backtesting execution flow using frames, see <a href="design_51_backtest_execution_flow.html">Backtest Execution Flow</a>. For frame timeframe generation implementation details, see <a href="design_52_timeframe_generation.html">Timeframe Generation</a>.</p>
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/26_frame_schemas | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_26_frame_schemas.html">design/26_frame_schemas</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="frame-schemas" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Frame Schemas<a href="#frame-schemas" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Frame schemas define backtesting time periods for historical simulation. Registered via <code>addFrame()</code>, each schema specifies the temporal boundaries (<code>startDate</code>, <code>endDate</code>) and iteration granularity (<code>interval</code>) for generating timestamp arrays that drive backtest execution.</p>
+<p>Related pages: <a href="design_53_backtest_execution_flow.html">Backtest Execution Flow (9.1)</a>, <a href="design_54_timeframe_generation.html">Timeframe Generation (9.2)</a>, <a href="design_08_component_registration.html">Component Registration (2.3)</a></p>
 <hr>
-<a id="schema-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Structure<a href="#schema-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Frame schemas are registered via the <code>addFrame()</code> function and conform to the <code>IFrameSchema</code> interface. Each schema defines a named backtesting period with temporal boundaries and iteration granularity.</p>
-<p><strong>Core Schema Definition</strong></p>
+<a id="iframeschema-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IFrameSchema Interface<a href="#iframeschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>IFrameSchema</code> interface defines the contract for frame registration. All frames must provide a unique name, temporal boundaries, and an interval for timestamp generation.</p>
+<p><strong>Interface Structure</strong></p>
 <p><img src="../media/26_Frame_Schemas_0.svg" alt="Mermaid Diagram"></p>
-<p><strong>Schema Fields</strong></p>
+<p><strong>Field Definitions</strong></p>
 <table>
 <thead>
 <tr>
@@ -19,7 +19,7 @@
 <td><code>frameName</code></td>
 <td><code>FrameName</code> (string)</td>
 <td>Yes</td>
-<td>Unique identifier for frame registration and retrieval</td>
+<td>Unique identifier for frame lookup in <code>FrameSchemaService</code> registry</td>
 </tr>
 <tr>
 <td><code>note</code></td>
@@ -31,28 +31,62 @@
 <td><code>interval</code></td>
 <td><code>FrameInterval</code></td>
 <td>Yes</td>
-<td>Granularity for timestamp generation (minutes, hours, days)</td>
+<td>Timestamp spacing: minutes (1m-30m), hours (1h-12h), days (1d-3d)</td>
 </tr>
 <tr>
 <td><code>startDate</code></td>
 <td><code>Date</code></td>
 <td>Yes</td>
-<td>Inclusive start boundary for the backtesting period</td>
+<td>Inclusive start boundary for timeframe generation</td>
 </tr>
 <tr>
 <td><code>endDate</code></td>
 <td><code>Date</code></td>
 <td>Yes</td>
-<td>Inclusive end boundary for the backtesting period</td>
+<td>Inclusive end boundary for timeframe generation</td>
 </tr>
 <tr>
 <td><code>callbacks</code></td>
 <td><code>Partial&lt;IFrameCallbacks&gt;</code></td>
 <td>No</td>
-<td>Optional lifecycle event handlers</td>
+<td>Optional <code>onTimeframe</code> callback invoked after generation</td>
 </tr>
 </tbody>
 </table>
+</thinking>
+<hr>
+<a id="frameinterval-type" class="tsd-anchor"></a><h2 class="tsd-anchor-link">FrameInterval Type<a href="#frameinterval-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>FrameInterval</code> type defines the supported timestamp spacing options. Smaller intervals generate more granular backtests with higher computational cost.</p>
+<p><strong>Available Intervals</strong></p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Values</th>
+<th>Use Cases</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Minutes</td>
+<td><code>1m</code>, <code>3m</code>, <code>5m</code>, <code>15m</code>, <code>30m</code></td>
+<td>High-frequency strategies, scalping, minute-level tick simulation</td>
+</tr>
+<tr>
+<td>Hours</td>
+<td><code>1h</code>, <code>2h</code>, <code>4h</code>, <code>6h</code>, <code>8h</code>, <code>12h</code></td>
+<td>Intraday and swing trading, reduced computation for multi-day backtests</td>
+</tr>
+<tr>
+<td>Days</td>
+<td><code>1d</code>, <code>3d</code></td>
+<td>Position trading, long-term strategy validation, monthly/yearly backtests</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Computational Impact</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Example: 24-hour backtest timestamp counts</span><br/><span class="hl-5">// 1m interval: 1,440 timestamps (24 * 60)</span><br/><span class="hl-5">// 15m interval: 96 timestamps (24 * 4)</span><br/><span class="hl-5">// 1h interval: 24 timestamps</span><br/><span class="hl-5">// 1d interval: 1 timestamp</span><br/><br/><span class="hl-5">// Total BacktestLogicPrivateService iterations = timestamp_count</span>
+</code><button type="button">Copy</button></pre>
+
 <hr>
 <a id="frame-intervals" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Intervals<a href="#frame-intervals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>FrameInterval</code> type defines the step size for timeframe generation. Each interval value determines the spacing between consecutive timestamps in the generated array.</p>
 <p><strong>Available Intervals</strong></p>
@@ -95,162 +129,111 @@
 
 <hr>
 <a id="lifecycle-callbacks" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Lifecycle Callbacks<a href="#lifecycle-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Frame schemas support an optional <code>onTimeframe</code> callback invoked after timeframe array generation. This enables logging, validation, or external integrations during backtest initialization.</p>
-<p><strong>Callback Interface</strong></p>
+<p><strong>IFrameCallbacks Interface</strong></p>
+<p>The <code>onTimeframe</code> callback is invoked by <code>ClientFrame</code> after timestamp array generation, before backtest iteration begins. Useful for logging, validation, or external integrations.</p>
 <p><img src="../media/26_Frame_Schemas_4.svg" alt="Mermaid Diagram"></p>
-<p><strong>Callback Parameters</strong></p>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>timeframe</code></td>
-<td><code>Date[]</code></td>
-<td>Complete array of generated timestamps</td>
-</tr>
-<tr>
-<td><code>startDate</code></td>
-<td><code>Date</code></td>
-<td>Start boundary from schema</td>
-</tr>
-<tr>
-<td><code>endDate</code></td>
-<td><code>Date</code></td>
-<td>End boundary from schema</td>
-</tr>
-<tr>
-<td><code>interval</code></td>
-<td><code>FrameInterval</code></td>
-<td>Interval used for generation</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Usage Example</strong></p>
-<pre><code class="typescript"><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTimeframe</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">timeframe</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">duration</span><span class="hl-1"> = (</span><span class="hl-4">endDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">() - </span><span class="hl-4">startDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">()) / (</span><span class="hl-8">1000</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[FRAME] Timeframe generated`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Period: </span><span class="hl-6">${</span><span class="hl-4">startDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2"> → </span><span class="hl-6">${</span><span class="hl-4">endDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Duration: </span><span class="hl-6">${</span><span class="hl-4">duration</span><span class="hl-6">}</span><span class="hl-2"> hours`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Interval: </span><span class="hl-6">${</span><span class="hl-4">interval</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Timestamps: </span><span class="hl-6">${</span><span class="hl-4">timeframe</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+<p><strong>Callback Signature</strong></p>
+<pre><code class="typescript"><span class="hl-6">type</span><span class="hl-1"> </span><span class="hl-10">onTimeframe</span><span class="hl-1"> = (</span><br/><span class="hl-1">  </span><span class="hl-4">timeframe</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">[],    </span><span class="hl-5">// Generated timestamp array</span><br/><span class="hl-1">  </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">,      </span><span class="hl-5">// Schema start boundary</span><br/><span class="hl-1">  </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-10">Date</span><span class="hl-1">,        </span><span class="hl-5">// Schema end boundary</span><br/><span class="hl-1">  </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-10">FrameInterval</span><span class="hl-1"> </span><span class="hl-5">// Spacing used for generation</span><br/><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-10">void</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation Example</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addFrame</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTimeframe</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">timeframe</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Generated </span><span class="hl-6">${</span><span class="hl-4">timeframe</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-6">}</span><span class="hl-2"> timestamps`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Period: </span><span class="hl-6">${</span><span class="hl-4">startDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2"> → </span><span class="hl-6">${</span><span class="hl-4">endDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`First: </span><span class="hl-6">${</span><span class="hl-4">timeframe</span><span class="hl-9">[</span><span class="hl-8">0</span><span class="hl-9">].</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Last: </span><span class="hl-6">${</span><span class="hl-4">timeframe</span><span class="hl-9">[</span><span class="hl-4">timeframe</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-9"> </span><span class="hl-1">-</span><span class="hl-9"> </span><span class="hl-8">1</span><span class="hl-9">].</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
 </code><button type="button">Copy</button></pre>
 
 <hr>
-<a id="implementation-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Architecture<a href="#implementation-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Frame functionality is implemented through a layered service architecture with schema storage, validation, lazy instantiation, and client execution.</p>
-<p><strong>Service Layer Mapping</strong></p>
+<a id="service-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Architecture<a href="#service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Frame schemas are managed through a layered service architecture following the framework's standard pattern: Schema → Validation → Connection → Global.</p>
+<p><strong>Service Layer Flow</strong></p>
 <p><img src="../media/26_Frame_Schemas_5.svg" alt="Mermaid Diagram"></p>
-<p><strong>Layer Responsibilities</strong></p>
-<table>
-<thead>
-<tr>
-<th>Layer</th>
-<th>Service</th>
-<th>Responsibility</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Public API</td>
-<td><code>addFrame()</code></td>
-<td>User-facing registration function</td>
-</tr>
-<tr>
-<td>Public API</td>
-<td><code>listFrames()</code></td>
-<td>Returns all registered frame schemas</td>
-</tr>
-<tr>
-<td>Validation</td>
-<td><code>FrameValidationService</code></td>
-<td>Schema structure validation, registry checks</td>
-</tr>
-<tr>
-<td>Schema</td>
-<td><code>FrameSchemaService</code></td>
-<td>Storage via <code>ToolRegistry</code> pattern</td>
-</tr>
-<tr>
-<td>Connection</td>
-<td><code>FrameConnectionService</code></td>
-<td>Memoized <code>ClientFrame</code> instance management</td>
-</tr>
-<tr>
-<td>Client</td>
-<td><code>ClientFrame</code></td>
-<td>Timeframe generation business logic</td>
-</tr>
-<tr>
-<td>Global</td>
-<td><code>FrameGlobalService</code></td>
-<td>API orchestration, context management</td>
-</tr>
-</tbody>
-</table>
 <p><strong>Key Code Entities</strong></p>
 <table>
 <thead>
 <tr>
 <th>Entity</th>
+<th>Type</th>
 <th>File Path</th>
-<th>Description</th>
+<th>Responsibility</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>IFrameSchema</code></td>
-<td><a href="">types.d.ts:328-341</a></td>
-<td>Schema interface definition</td>
-</tr>
-<tr>
-<td><code>FrameInterval</code></td>
-<td><a href="">types.d.ts:285</a></td>
-<td>Interval enum type</td>
+<td>Interface</td>
+<td><a href="">types.d.ts:366-379</a></td>
+<td>Schema contract definition</td>
 </tr>
 <tr>
 <td><code>IFrameCallbacks</code></td>
-<td><a href="">types.d.ts:296-308</a></td>
-<td>Callback interface</td>
+<td>Interface</td>
+<td><a href="">types.d.ts:333-346</a></td>
+<td>Callback type definitions</td>
+</tr>
+<tr>
+<td><code>FrameInterval</code></td>
+<td>Type</td>
+<td><a href="">types.d.ts:323</a></td>
+<td>Interval enum (1m-3d)</td>
+</tr>
+<tr>
+<td><code>IFrameParams</code></td>
+<td>Interface</td>
+<td><a href="">types.d.ts:328-331</a></td>
+<td><code>ClientFrame</code> constructor params (schema + logger)</td>
+</tr>
+<tr>
+<td><code>IFrame</code></td>
+<td>Interface</td>
+<td><a href="">types.d.ts:384-393</a></td>
+<td><code>ClientFrame</code> public API contract</td>
 </tr>
 <tr>
 <td><code>addFrame()</code></td>
+<td>Function</td>
 <td><a href="">src/function/add.ts:143-149</a></td>
-<td>Registration function</td>
-</tr>
-<tr>
-<td><code>listFrames()</code></td>
-<td><a href="">src/function/list.ts:106-109</a></td>
-<td>List function</td>
+<td>Public registration API</td>
 </tr>
 <tr>
 <td><code>FrameValidationService</code></td>
-<td><a href="">src/lib/index.ts:44</a></td>
-<td>Validation service DI binding</td>
+<td>Service</td>
+<td>DI container</td>
+<td>Schema validation logic</td>
 </tr>
 <tr>
 <td><code>FrameSchemaService</code></td>
-<td><a href="">src/lib/index.ts:24</a></td>
-<td>Schema service DI binding</td>
+<td>Service</td>
+<td>DI container</td>
+<td><code>ToolRegistry</code> storage wrapper</td>
 </tr>
 <tr>
 <td><code>FrameConnectionService</code></td>
-<td><a href="">src/lib/index.ts:7</a></td>
-<td>Connection service DI binding</td>
+<td>Service</td>
+<td>DI container</td>
+<td>Memoized <code>ClientFrame</code> factory</td>
+</tr>
+<tr>
+<td><code>FrameGlobalService</code></td>
+<td>Service</td>
+<td>DI container</td>
+<td>Context propagation wrapper</td>
 </tr>
 <tr>
 <td><code>ClientFrame</code></td>
-<td>N/A (internal)</td>
+<td>Class</td>
+<td>Internal</td>
 <td>Timeframe generation implementation</td>
 </tr>
 </tbody>
 </table>
 <hr>
-<a id="frame-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Parameters<a href="#frame-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When <code>ClientFrame</code> is instantiated via <code>FrameConnectionService</code>, the schema is augmented with runtime dependencies to form <code>IFrameParams</code>.</p>
-<p><strong>Parameter Augmentation</strong></p>
+<a id="iframeparams-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IFrameParams Interface<a href="#iframeparams-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>IFrameParams</code> interface extends <code>IFrameSchema</code> with injected dependencies for <code>ClientFrame</code> instantiation. The <code>FrameConnectionService</code> constructs <code>ClientFrame</code> instances using schema data plus runtime services.</p>
+<p><strong>Parameter Composition</strong></p>
 <p><img src="../media/26_Frame_Schemas_6.svg" alt="Mermaid Diagram"></p>
-<p><strong>IFrameParams Structure</strong></p>
+<p><strong>Field Sources</strong></p>
 <table>
 <thead>
 <tr>
 <th>Field</th>
 <th>Source</th>
+<th>Type</th>
 <th>Description</th>
 </tr>
 </thead>
@@ -258,31 +241,43 @@
 <tr>
 <td><code>frameName</code></td>
 <td>Schema</td>
-<td>Unique frame identifier</td>
+<td><code>FrameName</code></td>
+<td>Unique identifier from registration</td>
 </tr>
 <tr>
 <td><code>interval</code></td>
 <td>Schema</td>
-<td>Timeframe interval</td>
+<td><code>FrameInterval</code></td>
+<td>Timestamp spacing (1m-3d)</td>
 </tr>
 <tr>
 <td><code>startDate</code></td>
 <td>Schema</td>
-<td>Period start boundary</td>
+<td><code>Date</code></td>
+<td>Inclusive start boundary</td>
 </tr>
 <tr>
 <td><code>endDate</code></td>
 <td>Schema</td>
-<td>Period end boundary</td>
+<td><code>Date</code></td>
+<td>Inclusive end boundary</td>
 </tr>
 <tr>
 <td><code>callbacks</code></td>
 <td>Schema</td>
-<td>Optional lifecycle callbacks</td>
+<td><code>Partial&lt;IFrameCallbacks&gt;</code></td>
+<td>Optional <code>onTimeframe</code> callback</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td>Schema</td>
+<td><code>string</code></td>
+<td>Optional documentation</td>
 </tr>
 <tr>
 <td><code>logger</code></td>
 <td>DI</td>
+<td><code>ILogger</code></td>
 <td>Logger service for debug output</td>
 </tr>
 </tbody>
@@ -340,7 +335,7 @@
 <pre><code class="typescript"><span class="hl-5">// Valid registration</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;valid-frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">}); </span><span class="hl-5">// ✓ Success</span><br/><br/><span class="hl-5">// Invalid: duplicate name</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;valid-frame&quot;</span><span class="hl-1">, </span><span class="hl-5">// Same name</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-03T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-04T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">}); </span><span class="hl-5">// ✗ Throws validation error</span><br/><br/><span class="hl-5">// Invalid: end before start</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;invalid-dates&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">), </span><span class="hl-5">// Before start</span><br/><span class="hl-1">}); </span><span class="hl-5">// ✗ Throws validation error</span>
 </code><button type="button">Copy</button></pre>
 
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#frame-schemas"><span>Frame <wbr/>Schemas</span></a><ul><li><a href="#schema-structure"><span>Schema <wbr/>Structure</span></a></li><li><a href="#frame-intervals"><span>Frame <wbr/>Intervals</span></a></li><li><a href="#registration-and-usage"><span>Registration and <wbr/>Usage</span></a></li><li><a href="#timeframe-generation"><span>Timeframe <wbr/>Generation</span></a></li><li><a href="#lifecycle-callbacks"><span>Lifecycle <wbr/>Callbacks</span></a></li><li><a href="#implementation-architecture"><span>Implementation <wbr/>Architecture</span></a></li><li><a href="#frame-parameters"><span>Frame <wbr/>Parameters</span></a></li><li><a href="#usage-in-backtest-execution"><span>Usage in <wbr/>Backtest <wbr/>Execution</span></a></li><li><a href="#example-multi-period-frame-configuration"><span>Example: <wbr/>Multi-<wbr/>Period <wbr/>Frame <wbr/>Configuration</span></a></li><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#frame-schemas"><span>Frame <wbr/>Schemas</span></a><ul><li><a href="#iframeschema-interface"><span>IFrame<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#frameinterval-type"><span>Frame<wbr/>Interval <wbr/>Type</span></a></li><li><a href="#frame-intervals"><span>Frame <wbr/>Intervals</span></a></li><li><a href="#registration-and-usage"><span>Registration and <wbr/>Usage</span></a></li><li><a href="#timeframe-generation"><span>Timeframe <wbr/>Generation</span></a></li><li><a href="#lifecycle-callbacks"><span>Lifecycle <wbr/>Callbacks</span></a></li><li><a href="#service-architecture"><span>Service <wbr/>Architecture</span></a></li><li><a href="#iframeparams-interface"><span>IFrame<wbr/>Params <wbr/>Interface</span></a></li><li><a href="#usage-in-backtest-execution"><span>Usage in <wbr/>Backtest <wbr/>Execution</span></a></li><li><a href="#example-multi-period-frame-configuration"><span>Example: <wbr/>Multi-<wbr/>Period <wbr/>Frame <wbr/>Configuration</span></a></li><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

@@ -1,0 +1,417 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/48_signal_generation_and_validation | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_48_signal_generation_and_validation.html">design/48_signal_generation_and_validation</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-generation-and-validation" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal Generation and Validation<a href="#signal-generation-and-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the signal generation and validation pipeline in <code>ClientStrategy</code>, which implements a three-layer validation architecture to ensure trading safety: interval throttling, risk management gates, and structural validation. This system processes user-provided <code>getSignal()</code> functions and transforms raw signal DTOs into validated <code>ISignalRow</code> objects ready for execution.</p>
+<p>For information about signal states and lifecycle transitions, see <a href="design_47_signal_states.html">Signal States</a>. For scheduled signal activation logic, see <a href="design_49_scheduled_signals.html">Scheduled Signals</a>. For signal persistence and crash recovery, see <a href="design_50_signal_persistence.html">Signal Persistence</a>.</p>
+<a id="signal-generation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Generation Pipeline<a href="#signal-generation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The signal generation process is orchestrated by <code>GET_SIGNAL_FN</code> in <a href="">src/client/ClientStrategy.ts:263-396</a> and executes a multi-stage pipeline with early-exit optimization at each validation layer.</p>
+<p><img src="../media/48_Signal_Generation_and_Validation_0.svg" alt="Mermaid Diagram"></p>
+<a id="three-layer-validation-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Three-Layer Validation Architecture<a href="#three-layer-validation-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The validation pipeline implements defense-in-depth with three independent validation layers, each serving a distinct purpose:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Location</th>
+<th>Purpose</th>
+<th>Exit Strategy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Interval Throttling</strong></td>
+<td><a href="">src/client/ClientStrategy.ts:272-284</a></td>
+<td>Rate limiting based on <code>SignalInterval</code></td>
+<td>Return null (silent)</td>
+</tr>
+<tr>
+<td><strong>Risk Gates</strong></td>
+<td><a href="">src/client/ClientStrategy.ts:288-300</a></td>
+<td>Portfolio-level risk validation via <code>IRisk.checkSignal()</code></td>
+<td>Return null (silent)</td>
+</tr>
+<tr>
+<td><strong>Structure Validation</strong></td>
+<td><a href="">src/client/ClientStrategy.ts:41-261</a></td>
+<td>Signal integrity checks (30+ rules)</td>
+<td>Throw Error (loud)</td>
+</tr>
+</tbody>
+</table>
+<p>The first two layers fail silently (return <code>null</code>) to prevent log spam during normal operation. The structure validation layer throws errors because invalid signals indicate programming errors that should halt execution.</p>
+<a id="interval-throttling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Interval Throttling<a href="#interval-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Interval throttling enforces minimum time between <code>getSignal()</code> invocations using <code>_lastSignalTimestamp</code> to prevent computational waste and API rate limits.</p>
+<a id="signalinterval-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">SignalInterval Configuration<a href="#signalinterval-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// src/client/ClientStrategy.ts:32-39</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">INTERVAL_MINUTES</span><span class="hl-1">: </span><span class="hl-10">Record</span><span class="hl-1">&lt;</span><span class="hl-10">SignalInterval</span><span class="hl-1">, </span><span class="hl-10">number</span><span class="hl-1">&gt; = {</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">1</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">3</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">5</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">15</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">30</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="throttling-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Throttling Logic<a href="#throttling-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/48_Signal_Generation_and_Validation_1.svg" alt="Mermaid Diagram"></p>
+<p>The throttling mechanism <a href="">src/client/ClientStrategy.ts:272-284</a> checks if sufficient time has elapsed since the last signal generation attempt. If <code>_lastSignalTimestamp</code> is <code>null</code> (first call), the check passes immediately. Otherwise, it compares <code>currentTime - _lastSignalTimestamp</code> against the configured interval in milliseconds.</p>
+<p><strong>Example:</strong> A strategy with <code>interval: &quot;5m&quot;</code> can generate at most one signal every 5 minutes, regardless of how frequently <code>tick()</code> is called.</p>
+<a id="risk-gates" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Gates<a href="#risk-gates" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk gates provide pre-generation validation through <code>IRisk.checkSignal()</code> <a href="">src/client/ClientStrategy.ts:288-300</a>, which evaluates portfolio-level constraints before allowing signal creation.</p>
+<a id="risk-check-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Check Parameters<a href="#risk-check-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The risk check receives <code>IRiskCheckArgs</code> <a href="">types.d.ts:443-458</a>:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IRiskCheckArgs</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">;              </span><span class="hl-5">// Trading pair</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-10">StrategyName</span><span class="hl-1">;  </span><span class="hl-5">// Strategy requesting signal</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">ExchangeName</span><span class="hl-1">;  </span><span class="hl-5">// Exchange name</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;        </span><span class="hl-5">// Current VWAP price</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-10">number</span><span class="hl-1">;           </span><span class="hl-5">// Current timestamp</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="risk-validation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Validation Flow<a href="#risk-validation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/48_Signal_Generation_and_Validation_2.svg" alt="Mermaid Diagram"></p>
+<p>If any validation in the risk profile throws an error or <code>checkSignal()</code> returns <code>false</code>, signal generation is aborted and <code>tick()</code> returns <code>null</code>. This prevents violating portfolio limits like maximum concurrent positions or leverage constraints.</p>
+<a id="signal-structure-validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Structure Validation<a href="#signal-structure-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Structure validation is implemented by <code>VALIDATE_SIGNAL_FN</code> <a href="">src/client/ClientStrategy.ts:41-261</a>, which enforces 30+ rules organized into eight categories. Validation occurs after signal construction but before returning from <code>GET_SIGNAL_FN</code>.</p>
+<a id="validation-rules-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Rules Table<a href="#validation-rules-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Rule</th>
+<th>Check</th>
+<th>Threshold/Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Required Fields</strong></td>
+<td>ID presence</td>
+<td><code>id !== undefined &amp;&amp; id !== null &amp;&amp; id !== ''</code></td>
+<td>Non-empty string</td>
+</tr>
+<tr>
+<td></td>
+<td>Exchange name</td>
+<td><code>exchangeName !== undefined &amp;&amp; !== null &amp;&amp; !== ''</code></td>
+<td>Non-empty string</td>
+</tr>
+<tr>
+<td></td>
+<td>Strategy name</td>
+<td><code>strategyName !== undefined &amp;&amp; !== null &amp;&amp; !== ''</code></td>
+<td>Non-empty string</td>
+</tr>
+<tr>
+<td></td>
+<td>Symbol</td>
+<td><code>symbol !== undefined &amp;&amp; !== null &amp;&amp; !== ''</code></td>
+<td>Non-empty string</td>
+</tr>
+<tr>
+<td></td>
+<td>Position</td>
+<td><code>position === &quot;long&quot; || position === &quot;short&quot;</code></td>
+<td>Enum validation</td>
+</tr>
+<tr>
+<td></td>
+<td>Scheduled marker</td>
+<td><code>_isScheduled !== undefined &amp;&amp; !== null</code></td>
+<td>Boolean</td>
+</tr>
+<tr>
+<td><strong>NaN/Infinity Protection</strong></td>
+<td>Current price finite</td>
+<td><code>isFinite(currentPrice)</code></td>
+<td>No NaN/Infinity</td>
+</tr>
+<tr>
+<td></td>
+<td>Current price positive</td>
+<td><code>currentPrice &gt; 0</code></td>
+<td>Must be &gt; 0</td>
+</tr>
+<tr>
+<td></td>
+<td>priceOpen finite</td>
+<td><code>isFinite(signal.priceOpen)</code></td>
+<td>No NaN/Infinity</td>
+</tr>
+<tr>
+<td></td>
+<td>priceTakeProfit finite</td>
+<td><code>isFinite(signal.priceTakeProfit)</code></td>
+<td>No NaN/Infinity</td>
+</tr>
+<tr>
+<td></td>
+<td>priceStopLoss finite</td>
+<td><code>isFinite(signal.priceStopLoss)</code></td>
+<td>No NaN/Infinity</td>
+</tr>
+<tr>
+<td></td>
+<td>Prices positive</td>
+<td><code>price &gt; 0</code> for all price fields</td>
+<td>Must be &gt; 0</td>
+</tr>
+<tr>
+<td><strong>LONG Position Logic</strong></td>
+<td>TP above open</td>
+<td><code>priceTakeProfit &gt; priceOpen</code></td>
+<td>Strict inequality</td>
+</tr>
+<tr>
+<td></td>
+<td>SL below open</td>
+<td><code>priceStopLoss &lt; priceOpen</code></td>
+<td>Strict inequality</td>
+</tr>
+<tr>
+<td></td>
+<td>Current price vs SL</td>
+<td><code>currentPrice &gt;= priceStopLoss</code></td>
+<td>Immediate signals only</td>
+</tr>
+<tr>
+<td></td>
+<td>Current price vs TP</td>
+<td><code>currentPrice &lt;= priceTakeProfit</code></td>
+<td>Immediate signals only</td>
+</tr>
+<tr>
+<td><strong>SHORT Position Logic</strong></td>
+<td>TP below open</td>
+<td><code>priceTakeProfit &lt; priceOpen</code></td>
+<td>Strict inequality</td>
+</tr>
+<tr>
+<td></td>
+<td>SL above open</td>
+<td><code>priceStopLoss &gt; priceOpen</code></td>
+<td>Strict inequality</td>
+</tr>
+<tr>
+<td></td>
+<td>Current price vs SL</td>
+<td><code>currentPrice &lt;= priceStopLoss</code></td>
+<td>Immediate signals only</td>
+</tr>
+<tr>
+<td></td>
+<td>Current price vs TP</td>
+<td><code>currentPrice &gt;= priceTakeProfit</code></td>
+<td>Immediate signals only</td>
+</tr>
+<tr>
+<td><strong>Minimum Profit Distance</strong></td>
+<td>LONG TP distance</td>
+<td><code>((TP - open) / open) * 100</code></td>
+<td>≥ <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> (0.3%)</td>
+</tr>
+<tr>
+<td></td>
+<td>SHORT TP distance</td>
+<td><code>((open - TP) / open) * 100</code></td>
+<td>≥ <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> (0.3%)</td>
+</tr>
+<tr>
+<td><strong>Maximum Loss Distance</strong></td>
+<td>LONG SL distance</td>
+<td><code>((open - SL) / open) * 100</code></td>
+<td>≤ <code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code> (20%)</td>
+</tr>
+<tr>
+<td></td>
+<td>SHORT SL distance</td>
+<td><code>((SL - open) / open) * 100</code></td>
+<td>≤ <code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code> (20%)</td>
+</tr>
+<tr>
+<td><strong>Time Validation</strong></td>
+<td>Time positive</td>
+<td><code>minuteEstimatedTime &gt; 0</code></td>
+<td>Must be &gt; 0</td>
+</tr>
+<tr>
+<td></td>
+<td>Time integer</td>
+<td><code>Number.isInteger(minuteEstimatedTime)</code></td>
+<td>Whole minutes only</td>
+</tr>
+<tr>
+<td></td>
+<td>Maximum lifetime</td>
+<td><code>minuteEstimatedTime</code></td>
+<td>≤ <code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code> (1440)</td>
+</tr>
+<tr>
+<td></td>
+<td>scheduledAt positive</td>
+<td><code>scheduledAt &gt; 0</code></td>
+<td>Must be &gt; 0</td>
+</tr>
+<tr>
+<td></td>
+<td>pendingAt positive</td>
+<td><code>pendingAt &gt; 0</code></td>
+<td>Must be &gt; 0</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-categories-detail" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Categories Detail<a href="#validation-categories-detail" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="required-fields-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Required Fields Validation<a href="#required-fields-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Required fields validation <a href="">src/client/ClientStrategy.ts:44-62</a> ensures all mandatory <code>ISignalRow</code> properties are present and non-empty. This prevents downstream errors from undefined values.</p>
+<pre><code class="typescript"><span class="hl-5">// Validation checks existence, non-null, and non-empty for strings</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1"> === </span><span class="hl-6">undefined</span><span class="hl-1"> || </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1"> === </span><span class="hl-6">null</span><span class="hl-1"> || </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1"> === </span><span class="hl-2">&#39;&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">&#39;id is required and must be a non-empty string&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="naninfinity-protection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">NaN/Infinity Protection<a href="#naninfinity-protection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>NaN/Infinity protection <a href="">src/client/ClientStrategy.ts:64-103</a> guards against arithmetic errors and incomplete candle data from exchanges.</p>
+<p><strong>Rationale:</strong> Exchange APIs (especially Binance) occasionally return candles with prices near $0.01-1 when data is incomplete. The validation layer catches these anomalies before they corrupt PnL calculations.</p>
+<pre><code class="typescript"><span class="hl-5">// Check finite before value range validation</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`priceOpen must be a finite number, got </span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) &amp;&amp; </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> &lt;= </span><span class="hl-8">0</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`priceOpen must be positive, got </span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="long-position-price-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">LONG Position Price Logic<a href="#long-position-price-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>LONG position validation <a href="">src/client/ClientStrategy.ts:105-162</a> enforces the invariant: <code>priceStopLoss &lt; priceOpen &lt; priceTakeProfit</code>.</p>
+<p><img src="../media/48_Signal_Generation_and_Validation_3.svg" alt="Mermaid Diagram"></p>
+<a id="edge-case-protection-for-immediate-signals" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Edge Case Protection for Immediate Signals<a href="#edge-case-protection-for-immediate-signals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>For immediate (non-scheduled) signals <a href="">src/client/ClientStrategy.ts:118-135</a>, the validator checks that <code>currentPrice</code> hasn't already breached TP or SL:</p>
+<ul>
+<li><strong>SL breach check:</strong> <code>currentPrice &lt; priceStopLoss</code> → Error (position would immediately close at loss)</li>
+<li><strong>TP breach check:</strong> <code>currentPrice &gt; priceTakeProfit</code> → Error (profit opportunity already passed)</li>
+</ul>
+<p><strong>Example violation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// INVALID: Current price ($39,000) already below SL ($40,000)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,      </span><span class="hl-5">// Current VWAP</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">44000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">40000</span><span class="hl-1">,  </span><span class="hl-5">// currentPrice = 39000 &lt; 40000 ❌</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;currentPrice (39000) &lt; priceStopLoss (40000). Signal would be immediately cancelled.&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="short-position-price-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">SHORT Position Price Logic<a href="#short-position-price-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>SHORT position validation <a href="">src/client/ClientStrategy.ts:165-222</a> enforces the invariant: <code>priceTakeProfit &lt; priceOpen &lt; priceStopLoss</code>.</p>
+<p><img src="../media/48_Signal_Generation_and_Validation_4.svg" alt="Mermaid Diagram"></p>
+<p>SHORT logic is inverted from LONG: profits occur when price falls (toward TP), losses occur when price rises (toward SL).</p>
+<a id="minimum-profit-distance-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Minimum Profit Distance Validation<a href="#minimum-profit-distance-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Minimum profit distance <a href="">src/client/ClientStrategy.ts:138-148</a> prevents micro-profit signals that cannot cover trading fees (typically 2 × 0.1% = 0.2% total).</p>
+<p><strong>Configuration:</strong> <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> defaults to 0.3% <a href="">types.d.ts:21</a>.</p>
+<p><strong>Calculation:</strong></p>
+<ul>
+<li><strong>LONG:</strong> <code>tpDistancePercent = ((priceTakeProfit - priceOpen) / priceOpen) * 100</code></li>
+<li><strong>SHORT:</strong> <code>tpDistancePercent = ((priceOpen - priceTakeProfit) / priceOpen) * 100</code></li>
+</ul>
+<p><strong>Example rejection:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// INVALID: TP distance = 0.15% &lt; 0.3% minimum</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">42063</span><span class="hl-1">,  </span><span class="hl-5">// Only $63 profit = 0.15%</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">40000</span><span class="hl-1">,</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;TakeProfit too close to priceOpen (0.150%). Minimum distance: 0.3% to cover trading fees.&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="maximum-loss-distance-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Maximum Loss Distance Validation<a href="#maximum-loss-distance-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Maximum loss distance <a href="">src/client/ClientStrategy.ts:151-161</a> prevents catastrophic losses from extreme StopLoss values.</p>
+<p><strong>Configuration:</strong> <code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code> defaults to 20% <a href="">types.d.ts:27</a>.</p>
+<p><strong>Calculation:</strong></p>
+<ul>
+<li><strong>LONG:</strong> <code>slDistancePercent = ((priceOpen - priceStopLoss) / priceOpen) * 100</code></li>
+<li><strong>SHORT:</strong> <code>slDistancePercent = ((priceStopLoss - priceOpen) / priceOpen) * 100</code></li>
+</ul>
+<p><strong>Example rejection:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// INVALID: SL distance = 35% &gt; 20% maximum</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">44000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">27300</span><span class="hl-1">,  </span><span class="hl-5">// 35% loss if hit</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;StopLoss too far from priceOpen (35.000%). Maximum distance: 20% to protect capital.&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="time-parameter-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Time Parameter Validation<a href="#time-parameter-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Time validation <a href="">src/client/ClientStrategy.ts:225-254</a> ensures signal lifetime parameters are sane.</p>
+<p><strong>Rules:</strong></p>
+<ol>
+<li><strong>Positive integer:</strong> <code>minuteEstimatedTime &gt; 0 &amp;&amp; Number.isInteger(minuteEstimatedTime)</code></li>
+<li><strong>Maximum lifetime:</strong> <code>minuteEstimatedTime &lt;= CC_MAX_SIGNAL_LIFETIME_MINUTES</code> (default: 1440 = 1 day)</li>
+<li><strong>Timestamp validity:</strong> <code>scheduledAt &gt; 0 &amp;&amp; pendingAt &gt; 0</code></li>
+</ol>
+<p><strong>Rationale for maximum lifetime:</strong> Eternal signals (e.g., <code>minuteEstimatedTime: 100000</code>) block risk limits indefinitely, preventing new signals from opening. The 1-day maximum prevents strategy deadlock.</p>
+<a id="scheduled-vs-immediate-signal-determination" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Scheduled vs Immediate Signal Determination<a href="#scheduled-vs-immediate-signal-determination" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>After successful validation, <code>GET_SIGNAL_FN</code> determines whether to create a scheduled or immediate signal based on <code>priceOpen</code> and current market conditions <a href="">src/client/ClientStrategy.ts:313-367</a>.</p>
+<a id="decision-tree" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Decision Tree<a href="#decision-tree" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/48_Signal_Generation_and_Validation_5.svg" alt="Mermaid Diagram"></p>
+<a id="activation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Activation Logic<a href="#activation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>LONG signals:</strong></p>
+<ul>
+<li><strong>Immediate:</strong> <code>currentPrice &lt;= priceOpen</code> (price already fell to entry)</li>
+<li><strong>Scheduled:</strong> <code>currentPrice &gt; priceOpen</code> (wait for price to fall)</li>
+</ul>
+<p><strong>SHORT signals:</strong></p>
+<ul>
+<li><strong>Immediate:</strong> <code>currentPrice &gt;= priceOpen</code> (price already rose to entry)</li>
+<li><strong>Scheduled:</strong> <code>currentPrice &lt; priceOpen</code> (wait for price to rise)</li>
+</ul>
+<a id="code-entity-mapping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Code Entity Mapping<a href="#code-entity-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// src/client/ClientStrategy.ts:313-344</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> !== </span><span class="hl-6">undefined</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">shouldActivateImmediately</span><span class="hl-1"> =</span><br/><span class="hl-1">    (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) ||</span><br/><span class="hl-1">    (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">shouldActivateImmediately</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Immediate activation: price already reached entry</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">signalRow</span><span class="hl-1">: </span><span class="hl-10">ISignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">      </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-0">randomString</span><span class="hl-1">(),</span><br/><span class="hl-1">      </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">,  </span><span class="hl-5">// Use specified priceOpen</span><br/><span class="hl-1">      </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">      </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-6">false</span><span class="hl-1">,</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Scheduled: wait for price to reach entry</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">scheduledSignalRow</span><span class="hl-1">: </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-0">randomString</span><span class="hl-1">(),</span><br/><span class="hl-1">    </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">    </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1">,</span><br/><span class="hl-1">  };</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">scheduledSignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="error-handling-and-recovery" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling and Recovery<a href="#error-handling-and-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal generation is wrapped in a <code>trycatch</code> decorator <a href="">src/client/ClientStrategy.ts:263-396</a> that provides graceful error handling without crashing the execution loop.</p>
+<a id="error-handling-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Handling Configuration<a href="#error-handling-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// src/client/ClientStrategy.ts:263-396</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">GET_SIGNAL_FN</span><span class="hl-1"> = </span><span class="hl-0">trycatch</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">self</span><span class="hl-1">: </span><span class="hl-10">ClientStrategy</span><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">ISignalRow</span><span class="hl-1"> | </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1"> | </span><span class="hl-10">null</span><span class="hl-1">&gt; </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// ... signal generation logic</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">defaultValue:</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">,  </span><span class="hl-5">// Return null on error</span><br/><span class="hl-1">    </span><span class="hl-0">fallback</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;ClientStrategy exception thrown&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-4">error:</span><span class="hl-1"> </span><span class="hl-0">errorData</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">),</span><br/><span class="hl-1">        </span><span class="hl-4">message:</span><span class="hl-1"> </span><span class="hl-0">getErrorMessage</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">),</span><br/><span class="hl-1">      });</span><br/><span class="hl-1">      </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);  </span><span class="hl-5">// Emit to listenError subscribers</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="error-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Flow<a href="#error-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/48_Signal_Generation_and_Validation_6.svg" alt="Mermaid Diagram"></p>
+<p>The <code>trycatch</code> wrapper ensures:</p>
+<ol>
+<li><strong>Logging:</strong> All errors are logged via <code>LoggerService</code></li>
+<li><strong>Event emission:</strong> Errors are emitted to <code>errorEmitter</code> for monitoring</li>
+<li><strong>Graceful degradation:</strong> Returns <code>null</code> instead of crashing, allowing <code>tick()</code> to continue</li>
+<li><strong>Observability:</strong> Errors can be captured by <code>listenError()</code> subscribers</li>
+</ol>
+<a id="validation-error-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Error Format<a href="#validation-error-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation errors accumulate all rule violations before throwing <a href="">src/client/ClientStrategy.ts:256-260</a>:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt; </span><span class="hl-8">0</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`Invalid signal for </span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-6">}</span><span class="hl-2"> position:</span><span class="hl-11">\n</span><span class="hl-6">${</span><span class="hl-4">errors</span><span class="hl-9">.</span><span class="hl-0">join</span><span class="hl-9">(</span><span class="hl-2">&quot;</span><span class="hl-11">\n</span><span class="hl-2">&quot;</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example error message:</strong></p>
+<pre><code><span class="hl-4">Invalid</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-4">for</span><span class="hl-1"> </span><span class="hl-4">long</span><span class="hl-1"> </span><span class="hl-12">position</span><span class="hl-1">:</span><br/><span class="hl-0">priceTakeProfit</span><span class="hl-1"> (</span><span class="hl-8">41500</span><span class="hl-1">) </span><span class="hl-4">must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> &gt; </span><span class="hl-0">priceOpen</span><span class="hl-1"> (</span><span class="hl-8">42000</span><span class="hl-1">)</span><br/><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> </span><span class="hl-4">must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> </span><span class="hl-4">positive</span><span class="hl-1">, </span><span class="hl-4">got</span><span class="hl-1"> -</span><span class="hl-8">10</span>
+</code><button>Copy</button></pre>
+
+<a id="validation-test-coverage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Test Coverage<a href="#validation-test-coverage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The validation system has extensive test coverage in <a href="">test/e2e/defend.test.mjs</a>, including:</p>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Scenario</th>
+<th>Expected Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Invalid LONG TP</td>
+<td><code>priceTakeProfit &lt;= priceOpen</code></td>
+<td>Signal rejected, <code>scheduledCount = 0</code></td>
+</tr>
+<tr>
+<td>Invalid SHORT TP</td>
+<td><code>priceTakeProfit &gt;= priceOpen</code></td>
+<td>Signal rejected, <code>scheduledCount = 0</code></td>
+</tr>
+<tr>
+<td>Invalid LONG SL</td>
+<td><code>priceStopLoss &gt;= priceOpen</code></td>
+<td>Signal rejected, <code>scheduledCount = 0</code></td>
+</tr>
+<tr>
+<td>Zero StopLoss</td>
+<td><code>priceStopLoss = 0</code></td>
+<td>Signal rejected (unlimited risk)</td>
+</tr>
+<tr>
+<td>Inverted SHORT logic</td>
+<td><code>priceTakeProfit &gt; priceOpen</code></td>
+<td>Signal rejected (wrong direction)</td>
+</tr>
+<tr>
+<td>Zero time</td>
+<td><code>minuteEstimatedTime = 0</code></td>
+<td>Signal rejected (instant timeout)</td>
+</tr>
+<tr>
+<td>TP equals open</td>
+<td><code>priceTakeProfit = priceOpen</code></td>
+<td>Signal rejected (zero profit)</td>
+</tr>
+<tr>
+<td>Edge case: immediate SL</td>
+<td><code>currentPrice &lt; priceStopLoss</code> for LONG</td>
+<td>Signal rejected (already breached)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Test pattern:</strong></p>
+<pre><code class="javascript"><span class="hl-5">// test/e2e/defend.test.mjs:545-642</span><br/><span class="hl-0">test</span><span class="hl-1">(</span><span class="hl-2">&quot;DEFEND: Invalid LONG signal rejected (TP below priceOpen)&quot;</span><span class="hl-1">, </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-4">pass</span><span class="hl-1">, </span><span class="hl-4">fail</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">scheduledCount</span><span class="hl-1"> = </span><span class="hl-8">0</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">openedCount</span><span class="hl-1"> = </span><span class="hl-8">0</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test-defend-invalid-long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">40000</span><span class="hl-1">,  </span><span class="hl-5">// INVALID: TP &lt; priceOpen for LONG</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">39000</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-0">onSchedule</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> { </span><span class="hl-4">scheduledCount</span><span class="hl-1">++; },</span><br/><span class="hl-1">      </span><span class="hl-0">onOpen</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> { </span><span class="hl-4">openedCount</span><span class="hl-1">++; },</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// ... run backtest</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">scheduledCount</span><span class="hl-1"> === </span><span class="hl-8">0</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">openedCount</span><span class="hl-1"> === </span><span class="hl-8">0</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-0">pass</span><span class="hl-1">(</span><span class="hl-2">&quot;MONEY SAFE: Invalid LONG signal rejected&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">fail</span><span class="hl-1">(</span><span class="hl-2">&quot;CRITICAL BUG: Invalid signal was NOT rejected!&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="global-configuration-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Validation thresholds are configurable via <code>setConfig()</code> <a href="">types.d.ts:135</a>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1">,  </span><span class="hl-5">// Increase minimum TP distance to 0.5%</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-8">15</span><span class="hl-1">,     </span><span class="hl-5">// Reduce maximum SL distance to 15%</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-8">720</span><span class="hl-1">,      </span><span class="hl-5">// Reduce maximum lifetime to 12 hours</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Available parameters:</strong></p>
+<ul>
+<li><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code>: Minimum TP distance (default: 0.3%)</li>
+<li><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code>: Maximum SL distance (default: 20%)</li>
+<li><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code>: Maximum signal lifetime (default: 1440 minutes)</li>
+<li><code>CC_SCHEDULE_AWAIT_MINUTES</code>: Scheduled signal timeout (default: 120 minutes)</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-generation-and-validation"><span>Signal <wbr/>Generation and <wbr/>Validation</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#signal-generation-pipeline"><span>Signal <wbr/>Generation <wbr/>Pipeline</span></a></li><li><a href="#three-layer-validation-architecture"><span>Three-<wbr/>Layer <wbr/>Validation <wbr/>Architecture</span></a></li><li><a href="#interval-throttling"><span>Interval <wbr/>Throttling</span></a></li><li><ul><li><a href="#signalinterval-configuration"><span>Signal<wbr/>Interval <wbr/>Configuration</span></a></li><li><a href="#throttling-logic"><span>Throttling <wbr/>Logic</span></a></li></ul></li><li><a href="#risk-gates"><span>Risk <wbr/>Gates</span></a></li><li><ul><li><a href="#risk-check-parameters"><span>Risk <wbr/>Check <wbr/>Parameters</span></a></li><li><a href="#risk-validation-flow"><span>Risk <wbr/>Validation <wbr/>Flow</span></a></li></ul></li><li><a href="#signal-structure-validation"><span>Signal <wbr/>Structure <wbr/>Validation</span></a></li><li><ul><li><a href="#validation-rules-table"><span>Validation <wbr/>Rules <wbr/>Table</span></a></li></ul></li><li><a href="#validation-categories-detail"><span>Validation <wbr/>Categories <wbr/>Detail</span></a></li><li><ul><li><a href="#required-fields-validation"><span>Required <wbr/>Fields <wbr/>Validation</span></a></li><li><a href="#naninfinity-protection"><span>Na<wbr/>N/<wbr/>Infinity <wbr/>Protection</span></a></li><li><a href="#long-position-price-logic"><span>LONG <wbr/>Position <wbr/>Price <wbr/>Logic</span></a></li><li><ul><li><a href="#edge-case-protection-for-immediate-signals"><span>Edge <wbr/>Case <wbr/>Protection for <wbr/>Immediate <wbr/>Signals</span></a></li></ul></li><li><a href="#short-position-price-logic"><span>SHORT <wbr/>Position <wbr/>Price <wbr/>Logic</span></a></li><li><a href="#minimum-profit-distance-validation"><span>Minimum <wbr/>Profit <wbr/>Distance <wbr/>Validation</span></a></li><li><a href="#maximum-loss-distance-validation"><span>Maximum <wbr/>Loss <wbr/>Distance <wbr/>Validation</span></a></li><li><a href="#time-parameter-validation"><span>Time <wbr/>Parameter <wbr/>Validation</span></a></li></ul></li><li><a href="#scheduled-vs-immediate-signal-determination"><span>Scheduled vs <wbr/>Immediate <wbr/>Signal <wbr/>Determination</span></a></li><li><ul><li><a href="#decision-tree"><span>Decision <wbr/>Tree</span></a></li><li><a href="#activation-logic"><span>Activation <wbr/>Logic</span></a></li><li><a href="#code-entity-mapping"><span>Code <wbr/>Entity <wbr/>Mapping</span></a></li></ul></li><li><a href="#error-handling-and-recovery"><span>Error <wbr/>Handling and <wbr/>Recovery</span></a></li><li><ul><li><a href="#error-handling-configuration"><span>Error <wbr/>Handling <wbr/>Configuration</span></a></li><li><a href="#error-flow"><span>Error <wbr/>Flow</span></a></li><li><a href="#validation-error-format"><span>Validation <wbr/>Error <wbr/>Format</span></a></li></ul></li><li><a href="#validation-test-coverage"><span>Validation <wbr/>Test <wbr/>Coverage</span></a></li><li><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

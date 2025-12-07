@@ -1,0 +1,514 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>demo/live/readme | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="demo_live_readme.html">demo/live/readme</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="ai-powered-live-trading-demo" class="tsd-anchor"></a><h1 class="tsd-anchor-link">AI-Powered Live Trading Demo<a href="#ai-powered-live-trading-demo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>LLM-driven trading strategy with real-time execution and automated signal generation using backtest-kit framework. Suitable for <strong>both paper trading and real money trading</strong>.</p>
+<a id="purpose" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose<a href="#purpose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Demonstrates AI-powered live trading strategy capabilities for:</p>
+<ul>
+<li>Real-time multi-timeframe candle analysis (1h, 15m, 5m, 1m)</li>
+<li>LLM-based signal generation with structured output</li>
+<li>Continuous monitoring and position management</li>
+<li>Debug logging for LLM conversations and signals</li>
+<li>Partial profit/loss tracking with scaling out</li>
+<li>Scheduled order management</li>
+</ul>
+<a id="key-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key Features<a href="#key-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li>
+<p><strong>Multi-Timeframe Analysis</strong>: 4-level market structure analysis</p>
+<ul>
+<li>Medium-term (1h candles): 24h trend analysis</li>
+<li>Short-term (15m candles): 24 candles for swing structure</li>
+<li>Main-term (5m candles): 24 candles for entry timing</li>
+<li>Micro-term (1m candles): 30 candles for precise entries</li>
+</ul>
+</li>
+<li>
+<p><strong>LLM Integration</strong>: Ollama-powered signal generation (deepseek-v3.1:671b)</p>
+</li>
+<li>
+<p><strong>Structured Output</strong>: JSON schema validation for trading signals</p>
+</li>
+<li>
+<p><strong>Debug Logging</strong>: Automatic conversation and signal dumping via <code>dumpSignal()</code></p>
+</li>
+<li>
+<p><strong>Live Monitoring</strong>: Real-time tick monitoring with background execution</p>
+</li>
+<li>
+<p><strong>Partial Profit/Loss</strong>: Scale out positions at predefined profit/loss levels</p>
+</li>
+<li>
+<p><strong>Scheduled Orders</strong>: Support for limit orders with automatic activation</p>
+</li>
+<li>
+<p><strong>Event Listeners</strong>: Real-time notifications for signals, partial levels, and errors</p>
+</li>
+</ul>
+<a id="trading-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Trading Modes<a href="#trading-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This demo supports <strong>two trading modes</strong>:</p>
+<a id="1-paper-trading-test-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Paper Trading (Test Mode)<a href="#1-paper-trading-test-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Zero Risk</strong>: Simulates real trading without real money</li>
+<li><strong>Same Logic</strong>: Identical code and signals as real trading</li>
+<li><strong>Perfect for</strong>: Testing strategies, debugging, learning</li>
+<li><strong>Setup</strong>: Uses exchange paper trading API or mock data</li>
+</ul>
+<a id="2-real-money-trading-production-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Real Money Trading (Production Mode)<a href="#2-real-money-trading-production-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Real Execution</strong>: Executes actual trades on exchange</li>
+<li><strong>Real Risk</strong>: Uses real funds and incurs real losses/profits</li>
+<li><strong>Perfect for</strong>: Production deployment after thorough backtesting</li>
+<li><strong>Setup</strong>: Requires real exchange API keys with trading permissions</li>
+</ul>
+<p><strong>Important</strong>: Always start with paper trading to validate strategy performance before risking real capital.</p>
+<a id="technology-stack" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Technology Stack<a href="#technology-stack" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>Runtime</strong>: Node.js (ES Modules)</li>
+<li><strong>Framework</strong>: backtest-kit 1.4.3</li>
+<li><strong>AI Provider</strong>: Ollama (deepseek-v3.1:671b model)</li>
+<li><strong>Exchange</strong>: Binance via CCXT</li>
+<li><strong>UUID</strong>: uuid for unique result tracking</li>
+</ul>
+<a id="project-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Project Structure<a href="#project-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code><span class="hl-4">demo</span><span class="hl-1">/</span><span class="hl-4">live</span><span class="hl-1">/</span><br/><span class="hl-1">├── </span><span class="hl-4">src</span><span class="hl-1">/</span><br/><span class="hl-1">│   ├── </span><span class="hl-4">index</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1">              # </span><span class="hl-4">Main</span><span class="hl-1"> </span><span class="hl-4">live</span><span class="hl-1"> </span><span class="hl-4">trading</span><span class="hl-1"> </span><span class="hl-4">configuration</span><br/><span class="hl-1">│   └── </span><span class="hl-4">utils</span><span class="hl-1">/</span><br/><span class="hl-1">│       ├── </span><span class="hl-4">json</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1">           # </span><span class="hl-7">LLM</span><span class="hl-1"> </span><span class="hl-7">API</span><span class="hl-1"> </span><span class="hl-0">client</span><span class="hl-1"> (</span><span class="hl-4">Ollama</span><span class="hl-1">)</span><br/><span class="hl-1">│       └── </span><span class="hl-4">messages</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1">       # </span><span class="hl-4">Multi</span><span class="hl-1">-</span><span class="hl-4">timeframe</span><span class="hl-1"> </span><span class="hl-4">message</span><span class="hl-1"> </span><span class="hl-4">builder</span><br/><span class="hl-1">├── </span><span class="hl-4">package</span><span class="hl-1">.</span><span class="hl-4">json</span><span class="hl-1">               # </span><span class="hl-4">Dependencies</span><span class="hl-1"> </span><span class="hl-4">and</span><span class="hl-1"> </span><span class="hl-4">scripts</span><br/><span class="hl-1">└── </span><span class="hl-7">README</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">                  # </span><span class="hl-4">This</span><span class="hl-1"> </span><span class="hl-4">file</span>
+</code><button>Copy</button></pre>
+
+<a id="installation-and-setup" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Installation and Setup<a href="#installation-and-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-5"># Navigate to project directory</span><br/><span class="hl-0">cd</span><span class="hl-1"> </span><span class="hl-2">demo/live</span><br/><br/><span class="hl-5"># Install dependencies</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><br/><br/><span class="hl-5"># Set environment variables</span><br/><span class="hl-6">export</span><span class="hl-1"> </span><span class="hl-4">OLLAMA_API_KEY</span><span class="hl-1">=</span><span class="hl-4">your_ollama_api_key</span><br/><br/><span class="hl-5"># Run live trading</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="environment-variables" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Environment Variables<a href="#environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Create a <code>.env</code> file or set environment variables:</p>
+<pre><code class="env">OLLAMA_API_KEY=your_ollama_api_key
+</code><button type="button">Copy</button></pre>
+
+<a id="live-trading-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading Configuration<a href="#live-trading-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo is pre-configured for BTCUSDT with:</p>
+<ul>
+<li><strong>Trading Period</strong>: December 1, 2025 (full day) - define frame for replay/testing</li>
+<li><strong>Symbol</strong>: BTCUSDT</li>
+<li><strong>Strategy Interval</strong>: 5m (signal generation frequency)</li>
+<li><strong>Frame Interval</strong>: 1m (tick resolution)</li>
+<li><strong>Exchange</strong>: Binance (via CCXT)</li>
+<li><strong>Execution Mode</strong>: Background (non-blocking continuous monitoring)</li>
+</ul>
+<a id="signal-generation-rules" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Generation Rules<a href="#signal-generation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>LLM follows strict rules for signal generation:</p>
+<ol>
+<li>
+<p><strong>Position Types</strong>:</p>
+<ul>
+<li><code>position='wait'</code>: No clear signal, wait for better conditions</li>
+<li><code>position='long'</code>: Bullish signal, price expected to rise</li>
+<li><code>position='short'</code>: Bearish signal, price expected to fall</li>
+</ul>
+</li>
+<li>
+<p><strong>Entry Price</strong> (<code>priceOpen</code>):</p>
+<ul>
+<li>Can be current market price for immediate entry</li>
+<li>Can be limit order price for delayed entry (scheduled signal)</li>
+<li>Must have technical justification</li>
+</ul>
+</li>
+<li>
+<p><strong>Exit Levels</strong>:</p>
+<ul>
+<li>LONG: <code>priceTakeProfit &gt; priceOpen &gt; priceStopLoss</code></li>
+<li>SHORT: <code>priceStopLoss &gt; priceOpen &gt; priceTakeProfit</code></li>
+<li>Levels based on S/R, Fibonacci, Bollinger Bands</li>
+</ul>
+</li>
+<li>
+<p><strong>Time Estimate</strong> (<code>minuteEstimatedTime</code>):</p>
+<ul>
+<li>Expected time to reach TP (max 360 minutes)</li>
+<li>Calculated from ATR, ADX, MACD, Momentum</li>
+</ul>
+</li>
+</ol>
+<a id="partial-profitloss-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Profit/Loss Configuration<a href="#partial-profitloss-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo implements scaling out at predefined levels:</p>
+<p><strong>Profit Levels</strong> (defined in <code>Constant</code>):</p>
+<ul>
+<li><code>TP_LEVEL3</code> (25% profit): Close 33% of position</li>
+<li><code>TP_LEVEL2</code> (50% profit): Close 33% of position</li>
+<li><code>TP_LEVEL1</code> (100% profit): Close remaining 34%</li>
+</ul>
+<p><strong>Loss Levels</strong>:</p>
+<ul>
+<li><code>SL_LEVEL2</code> (-50% loss): Close 50% of position</li>
+<li><code>SL_LEVEL1</code> (-100% loss): Close remaining 50%</li>
+</ul>
+<a id="usage-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Examples<a href="#usage-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="basic-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Usage<a href="#basic-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Run live trading:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Output:</p>
+<pre><code><span class="hl-1">{ </span><span class="hl-12">action</span><span class="hl-1">: </span><span class="hl-2">&#39;idle&#39;</span><span class="hl-1">, </span><span class="hl-12">signal</span><span class="hl-1">: </span><span class="hl-6">null</span><span class="hl-1">, </span><span class="hl-12">strategyName</span><span class="hl-1">: </span><span class="hl-2">&#39;test_strategy&#39;</span><span class="hl-1">, ... }</span><br/><span class="hl-1">{ </span><span class="hl-12">action</span><span class="hl-1">: </span><span class="hl-2">&#39;opened&#39;</span><span class="hl-1">, </span><span class="hl-12">signal</span><span class="hl-1">: { </span><span class="hl-12">id</span><span class="hl-1">: </span><span class="hl-2">&#39;...&#39;</span><span class="hl-1">, </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&#39;long&#39;</span><span class="hl-1">, ... }, ... }</span><br/><span class="hl-7">BTCUSDT</span><span class="hl-1"> </span><span class="hl-4">reached</span><span class="hl-1"> </span><span class="hl-8">25</span><span class="hl-1">% </span><span class="hl-4">profit</span><span class="hl-1"> </span><span class="hl-4">at</span><span class="hl-1"> </span><span class="hl-8">51250</span><br/><span class="hl-4">Close</span><span class="hl-1"> </span><span class="hl-8">33</span><span class="hl-1">% </span><span class="hl-4">at</span><span class="hl-1"> </span><span class="hl-8">25</span><span class="hl-1">% </span><span class="hl-4">profit</span><br/><span class="hl-7">BTCUSDT</span><span class="hl-1"> </span><span class="hl-4">reached</span><span class="hl-1"> </span><span class="hl-8">50</span><span class="hl-1">% </span><span class="hl-4">profit</span><span class="hl-1"> </span><span class="hl-4">at</span><span class="hl-1"> </span><span class="hl-8">51500</span><br/><span class="hl-4">Close</span><span class="hl-1"> </span><span class="hl-8">33</span><span class="hl-1">% </span><span class="hl-4">at</span><span class="hl-1"> </span><span class="hl-8">50</span><span class="hl-1">% </span><span class="hl-4">profit</span><br/><span class="hl-1">{ </span><span class="hl-12">action</span><span class="hl-1">: </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">, </span><span class="hl-12">signal</span><span class="hl-1">: { ... }, </span><span class="hl-12">pnl</span><span class="hl-1">: { </span><span class="hl-12">pnlPercentage</span><span class="hl-1">: </span><span class="hl-8">2.0</span><span class="hl-1"> }, ... }</span><br/><span class="hl-4">Backtest</span><span class="hl-1"> </span><span class="hl-4">report</span><span class="hl-1"> </span><span class="hl-12">saved</span><span class="hl-1">: ./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">backtest</span><span class="hl-1">/</span><span class="hl-4">test_strategy</span><span class="hl-1">.</span><span class="hl-4">md</span><br/><span class="hl-4">Partial</span><span class="hl-1"> </span><span class="hl-4">profit</span><span class="hl-1">/</span><span class="hl-4">loss</span><span class="hl-1"> </span><span class="hl-4">report</span><span class="hl-1"> </span><span class="hl-12">saved</span><span class="hl-1">: ./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">partial</span><span class="hl-1">/</span><span class="hl-4">BTCUSDT_test_strategy</span><span class="hl-1">.</span><span class="hl-4">md</span>
+</code><button>Copy</button></pre>
+
+<p>Generated files:</p>
+<ul>
+<li><code>./dump/backtest/test_strategy.md</code> - Live trading performance report</li>
+<li><code>./dump/partial/BTCUSDT_test_strategy.md</code> - Partial profit/loss events</li>
+<li><code>./dump/schedule/test_strategy.md</code> - Scheduled orders report</li>
+<li><code>./dump/strategy/{uuid}/</code> - LLM conversation logs (one per signal)</li>
+</ul>
+<a id="analyzing-live-performance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Analyzing Live Performance<a href="#analyzing-live-performance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>After trading session, check performance report:</p>
+<pre><code class="bash"><span class="hl-0">cat</span><span class="hl-1"> </span><span class="hl-2">./dump/backtest/test_strategy.md</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Example output:</p>
+<pre><code class="markdown"># Backtest Report: test_strategy
+
+| Signal ID | Symbol   | Position | Open Price | Close Price | PNL (net) | Close Reason |
+|-----------|----------|----------|------------|-------------|-----------|--------------|
+| signal-1  | BTCUSDT  | LONG     | 50000 USD  | 51000 USD   | +2.00%    | take_profit  |
+| signal-2  | BTCUSDT  | SHORT    | 51500 USD  | 50500 USD   | +1.94%    | take_profit  |
+
+**Total signals:** 15
+**Win rate:** 73.33% (11W / 4L)
+**Average PNL:** +0.85%
+**Sharpe Ratio:** 1.234
+</code><button type="button">Copy</button></pre>
+
+<a id="analyzing-partial-events" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Analyzing Partial Events<a href="#analyzing-partial-events" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Check partial profit/loss tracking:</p>
+<pre><code class="bash"><span class="hl-0">cat</span><span class="hl-1"> </span><span class="hl-2">./dump/partial/BTCUSDT_test_strategy.md</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Example output:</p>
+<pre><code class="markdown"># Partial Profit/Loss Report: BTCUSDT:test_strategy
+
+| Action | Symbol | Strategy | Signal ID | Position | Level % | Current Price | Timestamp | Mode |
+|--------|--------|----------|-----------|----------|---------|---------------|-----------|------|
+| PROFIT | BTCUSDT | test_strategy | abc123 | LONG | +25% | 51250.00000000 USD | 2025-12-01T10:30:00.000Z | Live |
+| PROFIT | BTCUSDT | test_strategy | abc123 | LONG | +50% | 51500.00000000 USD | 2025-12-01T11:00:00.000Z | Live |
+
+**Total events:** 2
+**Profit events:** 2
+**Loss events:** 0
+</code><button type="button">Copy</button></pre>
+
+<a id="analyzing-scheduled-orders" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Analyzing Scheduled Orders<a href="#analyzing-scheduled-orders" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Check scheduled order tracking:</p>
+<pre><code class="bash"><span class="hl-0">cat</span><span class="hl-1"> </span><span class="hl-2">./dump/schedule/test_strategy.md</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This shows all limit orders that were scheduled and their activation/cancellation status.</p>
+<a id="event-listeners-in-action" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listeners in Action<a href="#event-listeners-in-action" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo includes three key event listeners:</p>
+<a id="1-signal-events-listensignallive" class="tsd-anchor"></a><h4 class="tsd-anchor-link">1. Signal Events (<code>listenSignalLive</code>)<a href="#1-signal-events-listensignallive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Monitors all signal lifecycle events:</p>
+<pre><code class="javascript"><span class="hl-0">listenSignalLive</span><span class="hl-1">(</span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Generate reports when position closes</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Partial</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;scheduled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Track scheduled limit orders</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;cancelled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Track cancelled limit orders</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">); </span><span class="hl-5">// Log all events</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Events emitted</strong>:</p>
+<ul>
+<li><code>action: 'idle'</code> - No active position</li>
+<li><code>action: 'opened'</code> - Position opened at market/limit price</li>
+<li><code>action: 'active'</code> - Position being monitored</li>
+<li><code>action: 'scheduled'</code> - Limit order created, waiting for activation</li>
+<li><code>action: 'cancelled'</code> - Scheduled order cancelled without execution</li>
+<li><code>action: 'closed'</code> - Position closed (TP/SL/timeout)</li>
+</ul>
+<a id="2-partial-profit-events-listenpartialprofit" class="tsd-anchor"></a><h4 class="tsd-anchor-link">2. Partial Profit Events (<code>listenPartialProfit</code>)<a href="#2-partial-profit-events-listenpartialprofit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Tracks profit milestones for scaling out:</p>
+<pre><code class="javascript"><span class="hl-0">listenPartialProfit</span><span class="hl-1">(({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">, </span><span class="hl-4">level</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-6">${</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-2"> reached </span><span class="hl-6">${</span><span class="hl-4">level</span><span class="hl-6">}</span><span class="hl-2">% profit at </span><span class="hl-6">${</span><span class="hl-4">price</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-4">Constant</span><span class="hl-1">.</span><span class="hl-7">TP_LEVEL3</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Close 33% at 25% profit&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute partial close via exchange API</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-4">Constant</span><span class="hl-1">.</span><span class="hl-7">TP_LEVEL2</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Close 33% at 50% profit&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute partial close via exchange API</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-4">Constant</span><span class="hl-1">.</span><span class="hl-7">TP_LEVEL1</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Close 34% at 100% profit&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute final close via exchange API</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use cases</strong>:</p>
+<ul>
+<li>Scale out winning positions gradually</li>
+<li>Lock in profits at predefined levels</li>
+<li>Reduce risk while maintaining upside potential</li>
+</ul>
+<a id="3-partial-loss-events-listenpartialloss" class="tsd-anchor"></a><h4 class="tsd-anchor-link">3. Partial Loss Events (<code>listenPartialLoss</code>)<a href="#3-partial-loss-events-listenpartialloss" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Tracks loss milestones for risk management:</p>
+<pre><code class="javascript"><span class="hl-0">listenPartialLoss</span><span class="hl-1">(({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">, </span><span class="hl-4">level</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-6">${</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-2"> reached -</span><span class="hl-6">${</span><span class="hl-4">level</span><span class="hl-6">}</span><span class="hl-2">% loss at </span><span class="hl-6">${</span><span class="hl-4">price</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-4">Constant</span><span class="hl-1">.</span><span class="hl-7">SL_LEVEL2</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Close 50% at -50% loss&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute partial stop loss via exchange API</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-4">Constant</span><span class="hl-1">.</span><span class="hl-7">SL_LEVEL1</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Close 50% at -100% loss&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute final stop loss via exchange API</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use cases</strong>:</p>
+<ul>
+<li>Scale out losing positions to limit damage</li>
+<li>Preserve capital for future opportunities</li>
+<li>Reduce drawdown during adverse price movement</li>
+</ul>
+<a id="4-error-events-listenerror" class="tsd-anchor"></a><h4 class="tsd-anchor-link">4. Error Events (<code>listenError</code>)<a href="#4-error-events-listenerror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Catches all errors for debugging and monitoring:</p>
+<pre><code class="javascript"><span class="hl-0">listenError</span><span class="hl-1">((</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&quot;Error occurred:&quot;</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-5">// Send notification, log to monitoring system, etc.</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Error types</strong>:</p>
+<ul>
+<li>Exchange API errors (rate limits, timeouts)</li>
+<li>Signal validation errors (invalid TP/SL logic)</li>
+<li>LLM generation failures</li>
+<li>Network connectivity issues</li>
+</ul>
+<a id="debugging-llm-conversations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Debugging LLM Conversations<a href="#debugging-llm-conversations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each signal generates debug logs in <code>./dump/strategy/{uuid}/</code>:</p>
+<pre><code><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">strategy</span><span class="hl-1">/</span><span class="hl-4">a1b2c3d4</span><span class="hl-1">-</span><span class="hl-4">e5f6</span><span class="hl-1">-</span><span class="hl-8">7890</span><span class="hl-1">-</span><span class="hl-4">abcd</span><span class="hl-1">-</span><span class="hl-4">ef1234567890</span><span class="hl-1">/</span><br/><span class="hl-1">├── 00</span><span class="hl-4">_system_prompt</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">       # </span><span class="hl-4">System</span><span class="hl-1"> </span><span class="hl-4">instructions</span><br/><span class="hl-1">├── 01</span><span class="hl-4">_user_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">         # 1</span><span class="hl-4">h</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1"> </span><span class="hl-4">analysis</span><br/><span class="hl-1">├── 02</span><span class="hl-4">_assistant_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">    # </span><span class="hl-7">LLM</span><span class="hl-1"> </span><span class="hl-4">acknowledgment</span><br/><span class="hl-1">├── 03</span><span class="hl-4">_user_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">         # 15</span><span class="hl-4">m</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1"> </span><span class="hl-4">analysis</span><br/><span class="hl-1">├── 04</span><span class="hl-4">_assistant_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">    # </span><span class="hl-7">LLM</span><span class="hl-1"> </span><span class="hl-4">acknowledgment</span><br/><span class="hl-1">├── 05</span><span class="hl-4">_user_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">         # 5</span><span class="hl-4">m</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1"> </span><span class="hl-4">analysis</span><br/><span class="hl-1">├── 06</span><span class="hl-4">_assistant_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">    # </span><span class="hl-7">LLM</span><span class="hl-1"> </span><span class="hl-4">acknowledgment</span><br/><span class="hl-1">├── 07</span><span class="hl-4">_user_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">         # 1</span><span class="hl-4">m</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1"> </span><span class="hl-4">analysis</span><br/><span class="hl-1">├── 08</span><span class="hl-4">_assistant_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">    # </span><span class="hl-7">LLM</span><span class="hl-1"> </span><span class="hl-4">acknowledgment</span><br/><span class="hl-1">├── 09</span><span class="hl-4">_user_message</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">         # </span><span class="hl-4">Signal</span><span class="hl-1"> </span><span class="hl-4">generation</span><span class="hl-1"> </span><span class="hl-4">request</span><br/><span class="hl-1">└── 10</span><span class="hl-4">_llm_output</span><span class="hl-1">.</span><span class="hl-4">md</span><span class="hl-1">           # </span><span class="hl-4">Final</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-3">with</span><span class="hl-1"> </span><span class="hl-7">JSON</span>
+</code><button>Copy</button></pre>
+
+<a id="customizing-symbols" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Customizing Symbols<a href="#customizing-symbols" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Modify <code>src/index.mjs</code> to trade different cryptocurrencies:</p>
+<pre><code class="javascript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;ETHUSDT&quot;</span><span class="hl-1">, {  </span><span class="hl-5">// Change symbol</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_exchange&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="adjusting-time-periods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Adjusting Time Periods<a href="#adjusting-time-periods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Edit trading period in <code>src/index.mjs</code> (for replay/testing mode):</p>
+<pre><code class="javascript"><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-15T00:00:00.000Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-15T23:59:59.000Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Note</strong>: For true live trading, remove date constraints and let it run continuously.</p>
+<a id="how-it-works" class="tsd-anchor"></a><h2 class="tsd-anchor-link">How It Works<a href="#how-it-works" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="phase-1-continuous-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 1: Continuous Monitoring<a href="#phase-1-continuous-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>Live.background()</code> runs in a loop:</p>
+<ol>
+<li>Fetches latest price every 1m (frame interval)</li>
+<li>Checks if strategy interval (5m) has elapsed</li>
+<li>If elapsed, triggers signal generation</li>
+<li>Otherwise, monitors existing position for TP/SL/timeout</li>
+</ol>
+<a id="phase-2-multi-timeframe-data-collection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 2: Multi-Timeframe Data Collection<a href="#phase-2-multi-timeframe-data-collection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For each signal generation (every 5 minutes):</p>
+<ol>
+<li>Fetches 1h candles (24 candles, ~24h lookback)</li>
+<li>Fetches 15m candles (24 candles, ~6h lookback)</li>
+<li>Fetches 5m candles (24 candles, ~2h lookback)</li>
+<li>Fetches 1m candles (30 candles, ~30min lookback)</li>
+<li>Formats data into human-readable OHLCV strings</li>
+</ol>
+<a id="phase-3-llm-conversation-building" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 3: LLM Conversation Building<a href="#phase-3-llm-conversation-building" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Creates structured conversation:</p>
+<ol>
+<li><strong>User</strong>: Provides 1h candles with symbol name</li>
+<li><strong>Assistant</strong>: Acknowledges trend analysis</li>
+<li><strong>User</strong>: Provides 15m candles</li>
+<li><strong>Assistant</strong>: Acknowledges swing structure analysis</li>
+<li><strong>User</strong>: Provides 5m candles</li>
+<li><strong>Assistant</strong>: Acknowledges main timeframe analysis</li>
+<li><strong>User</strong>: Provides 1m candles</li>
+<li><strong>Assistant</strong>: Acknowledges microstructure analysis</li>
+<li><strong>User</strong>: Requests final trading signal</li>
+<li><strong>LLM</strong>: Returns structured JSON signal</li>
+</ol>
+<a id="phase-4-signal-generation-and-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 4: Signal Generation and Validation<a href="#phase-4-signal-generation-and-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>LLM analyzes all timeframes and returns:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;position&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;note&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;Strong bullish momentum on 1h, breakout on 5m...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;priceOpen&quot;</span><span class="hl-1">: </span><span class="hl-8">50000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;priceTakeProfit&quot;</span><span class="hl-1">: </span><span class="hl-8">51000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;priceStopLoss&quot;</span><span class="hl-1">: </span><span class="hl-8">49000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;minuteEstimatedTime&quot;</span><span class="hl-1">: </span><span class="hl-8">120</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Framework validates:</p>
+<ul>
+<li>Position type is valid (wait/long/short)</li>
+<li>TP/SL logic is correct (LONG: TP &gt; Open &gt; SL)</li>
+<li>Prices are reasonable (not negative, not too far from current)</li>
+<li>Time estimate is within bounds (0-360 minutes)</li>
+</ul>
+<a id="phase-5-debug-logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 5: Debug Logging<a href="#phase-5-debug-logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>dumpSignal()</code> saves:</p>
+<ul>
+<li>Complete conversation history (messages array)</li>
+<li>Final LLM output (signal JSON)</li>
+<li>Unique UUID for tracking each signal</li>
+<li>Files in <code>./dump/strategy/{uuid}/</code> directory</li>
+</ul>
+<a id="phase-6-order-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 6: Order Execution<a href="#phase-6-order-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Two execution paths:</p>
+<p><strong>Path A: Immediate Execution</strong> (if <code>priceOpen</code> equals current price):</p>
+<ol>
+<li>Opens position at current market price</li>
+<li>Sets TP/SL monitoring</li>
+<li>Emits <code>action: 'opened'</code> event</li>
+<li>Continues monitoring until TP/SL/timeout</li>
+</ol>
+<p><strong>Path B: Scheduled Execution</strong> (if <code>priceOpen</code> is limit price):</p>
+<ol>
+<li>Creates scheduled order waiting for activation</li>
+<li>Emits <code>action: 'scheduled'</code> event</li>
+<li>Monitors price until it reaches <code>priceOpen</code></li>
+<li>If activated: opens position, emits <code>action: 'opened'</code></li>
+<li>If timeout/SL hit before activation: cancels order, emits <code>action: 'cancelled'</code></li>
+</ol>
+<a id="phase-7-partial-profitloss-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 7: Partial Profit/Loss Monitoring<a href="#phase-7-partial-profitloss-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>While position is active:</p>
+<ol>
+<li>Monitors current price vs. entry price</li>
+<li>Calculates unrealized PNL percentage</li>
+<li>Checks against predefined profit/loss levels</li>
+<li>Emits partial events when levels are crossed</li>
+<li>Allows custom logic (scaling out, trailing stops, etc.)</li>
+</ol>
+<a id="phase-8-position-closure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 8: Position Closure<a href="#phase-8-position-closure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Position closes when:</p>
+<ul>
+<li><strong>Take Profit Hit</strong>: Price reaches <code>priceTakeProfit</code></li>
+<li><strong>Stop Loss Hit</strong>: Price reaches <code>priceStopLoss</code></li>
+<li><strong>Time Expired</strong>: <code>minuteEstimatedTime</code> elapsed without TP/SL</li>
+</ul>
+<p>Closure process:</p>
+<ol>
+<li>Calculates final PNL (with fees and slippage)</li>
+<li>Emits <code>action: 'closed'</code> event</li>
+<li>Generates performance reports</li>
+<li>Saves partial profit/loss events</li>
+<li>Logs to console and files</li>
+</ol>
+<a id="phase-9-report-generation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Phase 9: Report Generation<a href="#phase-9-report-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>After each closure:</p>
+<ol>
+<li>Updates live trading report (<code>./dump/backtest/{strategyName}.md</code>)</li>
+<li>Updates partial events report (<code>./dump/partial/{symbol}_{strategyName}.md</code>)</li>
+<li>Updates scheduled orders report (<code>./dump/schedule/{strategyName}.md</code>)</li>
+<li>Aggregates performance metrics</li>
+<li>Calculates Sharpe ratio, win rate, etc.</li>
+</ol>
+<a id="llm-prompt-engineering" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LLM Prompt Engineering<a href="#llm-prompt-engineering" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="system-prompt-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">System Prompt Strategy<a href="#system-prompt-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">role</span><span class="hl-1">: </span><span class="hl-2">&quot;system&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">content</span><span class="hl-1">: </span><span class="hl-2">`</span><br/><span class="hl-2">    Проанализируй торговую стратегию и верни торговый сигнал.</span><br/><br/><span class="hl-2">    ПРАВИЛА ОТКРЫТИЯ ПОЗИЦИЙ:</span><br/><span class="hl-2">    1. ТИПЫ ПОЗИЦИЙ:</span><br/><span class="hl-2">       - position=&#39;wait&#39;: нет четкого сигнала</span><br/><span class="hl-2">       - position=&#39;long&#39;: бычий сигнал</span><br/><span class="hl-2">       - position=&#39;short&#39;: медвежий сигнал</span><br/><br/><span class="hl-2">    2. ЦЕНА ВХОДА (priceOpen):</span><br/><span class="hl-2">       - Текущая рыночная или отложенная цена</span><br/><span class="hl-2">       - Обоснование по техническому анализу</span><br/><br/><span class="hl-2">    3. УРОВНИ ВЫХОДА:</span><br/><span class="hl-2">       - LONG: priceTakeProfit &gt; priceOpen &gt; priceStopLoss</span><br/><span class="hl-2">       - SHORT: priceStopLoss &gt; priceOpen &gt; priceTakeProfit</span><br/><span class="hl-2">       - На основе Fibonacci, S/R, Bollinger</span><br/><br/><span class="hl-2">    4. ВРЕМЕННЫЕ РАМКИ:</span><br/><span class="hl-2">       - minuteEstimatedTime: макс 360 минут</span><br/><span class="hl-2">       - Расчет по ATR, ADX, MACD, Momentum</span><br/><span class="hl-2">  `</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This encourages:</p>
+<ul>
+<li>Conservative signal generation (wait when uncertain)</li>
+<li>Technically justified entry/exit levels</li>
+<li>Realistic time estimates</li>
+<li>Risk-aware position sizing</li>
+</ul>
+<a id="user-prompt-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">User Prompt Strategy<a href="#user-prompt-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Final request emphasizes caution:</p>
+<pre><code><span class="hl-4">Проанализируй</span><span class="hl-1"> </span><span class="hl-4">все</span><span class="hl-1"> </span><span class="hl-4">таймфреймы</span><span class="hl-1"> </span><span class="hl-4">и</span><span class="hl-1"> </span><span class="hl-4">сгенерируй</span><span class="hl-1"> </span><span class="hl-4">торговый</span><span class="hl-1"> </span><span class="hl-4">сигнал</span><span class="hl-1">.</span><br/><span class="hl-4">Открывай</span><span class="hl-1"> </span><span class="hl-4">позицию</span><span class="hl-1"> </span><span class="hl-7">ТОЛЬКО</span><span class="hl-1"> </span><span class="hl-4">при</span><span class="hl-1"> </span><span class="hl-4">четком</span><span class="hl-1"> </span><span class="hl-4">сигнале</span><span class="hl-1">.</span><br/><br/><span class="hl-4">Если</span><span class="hl-1"> </span><span class="hl-4">сигналы</span><span class="hl-1"> </span><span class="hl-4">противоречивы</span><span class="hl-1"> </span><span class="hl-4">или</span><span class="hl-1"> </span><span class="hl-4">тренд</span><span class="hl-1"> </span><span class="hl-4">слабый</span><span class="hl-1"> </span><span class="hl-4">то</span><span class="hl-1"> </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-4">wait</span>
+</code><button>Copy</button></pre>
+
+<p>This prevents:</p>
+<ul>
+<li>Overtrading in unclear market conditions</li>
+<li>Entry without multi-timeframe confirmation</li>
+<li>Ignoring conflicting signals</li>
+</ul>
+<a id="performance-metrics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Metrics<a href="#performance-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading evaluates strategy by:</p>
+<ul>
+<li><strong>Total Signals</strong>: Number of closed positions</li>
+<li><strong>Win Rate</strong>: Percentage of profitable trades (higher is better)</li>
+<li><strong>Average PNL</strong>: Mean profit/loss per trade (higher is better)</li>
+<li><strong>Total PNL</strong>: Cumulative profit/loss (higher is better)</li>
+<li><strong>Sharpe Ratio</strong>: Risk-adjusted returns (higher is better)</li>
+<li><strong>Annualized Sharpe Ratio</strong>: Sharpe × √365 (higher is better)</li>
+<li><strong>Certainty Ratio</strong>: avgWin / |avgLoss| (higher is better)</li>
+<li><strong>Expected Yearly Returns</strong>: Annualized profit estimate (higher is better)</li>
+<li><strong>Standard Deviation</strong>: Volatility metric (lower is better)</li>
+</ul>
+<p><strong>Partial Event Metrics</strong>:</p>
+<ul>
+<li><strong>Total Events</strong>: Total profit/loss level crossings</li>
+<li><strong>Profit Events</strong>: Number of profit milestone hits</li>
+<li><strong>Loss Events</strong>: Number of loss milestone hits</li>
+</ul>
+<a id="economic-benefits" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Economic Benefits<a href="#economic-benefits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>24/7 Monitoring</strong>: Never miss trading opportunities</li>
+<li><strong>Automated Decision Making</strong>: LLM analyzes 4 timeframes simultaneously</li>
+<li><strong>Reproducible Signals</strong>: Same input → same output (deterministic)</li>
+<li><strong>Audit Trail</strong>: Complete conversation logs for every signal</li>
+<li><strong>Risk Management</strong>: Strict TP/SL validation and partial scaling</li>
+<li><strong>Time Efficiency</strong>: Seconds vs. hours of manual chart analysis</li>
+<li><strong>Emotional Discipline</strong>: No FOMO, no panic selling</li>
+<li><strong>Backtesting Compatibility</strong>: Same code for backtest and live trading</li>
+</ul>
+<a id="paper-trading-vs-real-money" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Paper Trading vs Real Money<a href="#paper-trading-vs-real-money" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="paper-trading-setup" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Paper Trading Setup<a href="#paper-trading-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-5">// Use exchange testnet/paper trading API</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">exchange</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">apiKey:</span><span class="hl-1"> </span><span class="hl-2">&#39;TESTNET_API_KEY&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">secret:</span><span class="hl-1"> </span><span class="hl-2">&#39;TESTNET_SECRET&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">enableRateLimit:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">options:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">defaultType:</span><span class="hl-1"> </span><span class="hl-2">&#39;future&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">test:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1">,  </span><span class="hl-5">// Enable testnet</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Advantages</strong>:</p>
+<ul>
+<li>Zero risk</li>
+<li>Unlimited testing</li>
+<li>Same API as production</li>
+<li>Perfect for strategy validation</li>
+</ul>
+<p><strong>Limitations</strong>:</p>
+<ul>
+<li>No real slippage</li>
+<li>No real liquidity constraints</li>
+<li>No psychological pressure</li>
+</ul>
+<a id="real-money-setup" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Real Money Setup<a href="#real-money-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-5">// Use exchange production API</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">exchange</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">apiKey:</span><span class="hl-1"> </span><span class="hl-2">&#39;PRODUCTION_API_KEY&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">secret:</span><span class="hl-1"> </span><span class="hl-2">&#39;PRODUCTION_SECRET&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">enableRateLimit:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">options:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">defaultType:</span><span class="hl-1"> </span><span class="hl-2">&#39;future&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Advantages</strong>:</p>
+<ul>
+<li>Real market conditions</li>
+<li>Real slippage and fees</li>
+<li>Real psychological experience</li>
+</ul>
+<p><strong>Critical Requirements</strong>:</p>
+<ol>
+<li>✅ Thoroughly backtested strategy</li>
+<li>✅ Validated on paper trading</li>
+<li>✅ Risk management in place (position sizing, stop losses)</li>
+<li>✅ Monitoring and alerting configured</li>
+<li>✅ Emergency stop mechanism implemented</li>
+<li>✅ Sufficient capital to handle drawdowns</li>
+</ol>
+<p><strong>Never trade with real money until</strong>:</p>
+<ul>
+<li>Win rate &gt; 60% in backtest</li>
+<li>Sharpe ratio &gt; 1.0</li>
+<li>At least 100+ backtest signals</li>
+<li>At least 30 days paper trading</li>
+<li>Maximum drawdown &lt; 20%</li>
+</ul>
+<a id="advanced-customization" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Advanced Customization<a href="#advanced-customization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="adding-custom-partial-levels" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Adding Custom Partial Levels<a href="#adding-custom-partial-levels" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-5">// Define custom profit levels</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">CUSTOM_TP_LEVELS</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">LEVEL_1:</span><span class="hl-1"> </span><span class="hl-8">10</span><span class="hl-1">,  </span><span class="hl-5">// 10% profit</span><br/><span class="hl-1">  </span><span class="hl-4">LEVEL_2:</span><span class="hl-1"> </span><span class="hl-8">30</span><span class="hl-1">,  </span><span class="hl-5">// 30% profit</span><br/><span class="hl-1">  </span><span class="hl-4">LEVEL_3:</span><span class="hl-1"> </span><span class="hl-8">75</span><span class="hl-1">,  </span><span class="hl-5">// 75% profit</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">listenPartialProfit</span><span class="hl-1">(({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">, </span><span class="hl-4">level</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> === </span><span class="hl-7">CUSTOM_TP_LEVELS</span><span class="hl-1">.</span><span class="hl-7">LEVEL_1</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Close 25% of position</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">createOrder</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;market&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;sell&#39;</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1"> * </span><span class="hl-8">0.25</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// ... more levels</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="implementing-trailing-stop-loss" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementing Trailing Stop Loss<a href="#implementing-trailing-stop-loss" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">trailingStopLoss</span><span class="hl-1"> = </span><span class="hl-6">null</span><span class="hl-1">;</span><br/><br/><span class="hl-0">listenPartialProfit</span><span class="hl-1">(({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">, </span><span class="hl-4">level</span><span class="hl-1">, </span><span class="hl-4">signal</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Activate trailing stop after 25% profit</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1"> &gt;= </span><span class="hl-8">25</span><span class="hl-1"> &amp;&amp; !</span><span class="hl-4">trailingStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">trailingStopLoss</span><span class="hl-1"> = </span><span class="hl-4">price</span><span class="hl-1"> * </span><span class="hl-8">0.95</span><span class="hl-1">; </span><span class="hl-5">// 5% trailing</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Trailing SL activated at </span><span class="hl-6">${</span><span class="hl-4">trailingStopLoss</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Update trailing stop if price moves up</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">trailingStopLoss</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">price</span><span class="hl-1"> &gt; </span><span class="hl-4">trailingStopLoss</span><span class="hl-1"> / </span><span class="hl-8">0.95</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">trailingStopLoss</span><span class="hl-1"> = </span><span class="hl-4">price</span><span class="hl-1"> * </span><span class="hl-8">0.95</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Trailing SL updated to </span><span class="hl-6">${</span><span class="hl-4">trailingStopLoss</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="adding-telegram-notifications" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Adding Telegram Notifications<a href="#adding-telegram-notifications" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">TelegramBot</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;node-telegram-bot-api&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">bot</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">TelegramBot</span><span class="hl-1">(</span><span class="hl-7">TELEGRAM_BOT_TOKEN</span><span class="hl-1">, { </span><span class="hl-4">polling:</span><span class="hl-1"> </span><span class="hl-6">true</span><span class="hl-1"> });</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">chatId</span><span class="hl-1"> = </span><span class="hl-7">YOUR_CHAT_ID</span><span class="hl-1">;</span><br/><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">(</span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;opened&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">bot</span><span class="hl-1">.</span><span class="hl-0">sendMessage</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-4">chatId</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">`📈 OPENED </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-9">.</span><span class="hl-0">toUpperCase</span><span class="hl-9">()</span><span class="hl-6">}</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Symbol: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Price: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`TP: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-6">}</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`SL: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceStopLoss</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">bot</span><span class="hl-1">.</span><span class="hl-0">sendMessage</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-4">chatId</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">`💰 CLOSED</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`PNL: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-8">2</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2">%</span><span class="hl-11">\n</span><span class="hl-2">`</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Reason: </span><span class="hl-6">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">closeReason</span><span class="hl-6">}</span><span class="hl-2">`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="multi-symbol-trading" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Symbol Trading<a href="#multi-symbol-trading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">symbols</span><span class="hl-1"> = [</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;ETHUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;SOLUSDT&quot;</span><span class="hl-1">];</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">symbol</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">symbols</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_exchange&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test_frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Track positions per symbol</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">positions</span><span class="hl-1"> = </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Map</span><span class="hl-1">();</span><br/><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;opened&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">positions</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">positions</span><span class="hl-1">.</span><span class="hl-0">delete</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Active positions: </span><span class="hl-6">${</span><span class="hl-4">positions</span><span class="hl-9">.</span><span class="hl-4">size</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="position-sizing-based-on-risk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Sizing Based on Risk<a href="#position-sizing-based-on-risk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-5">// Calculate position size based on account balance and risk</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-0">calculatePositionSize</span><span class="hl-1"> = (</span><span class="hl-4">accountBalance</span><span class="hl-1">, </span><span class="hl-4">riskPercentage</span><span class="hl-1">, </span><span class="hl-4">stopLossPercentage</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">riskAmount</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * (</span><span class="hl-4">riskPercentage</span><span class="hl-1"> / </span><span class="hl-8">100</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">positionSize</span><span class="hl-1"> = </span><span class="hl-4">riskAmount</span><span class="hl-1"> / (</span><span class="hl-4">stopLossPercentage</span><span class="hl-1"> / </span><span class="hl-8">100</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">positionSize</span><span class="hl-1">;</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">(</span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;opened&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">balance</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">fetchBalance</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">stopLossPercentage</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><br/><span class="hl-1">      (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> * </span><span class="hl-8">100</span><br/><span class="hl-1">    );</span><br/><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">quantity</span><span class="hl-1"> = </span><span class="hl-0">calculatePositionSize</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-4">balance</span><span class="hl-1">.</span><span class="hl-4">total</span><span class="hl-1">.</span><span class="hl-7">USDT</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-8">2</span><span class="hl-1">, </span><span class="hl-5">// Risk 2% of account per trade</span><br/><span class="hl-1">      </span><span class="hl-4">stopLossPercentage</span><br/><span class="hl-1">    );</span><br/><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Position size: </span><span class="hl-6">${</span><span class="hl-4">quantity</span><span class="hl-6">}</span><span class="hl-2"> USDT`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Execute order with calculated quantity</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="troubleshooting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Troubleshooting<a href="#troubleshooting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="common-issues" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Issues<a href="#common-issues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Issue</strong>: <code>OLLAMA_API_KEY is not defined</code></p>
+<pre><code class="bash"><span class="hl-5"># Solution: Set environment variable</span><br/><span class="hl-6">export</span><span class="hl-1"> </span><span class="hl-4">OLLAMA_API_KEY</span><span class="hl-1">=</span><span class="hl-4">your_key</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issue</strong>: <code>Rate limit exceeded</code></p>
+<pre><code class="javascript"><span class="hl-5">// Solution: Add delay between requests in utils/json.mjs</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-10">Promise</span><span class="hl-1">(</span><span class="hl-4">resolve</span><span class="hl-1"> </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-0">setTimeout</span><span class="hl-1">(</span><span class="hl-4">resolve</span><span class="hl-1">, </span><span class="hl-8">1000</span><span class="hl-1">));</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issue</strong>: <code>Invalid signal structure</code></p>
+<pre><code class="javascript"><span class="hl-5">// Solution: Check LLM output format matches schema</span><br/><span class="hl-5">// Verify all required fields are present in JSON response</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issue</strong>: <code>No signals generated (all 'wait')</code></p>
+<pre><code class="javascript"><span class="hl-5">// Solution: Adjust prompt to be more aggressive</span><br/><span class="hl-5">// Or check if market data has sufficient volatility</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issue</strong>: <code>Position not closing at TP/SL</code></p>
+<pre><code class="javascript"><span class="hl-5">// Solution: Check exchange order execution</span><br/><span class="hl-5">// Verify price monitoring is working correctly</span><br/><span class="hl-5">// Inspect logs for price discrepancies</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issue</strong>: <code>Partial events not firing</code></p>
+<pre><code class="javascript"><span class="hl-5">// Solution: Verify Partial service is initialized</span><br/><span class="hl-5">// Check if partial levels are configured correctly</span><br/><span class="hl-5">// Ensure listenPartialProfit/Loss are registered before Live.background()</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="safety-guidelines" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Safety Guidelines<a href="#safety-guidelines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="risk-management-checklist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Management Checklist<a href="#risk-management-checklist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>[ ] <strong>Position Sizing</strong>: Never risk more than 1-2% per trade</li>
+<li>[ ] <strong>Stop Loss</strong>: Always set stop loss on every trade</li>
+<li>[ ] <strong>Maximum Drawdown</strong>: Stop trading if drawdown &gt; 20%</li>
+<li>[ ] <strong>Daily Loss Limit</strong>: Stop if daily loss &gt; 5% of account</li>
+<li>[ ] <strong>Maximum Open Positions</strong>: Limit to 2-3 concurrent trades</li>
+<li>[ ] <strong>Emergency Stop</strong>: Implement kill switch to close all positions</li>
+<li>[ ] <strong>Monitoring</strong>: Set up alerts for errors and unusual PNL</li>
+</ul>
+<a id="emergency-stop-mechanism" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Emergency Stop Mechanism<a href="#emergency-stop-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-5">// Add to src/index.mjs</span><br/><span class="hl-6">let</span><span class="hl-1"> </span><span class="hl-4">emergencyStop</span><span class="hl-1"> = </span><span class="hl-6">false</span><span class="hl-1">;</span><br/><br/><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">on</span><span class="hl-1">(</span><span class="hl-2">&#39;SIGINT&#39;</span><span class="hl-1">, </span><span class="hl-6">async</span><span class="hl-1"> () </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;Emergency stop triggered!&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">emergencyStop</span><span class="hl-1"> = </span><span class="hl-6">true</span><span class="hl-1">;</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Close all open positions</span><br/><span class="hl-1">  </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">positions</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">fetchOpenOrders</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">position</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">positions</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">cancelOrder</span><span class="hl-1">(</span><span class="hl-4">position</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">exit</span><span class="hl-1">(</span><span class="hl-8">0</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Check before each trade</span><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">emergencyStop</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;Emergency stop active, skipping signal&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// ... normal processing</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="related-projects" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Projects<a href="#related-projects" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><a href="https://github.com/tripolskypetr/backtest-kit">backtest-kit</a> - Trading framework</li>
+<li><a href="https://github.com/tripolskypetr/node-ccxt-dumper">node-ccxt-dumper</a> - Historical data API</li>
+<li><a href="https://ollama.com">ollama</a> - Local LLM inference</li>
+<li><a href="https://github.com/ccxt/ccxt">ccxt</a> - Cryptocurrency exchange API</li>
+</ul>
+<a id="next-steps" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ol>
+<li><strong>Paper Trading</strong>: Start with testnet/paper trading for at least 30 days</li>
+<li><strong>Strategy Optimization</strong>: Use backtest demo to optimize prompts</li>
+<li><strong>Risk Management</strong>: Implement position sizing and daily loss limits</li>
+<li><strong>Monitoring</strong>: Set up Telegram/Discord notifications</li>
+<li><strong>Real Trading</strong>: Only after thorough validation with paper trading</li>
+<li><strong>Portfolio Management</strong>: Extend to multiple symbols with correlation analysis</li>
+</ol>
+<a id="license" class="tsd-anchor"></a><h2 class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MIT © <a href="https://github.com/tripolskypetr">tripolskypetr</a></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ai-powered-live-trading-demo"><span>AI-<wbr/>Powered <wbr/>Live <wbr/>Trading <wbr/>Demo</span></a><ul><li><a href="#purpose"><span>Purpose</span></a></li><li><a href="#key-features"><span>Key <wbr/>Features</span></a></li><li><a href="#trading-modes"><span>Trading <wbr/>Modes</span></a></li><li><ul><li><a href="#1-paper-trading-test-mode"><span>1. <wbr/>Paper <wbr/>Trading (<wbr/>Test <wbr/>Mode)</span></a></li><li><a href="#2-real-money-trading-production-mode"><span>2. <wbr/>Real <wbr/>Money <wbr/>Trading (<wbr/>Production <wbr/>Mode)</span></a></li></ul></li><li><a href="#technology-stack"><span>Technology <wbr/>Stack</span></a></li><li><a href="#project-structure"><span>Project <wbr/>Structure</span></a></li><li><a href="#installation-and-setup"><span>Installation and <wbr/>Setup</span></a></li><li><a href="#configuration"><span>Configuration</span></a></li><li><ul><li><a href="#environment-variables"><span>Environment <wbr/>Variables</span></a></li><li><a href="#live-trading-configuration"><span>Live <wbr/>Trading <wbr/>Configuration</span></a></li><li><a href="#signal-generation-rules"><span>Signal <wbr/>Generation <wbr/>Rules</span></a></li><li><a href="#partial-profitloss-configuration"><span>Partial <wbr/>Profit/<wbr/>Loss <wbr/>Configuration</span></a></li></ul></li><li><a href="#usage-examples"><span>Usage <wbr/>Examples</span></a></li><li><ul><li><a href="#basic-usage"><span>Basic <wbr/>Usage</span></a></li><li><a href="#analyzing-live-performance"><span>Analyzing <wbr/>Live <wbr/>Performance</span></a></li><li><a href="#analyzing-partial-events"><span>Analyzing <wbr/>Partial <wbr/>Events</span></a></li><li><a href="#analyzing-scheduled-orders"><span>Analyzing <wbr/>Scheduled <wbr/>Orders</span></a></li><li><a href="#event-listeners-in-action"><span>Event <wbr/>Listeners in <wbr/>Action</span></a></li><li><ul><li><a href="#1-signal-events-listensignallive"><span>1. <wbr/>Signal <wbr/>Events (listen<wbr/>Signal<wbr/>Live)</span></a></li><li><a href="#2-partial-profit-events-listenpartialprofit"><span>2. <wbr/>Partial <wbr/>Profit <wbr/>Events (listen<wbr/>Partial<wbr/>Profit)</span></a></li><li><a href="#3-partial-loss-events-listenpartialloss"><span>3. <wbr/>Partial <wbr/>Loss <wbr/>Events (listen<wbr/>Partial<wbr/>Loss)</span></a></li><li><a href="#4-error-events-listenerror"><span>4. <wbr/>Error <wbr/>Events (listen<wbr/>Error)</span></a></li></ul></li><li><a href="#debugging-llm-conversations"><span>Debugging LLM <wbr/>Conversations</span></a></li><li><a href="#customizing-symbols"><span>Customizing <wbr/>Symbols</span></a></li><li><a href="#adjusting-time-periods"><span>Adjusting <wbr/>Time <wbr/>Periods</span></a></li></ul></li><li><a href="#how-it-works"><span>How <wbr/>It <wbr/>Works</span></a></li><li><ul><li><a href="#phase-1-continuous-monitoring"><span>Phase 1: <wbr/>Continuous <wbr/>Monitoring</span></a></li><li><a href="#phase-2-multi-timeframe-data-collection"><span>Phase 2: <wbr/>Multi-<wbr/>Timeframe <wbr/>Data <wbr/>Collection</span></a></li><li><a href="#phase-3-llm-conversation-building"><span>Phase 3: LLM <wbr/>Conversation <wbr/>Building</span></a></li><li><a href="#phase-4-signal-generation-and-validation"><span>Phase 4: <wbr/>Signal <wbr/>Generation and <wbr/>Validation</span></a></li><li><a href="#phase-5-debug-logging"><span>Phase 5: <wbr/>Debug <wbr/>Logging</span></a></li><li><a href="#phase-6-order-execution"><span>Phase 6: <wbr/>Order <wbr/>Execution</span></a></li><li><a href="#phase-7-partial-profitloss-monitoring"><span>Phase 7: <wbr/>Partial <wbr/>Profit/<wbr/>Loss <wbr/>Monitoring</span></a></li><li><a href="#phase-8-position-closure"><span>Phase 8: <wbr/>Position <wbr/>Closure</span></a></li><li><a href="#phase-9-report-generation"><span>Phase 9: <wbr/>Report <wbr/>Generation</span></a></li></ul></li><li><a href="#llm-prompt-engineering"><span>LLM <wbr/>Prompt <wbr/>Engineering</span></a></li><li><ul><li><a href="#system-prompt-strategy"><span>System <wbr/>Prompt <wbr/>Strategy</span></a></li><li><a href="#user-prompt-strategy"><span>User <wbr/>Prompt <wbr/>Strategy</span></a></li></ul></li><li><a href="#performance-metrics"><span>Performance <wbr/>Metrics</span></a></li><li><a href="#economic-benefits"><span>Economic <wbr/>Benefits</span></a></li><li><a href="#paper-trading-vs-real-money"><span>Paper <wbr/>Trading vs <wbr/>Real <wbr/>Money</span></a></li><li><ul><li><a href="#paper-trading-setup"><span>Paper <wbr/>Trading <wbr/>Setup</span></a></li><li><a href="#real-money-setup"><span>Real <wbr/>Money <wbr/>Setup</span></a></li></ul></li><li><a href="#advanced-customization"><span>Advanced <wbr/>Customization</span></a></li><li><ul><li><a href="#adding-custom-partial-levels"><span>Adding <wbr/>Custom <wbr/>Partial <wbr/>Levels</span></a></li><li><a href="#implementing-trailing-stop-loss"><span>Implementing <wbr/>Trailing <wbr/>Stop <wbr/>Loss</span></a></li><li><a href="#adding-telegram-notifications"><span>Adding <wbr/>Telegram <wbr/>Notifications</span></a></li><li><a href="#multi-symbol-trading"><span>Multi-<wbr/>Symbol <wbr/>Trading</span></a></li><li><a href="#position-sizing-based-on-risk"><span>Position <wbr/>Sizing <wbr/>Based on <wbr/>Risk</span></a></li></ul></li><li><a href="#troubleshooting"><span>Troubleshooting</span></a></li><li><ul><li><a href="#common-issues"><span>Common <wbr/>Issues</span></a></li></ul></li><li><a href="#safety-guidelines"><span>Safety <wbr/>Guidelines</span></a></li><li><ul><li><a href="#risk-management-checklist"><span>Risk <wbr/>Management <wbr/>Checklist</span></a></li><li><a href="#emergency-stop-mechanism"><span>Emergency <wbr/>Stop <wbr/>Mechanism</span></a></li></ul></li><li><a href="#related-projects"><span>Related <wbr/>Projects</span></a></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li><li><a href="#license"><span>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

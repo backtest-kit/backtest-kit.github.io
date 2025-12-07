@@ -1,0 +1,452 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/42_validation_services | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_42_validation_services.html">design/42_validation_services</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="validation-services" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Validation Services<a href="#validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Validation Services provide schema validation and runtime checks for all component types in the framework. These services ensure that components are correctly configured at registration time and that runtime data (signals, prices, risk parameters) meets safety constraints before execution. Validation Services act as gatekeepers between the public API and the execution engine, preventing invalid configurations from causing runtime errors or financial losses.</p>
+<p>For information about how validated schemas are stored and retrieved, see <a href="design_55_fast-forward_simulation.html">Schema Services</a>. For details on how validation results flow into execution, see <a href="design_43_global_services.html">Global Services</a>.</p>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validation-services-in-the-di-system" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Services in the DI System<a href="#validation-services-in-the-di-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/42_Validation_Services_0.svg" alt="Mermaid Diagram"></p>
+<a id="validation-flow-registration-to-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Flow: Registration to Execution<a href="#validation-flow-registration-to-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/42_Validation_Services_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="validation-service-types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Service Types<a href="#validation-service-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides six validation service classes, one for each component type. All validation services follow a common pattern: they validate schemas at registration time, memoize validation results, and provide a <code>list()</code> method for retrieving registered schemas.</p>
+<a id="service-responsibilities-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Responsibilities Table<a href="#service-responsibilities-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Service Class</th>
+<th>Component Type</th>
+<th>Primary Responsibilities</th>
+<th>DI Symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StrategyValidationService</code></td>
+<td>Strategy</td>
+<td>Signal generation validation, interval checks, risk/sizing references</td>
+<td><code>TYPES.strategyValidationService</code></td>
+</tr>
+<tr>
+<td><code>ExchangeValidationService</code></td>
+<td>Exchange</td>
+<td>Market data interface validation, formatting function checks</td>
+<td><code>TYPES.exchangeValidationService</code></td>
+</tr>
+<tr>
+<td><code>FrameValidationService</code></td>
+<td>Frame</td>
+<td>Timeframe configuration validation, date range checks</td>
+<td><code>TYPES.frameValidationService</code></td>
+</tr>
+<tr>
+<td><code>RiskValidationService</code></td>
+<td>Risk</td>
+<td>Position limit validation, custom validation function checks</td>
+<td><code>TYPES.riskValidationService</code></td>
+</tr>
+<tr>
+<td><code>SizingValidationService</code></td>
+<td>Sizing</td>
+<td>Position sizing method validation, parameter range checks</td>
+<td><code>TYPES.sizingValidationService</code></td>
+</tr>
+<tr>
+<td><code>WalkerValidationService</code></td>
+<td>Walker</td>
+<td>Strategy comparison validation, metric selection checks</td>
+<td><code>TYPES.walkerValidationService</code></td>
+</tr>
+</tbody>
+</table>
+<a id="common-service-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Service Interface<a href="#common-service-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All validation services implement a consistent interface pattern:</p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IValidationService</span><span class="hl-1">&lt;</span><span class="hl-10">TSchema</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-5">// Store and validate schema</span><br/><span class="hl-1">  </span><span class="hl-0">addComponent</span><span class="hl-1">(</span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-10">string</span><span class="hl-1">, </span><span class="hl-4">schema</span><span class="hl-1">: </span><span class="hl-10">TSchema</span><span class="hl-1">): </span><span class="hl-10">void</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Retrieve all registered schemas</span><br/><span class="hl-1">  </span><span class="hl-0">list</span><span class="hl-1">(): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">TSchema</span><span class="hl-1">[]&gt;;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Internal validation logic (memoized)</span><br/><span class="hl-1">  </span><span class="hl-0">_validateSchema</span><span class="hl-1">(</span><span class="hl-4">schema</span><span class="hl-1">: </span><span class="hl-10">TSchema</span><span class="hl-1">): </span><span class="hl-10">ValidationResult</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>addComponent</code> method (named <code>addStrategy</code>, <code>addExchange</code>, etc.) is called by the corresponding <code>add*</code> functions in the public API. Validation results are memoized to avoid repeated validation of the same schema.</p>
+<hr>
+<a id="schema-validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Validation<a href="#schema-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registration-time-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration-Time Validation<a href="#registration-time-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Schema validation occurs when a component is registered via an <code>add*</code> function. The validation flow follows this sequence:</p>
+<p><img src="../media/42_Validation_Services_2.svg" alt="Mermaid Diagram"></p>
+<a id="validation-checks-by-component-type" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Checks by Component Type<a href="#validation-checks-by-component-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each validation service performs component-specific checks:</p>
+<a id="strategy-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Strategy Validation<a href="#strategy-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>strategyName</code> is non-empty string</li>
+<li><code>interval</code> matches <code>FrameInterval</code> enum values</li>
+<li><code>getSignal</code> is an async function</li>
+<li><code>riskName</code> reference exists (if specified)</li>
+<li><code>sizingName</code> reference exists (if specified)</li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="exchange-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Exchange Validation<a href="#exchange-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>exchangeName</code> is non-empty string</li>
+<li><code>getCandles</code> is an async function returning candle array</li>
+<li><code>formatPrice</code> is an async function</li>
+<li><code>formatQuantity</code> is an async function</li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="frame-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Frame Validation<a href="#frame-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>frameName</code> is non-empty string</li>
+<li><code>interval</code> matches <code>FrameInterval</code> enum values</li>
+<li><code>startDate</code> is valid Date object</li>
+<li><code>endDate</code> is valid Date object</li>
+<li><code>startDate &lt; endDate</code></li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="risk-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Risk Validation<a href="#risk-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>riskName</code> is non-empty string</li>
+<li><code>maxConcurrentPositions</code> is positive integer (if specified)</li>
+<li><code>validations</code> array contains valid functions (if specified)</li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="sizing-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Sizing Validation<a href="#sizing-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>sizingName</code> is non-empty string</li>
+<li><code>method</code> is one of: <code>&quot;fixed-percentage&quot;</code>, <code>&quot;kelly-criterion&quot;</code>, <code>&quot;atr-based&quot;</code></li>
+<li>Method-specific parameters are valid (e.g., <code>riskPercentage</code>, <code>kellyMultiplier</code>)</li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="walker-validation" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Walker Validation<a href="#walker-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><code>walkerName</code> is non-empty string</li>
+<li><code>exchangeName</code> reference exists</li>
+<li><code>frameName</code> reference exists</li>
+<li><code>strategies</code> is non-empty array of strategy names</li>
+<li>All referenced strategies exist</li>
+<li><code>metric</code> is valid metric name (if specified)</li>
+<li><code>callbacks</code> structure is valid (if specified)</li>
+</ul>
+<a id="memoization-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization Pattern<a href="#memoization-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation services use memoization to cache validation results. Once a schema is validated, subsequent calls with the same schema name return the cached result without re-running validation logic. This optimization is critical for performance during execution when validation services may be called frequently.</p>
+<hr>
+<a id="signal-validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Validation<a href="#signal-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validate_signal_fn-runtime-signal-checks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">VALIDATE_SIGNAL_FN: Runtime Signal Checks<a href="#validate_signal_fn-runtime-signal-checks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Signal validation occurs at runtime when a strategy generates a signal via <code>getSignal()</code>. The validation function <code>VALIDATE_SIGNAL_FN</code> in <a href="">src/client/ClientStrategy.ts:41-261</a> performs comprehensive checks to ensure the signal is financially sound and meets safety constraints.</p>
+<p>The function is invoked within <code>GET_SIGNAL_FN</code> at <a href="">src/client/ClientStrategy.ts:263-396</a> after signal creation but before the signal is returned for execution. This ensures that invalid signals are rejected immediately without entering the execution pipeline.</p>
+<p><strong>Runtime Signal Validation Flow</strong></p>
+<p><img src="../media/42_Validation_Services_3.svg" alt="Mermaid Diagram"></p>
+</thinking>
+<a id="price-validation-checks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Validation Checks<a href="#price-validation-checks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework validates all price fields to prevent impossible or dangerous trades. These checks occur in <code>VALIDATE_SIGNAL_FN</code> at <a href="">src/client/ClientStrategy.ts:64-103</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Condition</th>
+<th>Error Message Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Finite Numbers</strong></td>
+<td><code>isFinite(currentPrice)</code>, <code>isFinite(priceOpen)</code>, <code>isFinite(priceTakeProfit)</code>, <code>isFinite(priceStopLoss)</code></td>
+<td><a href="">src/client/ClientStrategy.ts:65-89</a></td>
+<td>Prevent NaN or Infinity values that cause calculation explosions</td>
+</tr>
+<tr>
+<td><strong>Positive Prices</strong></td>
+<td><code>currentPrice &gt; 0</code>, <code>priceOpen &gt; 0</code>, <code>priceTakeProfit &gt; 0</code>, <code>priceStopLoss &gt; 0</code></td>
+<td><a href="">src/client/ClientStrategy.ts:70-102</a></td>
+<td>Prevent negative or zero prices that indicate data corruption</td>
+</tr>
+<tr>
+<td><strong>Required Fields</strong></td>
+<td><code>id !== ''</code>, <code>exchangeName !== ''</code>, <code>strategyName !== ''</code>, <code>symbol !== ''</code></td>
+<td><a href="">src/client/ClientStrategy.ts:45-62</a></td>
+<td>Ensure signal has all required metadata for tracking</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example: NaN Price Rejection</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-6">NaN</span><span class="hl-1">,  </span><span class="hl-5">// Invalid: causes &quot;priceOpen must be a finite number&quot; error</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="price-validation-checks-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Validation Checks<a href="#price-validation-checks-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework validates all price fields to prevent impossible or dangerous trades:</p>
+<table>
+<thead>
+<tr>
+<th>Check</th>
+<th>Condition</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Positive Prices</strong></td>
+<td><code>priceOpen &gt; 0</code>, <code>priceTakeProfit &gt; 0</code>, <code>priceStopLoss &gt; 0</code></td>
+<td>Prevent negative or zero prices</td>
+</tr>
+<tr>
+<td><strong>Finite Numbers</strong></td>
+<td><code>isFinite(priceOpen)</code>, <code>isFinite(priceTakeProfit)</code>, <code>isFinite(priceStopLoss)</code></td>
+<td>Prevent NaN or Infinity values</td>
+</tr>
+<tr>
+<td><strong>Non-NaN</strong></td>
+<td><code>!isNaN(priceOpen)</code>, <code>!isNaN(priceTakeProfit)</code>, <code>!isNaN(priceStopLoss)</code></td>
+<td>Prevent calculation explosions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example: Negative Price Rejection</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: -</span><span class="hl-8">42000</span><span class="hl-1">,  </span><span class="hl-5">// Invalid: negative price</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="tpsl-logic-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TP/SL Logic Validation<a href="#tpsl-logic-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework enforces position-specific logic for Take Profit and Stop Loss prices. These checks occur at <a href="">src/client/ClientStrategy.ts:104-222</a> and implement different rules for LONG vs SHORT positions:</p>
+<p><strong>LONG Position Logic (src/client/ClientStrategy.ts:105-162):</strong></p>
+<ul>
+<li>Take Profit must be above entry: <code>priceTakeProfit &gt; priceOpen</code> (line 107-109)</li>
+<li>Stop Loss must be below entry: <code>priceStopLoss &lt; priceOpen</code> (line 111-114)</li>
+<li>For immediate signals (not scheduled): <code>currentPrice</code> must not have already hit TP/SL (line 119-134)</li>
+</ul>
+<p><strong>SHORT Position Logic (src/client/ClientStrategy.ts:165-222):</strong></p>
+<ul>
+<li>Take Profit must be below entry: <code>priceTakeProfit &lt; priceOpen</code> (line 166-169)</li>
+<li>Stop Loss must be above entry: <code>priceStopLoss &gt; priceOpen</code> (line 171-174)</li>
+<li>For immediate signals (not scheduled): <code>currentPrice</code> must not have already hit TP/SL (line 179-194)</li>
+</ul>
+<p><strong>Edge Case Protection: Immediate TP/SL Hit</strong></p>
+<p>The validation includes critical edge case checks at <a href="">src/client/ClientStrategy.ts:119-134</a> (LONG) and <a href="">src/client/ClientStrategy.ts:179-194</a> (SHORT):</p>
+<pre><code class="typescript"><span class="hl-5">// LONG edge case check (line 119-134)</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">isScheduled</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Signal would immediately close at SL</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">currentPrice</span><span class="hl-1">) &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt; </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-2">`Long: currentPrice (</span><span class="hl-6">${</span><span class="hl-4">currentPrice</span><span class="hl-6">}</span><span class="hl-2">) &lt; priceStopLoss (</span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceStopLoss</span><span class="hl-6">}</span><span class="hl-2">). `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Signal would be immediately cancelled. This signal is invalid.`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Profit opportunity already passed</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">currentPrice</span><span class="hl-1">) &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt; </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-2">`Long: currentPrice (</span><span class="hl-6">${</span><span class="hl-4">currentPrice</span><span class="hl-6">}</span><span class="hl-2">) &gt; priceTakeProfit (</span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-6">}</span><span class="hl-2">). `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Signal is invalid - the profit opportunity has already passed.`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Invalid LONG Signal</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">40000</span><span class="hl-1">,  </span><span class="hl-5">// Invalid: TP below priceOpen for LONG</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">39000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;Long: priceTakeProfit (40000) must be &gt; priceOpen (41000)&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Invalid SHORT Signal</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">44000</span><span class="hl-1">,  </span><span class="hl-5">// Invalid: TP above priceOpen for SHORT</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">45000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;Short: priceTakeProfit (44000) must be &lt; priceOpen (43000)&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="distance-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Distance Validation<a href="#distance-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework validates minimum and maximum distances for Take Profit and Stop Loss to ensure trades are profitable after fees and risk is bounded. These checks use <code>GLOBAL_CONFIG</code> parameters defined in <a href="">types.d.ts:5-72</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default Value</th>
+<th>Validation Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>0.3%</td>
+<td><a href="">src/client/ClientStrategy.ts:138-148</a> (LONG)<br/><a href="">src/client/ClientStrategy.ts:198-208</a> (SHORT)</td>
+<td>Ensure TP distance covers trading fees (2×0.1% = 0.2%) plus minimum profit margin</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>20%</td>
+<td><a href="">src/client/ClientStrategy.ts:151-161</a> (LONG)<br/><a href="">src/client/ClientStrategy.ts:211-221</a> (SHORT)</td>
+<td>Prevent catastrophic losses (one signal cannot lose &gt;20% of position)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>LONG Distance Calculation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Take Profit distance validation (line 138-148)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">tpDistancePercent</span><span class="hl-1"> = </span><br/><span class="hl-1">  ((</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-8">100</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">tpDistancePercent</span><span class="hl-1"> &lt; </span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`Long: TakeProfit too close to priceOpen (</span><span class="hl-6">${</span><span class="hl-4">tpDistancePercent</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-8">3</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2">%). `</span><span class="hl-1"> +</span><br/><span class="hl-1">    </span><span class="hl-2">`Minimum distance: </span><span class="hl-6">${</span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-9">.</span><span class="hl-7">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span><span class="hl-6">}</span><span class="hl-2">% to cover trading fees.`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Stop Loss distance validation (line 151-161)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">slDistancePercent</span><span class="hl-1"> = </span><br/><span class="hl-1">  ((</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-8">100</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">slDistancePercent</span><span class="hl-1"> &gt; </span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MAX_STOPLOSS_DISTANCE_PERCENT</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-2">`Long: StopLoss too far from priceOpen (</span><span class="hl-6">${</span><span class="hl-4">slDistancePercent</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-8">3</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2">%). `</span><span class="hl-1"> +</span><br/><span class="hl-1">    </span><span class="hl-2">`Maximum distance: </span><span class="hl-6">${</span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-9">.</span><span class="hl-7">CC_MAX_STOPLOSS_DISTANCE_PERCENT</span><span class="hl-6">}</span><span class="hl-2">% to protect capital.`</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>SHORT Distance Calculation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Take Profit distance validation (line 198-208)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">tpDistancePercent</span><span class="hl-1"> = </span><br/><span class="hl-1">  ((</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-8">100</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Stop Loss distance validation (line 211-221)</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">slDistancePercent</span><span class="hl-1"> = </span><br/><span class="hl-1">  ((</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-8">100</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Micro-Profit Rejection</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">42010</span><span class="hl-1">,  </span><span class="hl-5">// Only 0.024% profit - fees will eat profit</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;Long: TakeProfit too close to priceOpen (0.024%). </span><br/><span class="hl-5">//         Minimum distance: 0.3% to cover trading fees.&quot;</span><br/><span class="hl-5">// Net PNL after fees: 0.024% - 0.2% = -0.176% (loss!)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Extreme Stop Loss Rejection</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">20000</span><span class="hl-1">,  </span><span class="hl-5">// -52% loss - catastrophic risk!</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">60</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;Long: StopLoss too far from priceOpen (52.381%). </span><br/><span class="hl-5">//         Maximum distance: 20% to protect capital.&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="lifetime-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lifetime Validation<a href="#lifetime-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework validates signal lifetime to prevent &quot;eternal signals&quot; that block risk limits indefinitely. These checks occur at <a href="">src/client/ClientStrategy.ts:224-247</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default Value</th>
+<th>Validation Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>1440 (1 day)</td>
+<td><a href="">src/client/ClientStrategy.ts:237-246</a></td>
+<td>Prevent signals from blocking positions for weeks/months</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Lifetime Validation Logic:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Basic checks (line 225-234)</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> &lt;= </span><span class="hl-8">0</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`minuteEstimatedTime must be positive, got </span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">Number</span><span class="hl-1">.</span><span class="hl-0">isInteger</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-2">`minuteEstimatedTime must be an integer (whole number), got </span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Maximum lifetime check (line 237-246)</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> &gt; </span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">days</span><span class="hl-1"> = (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> / </span><span class="hl-8">60</span><span class="hl-1"> / </span><span class="hl-8">24</span><span class="hl-1">).</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">1</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">maxDays</span><span class="hl-1"> = (</span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-7">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1"> / </span><span class="hl-8">60</span><span class="hl-1"> / </span><span class="hl-8">24</span><span class="hl-1">).</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">0</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-2">`minuteEstimatedTime too large (</span><span class="hl-6">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-6">}</span><span class="hl-2"> minutes = </span><span class="hl-6">${</span><span class="hl-4">days</span><span class="hl-6">}</span><span class="hl-2"> days). `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Maximum: </span><span class="hl-6">${</span><span class="hl-7">GLOBAL_CONFIG</span><span class="hl-9">.</span><span class="hl-7">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-6">}</span><span class="hl-2"> minutes (</span><span class="hl-6">${</span><span class="hl-4">maxDays</span><span class="hl-6">}</span><span class="hl-2"> days) to prevent strategy deadlock. `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Eternal signals block risk limits and prevent new trades.`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Excessive Lifetime Rejection</strong></p>
+<pre><code class="typescript"><span class="hl-5">// This signal will be rejected at validation</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-12">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceOpen</span><span class="hl-1">: </span><span class="hl-8">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-8">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">priceStopLoss</span><span class="hl-1">: </span><span class="hl-8">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-12">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-8">50000</span><span class="hl-1">  </span><span class="hl-5">// &gt;34 days - strategy deadlock risk!</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// Error: &quot;minuteEstimatedTime too large (50000 minutes = 34.7 days). </span><br/><span class="hl-5">//         Maximum: 1440 minutes (1 days) to prevent strategy deadlock. </span><br/><span class="hl-5">//         Eternal signals block risk limits and prevent new trades.&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="global-configuration-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Validation behavior is controlled by global configuration parameters that can be modified at runtime using <code>setConfig()</code>:</p>
+<a id="configuration-parameters-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Configuration Parameters Table<a href="#configuration-parameters-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Type Definition</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><code>number</code></td>
+<td>0.3</td>
+<td><a href="">types.d.ts:20-22</a></td>
+<td>Minimum TP distance from <code>priceOpen</code> (percentage). Must be greater than trading fees (2×0.1% = 0.2%) to ensure profitable trades.</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>number</code></td>
+<td>20</td>
+<td><a href="">types.d.ts:23-27</a></td>
+<td>Maximum SL distance from <code>priceOpen</code> (percentage). Prevents catastrophic losses from extreme StopLoss values. One signal cannot lose more than 20% of position.</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>number</code></td>
+<td>1440</td>
+<td><a href="">types.d.ts:29-32</a></td>
+<td>Maximum signal lifetime in minutes. Prevents eternal signals that block risk limits for weeks/months. Default: 1440 minutes = 1 day.</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><code>number</code></td>
+<td>120</td>
+<td><a href="">types.d.ts:7-10</a></td>
+<td>Time to wait for scheduled signal to activate (in minutes). Scheduled signals that don't reach <code>priceOpen</code> within this time are cancelled.</td>
+</tr>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><code>number</code></td>
+<td>5</td>
+<td><a href="">types.d.ts:12-14</a></td>
+<td>Number of candles to use for average price calculation (VWAP). Default: 5 candles = last 5 minutes when using 1m interval.</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td><code>number</code></td>
+<td>3</td>
+<td><a href="">types.d.ts:35-37</a></td>
+<td>Number of retries for <code>getCandles()</code> function when exchange API fails.</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td><code>number</code></td>
+<td>5000</td>
+<td><a href="">types.d.ts:38-42</a></td>
+<td>Delay between retries for <code>getCandles()</code> function in milliseconds. Default: 5000ms = 5 seconds.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example: Customizing Validation Parameters</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Stricter validation for high-leverage trading</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-8">0.5</span><span class="hl-1">,   </span><span class="hl-5">// Require 0.5% minimum TP</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-8">10</span><span class="hl-1">,      </span><span class="hl-5">// Limit SL to 10% max (tighter risk)</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-8">720</span><span class="hl-1">,       </span><span class="hl-5">// Limit signals to 12 hours</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,             </span><span class="hl-5">// Cancel scheduled signals after 1 hour</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>setConfig()</code> function is defined in the public API and updates <code>GLOBAL_CONFIG</code> values. These parameters are then accessed by <code>VALIDATE_SIGNAL_FN</code> during signal validation at <a href="">src/client/ClientStrategy.ts:138</a>, <a href="">src/client/ClientStrategy.ts:151</a>, <a href="">src/client/ClientStrategy.ts:237</a>.</p>
+<hr>
+<a id="common-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Patterns<a href="#common-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="pattern-1-validation-at-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 1: Validation at Registration<a href="#pattern-1-validation-at-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All <code>add*</code> functions follow the same pattern:</p>
+<ol>
+<li>Log the registration attempt</li>
+<li>Call the validation service's <code>addComponent</code> method</li>
+<li>Call the schema service's <code>register</code> method</li>
+</ol>
+<pre><code class="typescript"><span class="hl-5">// Pattern from src/function/add.ts:50-62</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">strategySchema</span><span class="hl-1">: </span><span class="hl-10">IStrategySchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-7">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This two-phase approach ensures that invalid schemas are rejected before being stored, preventing runtime errors later in the execution pipeline.</p>
+<a id="pattern-2-validation-result-memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 2: Validation Result Memoization<a href="#pattern-2-validation-result-memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation services memoize validation results to avoid redundant checks. Once a schema is validated, subsequent references to the same component name use the cached validation result. This is critical for performance during execution when components may be referenced hundreds or thousands of times.</p>
+<a id="pattern-3-listing-registered-schemas" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 3: Listing Registered Schemas<a href="#pattern-3-listing-registered-schemas" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All validation services provide a <code>list()</code> method that returns an array of all registered schemas. This is used for debugging, documentation generation, and building dynamic UIs:</p>
+<pre><code class="typescript"><span class="hl-5">// Pattern from src/function/list.ts:41-44</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">listExchanges</span><span class="hl-1">(): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">IExchangeSchema</span><span class="hl-1">[]&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-7">LIST_EXCHANGES_METHOD_NAME</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeValidationService</span><span class="hl-1">.</span><span class="hl-0">list</span><span class="hl-1">();</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="pattern-4-reference-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 4: Reference Validation<a href="#pattern-4-reference-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Some validation services check that referenced components exist. For example, <code>WalkerValidationService</code> validates that all strategy names in the <code>strategies</code> array exist, and that the <code>exchangeName</code> and <code>frameName</code> references are valid.</p>
+<p>This cross-component validation ensures that the execution engine never attempts to use non-existent components, preventing runtime errors.</p>
+<hr>
+<a id="error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validation-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Errors<a href="#validation-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When validation fails, the validation service throws an error immediately. This error propagates back to the caller (typically the <code>add*</code> function), which then propagates to the user. Validation errors are synchronous and deterministic - they occur at registration time, not at execution time.</p>
+<p><strong>Example Error Scenarios:</strong></p>
+<ol>
+<li><strong>Invalid Schema Structure:</strong> Missing required fields or invalid types</li>
+<li><strong>Reference Errors:</strong> Referenced components don't exist (e.g., <code>riskName</code> not registered)</li>
+<li><strong>Constraint Violations:</strong> Values outside valid ranges (e.g., negative <code>maxConcurrentPositions</code>)</li>
+<li><strong>Runtime Signal Validation:</strong> Invalid signal prices, TP/SL logic, or lifetime</li>
+</ol>
+<a id="signal-rejection-vs-validation-errors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Rejection vs. Validation Errors<a href="#signal-rejection-vs-validation-errors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>It's important to distinguish between two types of validation failures:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Timing</th>
+<th>Behavior</th>
+<th>Implementation</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Schema Validation Error</strong></td>
+<td>Registration time</td>
+<td>Throws exception, prevents component registration</td>
+<td>Direct throw in <code>add*</code> functions</td>
+<td>Missing <code>strategyName</code> field</td>
+</tr>
+<tr>
+<td><strong>Signal Rejection</strong></td>
+<td>Runtime (during execution)</td>
+<td>Returns <code>null</code>, wrapped in <code>trycatch()</code></td>
+<td><a href="">src/client/ClientStrategy.ts:263-396</a></td>
+<td>TP/SL distances too close</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Signal Rejection Flow:</strong></p>
+<p>Signal rejections use <code>trycatch()</code> from <code>functools-kit</code> at <a href="">src/client/ClientStrategy.ts:263</a> to catch validation errors:</p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">GET_SIGNAL_FN</span><span class="hl-1"> = </span><span class="hl-0">trycatch</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">self</span><span class="hl-1">: </span><span class="hl-10">ClientStrategy</span><span class="hl-1">): </span><span class="hl-10">Promise</span><span class="hl-1">&lt;</span><span class="hl-10">ISignalRow</span><span class="hl-1"> | </span><span class="hl-10">IScheduledSignalRow</span><span class="hl-1"> | </span><span class="hl-10">null</span><span class="hl-1">&gt; </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// ... signal generation and validation ...</span><br/><span class="hl-1">    </span><span class="hl-0">VALIDATE_SIGNAL_FN</span><span class="hl-1">(</span><span class="hl-4">signalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-6">false</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">defaultValue:</span><span class="hl-1"> </span><span class="hl-6">null</span><span class="hl-1">,  </span><span class="hl-5">// Return null on validation failure</span><br/><span class="hl-1">    </span><span class="hl-0">fallback</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;ClientStrategy exception thrown&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">        </span><span class="hl-4">error:</span><span class="hl-1"> </span><span class="hl-0">errorData</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">),</span><br/><span class="hl-1">        </span><span class="hl-4">message:</span><span class="hl-1"> </span><span class="hl-0">getErrorMessage</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">),</span><br/><span class="hl-1">      });</span><br/><span class="hl-1">      </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);  </span><span class="hl-5">// Emit to errorEmitter for monitoring</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern ensures that:</p>
+<ol>
+<li>Invalid signals return <code>null</code> instead of throwing exceptions</li>
+<li>Validation errors are logged via <code>LoggerService</code></li>
+<li>Error events are emitted to <code>errorEmitter</code> for external monitoring</li>
+<li>Execution continues normally (strategy remains in <code>idle</code> state)</li>
+</ol>
+<p>Schema validation errors, in contrast, throw immediately at registration time and prevent the component from being stored in the schema service.</p>
+<hr>
+<a id="integration-with-other-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Services<a href="#integration-with-other-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validation-→-schema-storage-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation → Schema Storage Flow<a href="#validation-→-schema-storage-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/42_Validation_Services_4.svg" alt="Mermaid Diagram"></p>
+<p>After a schema passes validation:</p>
+<ol>
+<li>It's stored in the corresponding <code>*SchemaService</code> (see <a href="design_55_fast-forward_simulation.html">Schema Services</a>)</li>
+<li>During execution, <code>*ConnectionService</code> retrieves it (see <a href="design_54_timeframe_generation.html">Connection Services</a>)</li>
+<li><code>*ConnectionService</code> creates a memoized <code>Client*</code> instance</li>
+<li>The <code>Client*</code> instance uses the validated schema for all operations</li>
+</ol>
+<p>This ensures that only validated schemas reach the execution engine.</p>
+<a id="validation-service-di-bindings" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Service DI Bindings<a href="#validation-service-di-bindings" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All validation services are registered in the DI container as singletons:</p>
+<pre><code class="typescript"><span class="hl-5">// From src/lib/core/provide.ts:102-109</span><br/><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">ExchangeValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">StrategyValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">frameValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">FrameValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">walkerValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">WalkerValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">SizingValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-7">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><span class="hl-1">, () </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">RiskValidationService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The singleton pattern ensures that validation results and registered schemas are shared across the entire application lifecycle.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#validation-services"><span>Validation <wbr/>Services</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><ul><li><a href="#validation-services-in-the-di-system"><span>Validation <wbr/>Services in the DI <wbr/>System</span></a></li><li><a href="#validation-flow-registration-to-execution"><span>Validation <wbr/>Flow: <wbr/>Registration to <wbr/>Execution</span></a></li></ul></li><li><a href="#validation-service-types"><span>Validation <wbr/>Service <wbr/>Types</span></a></li><li><ul><li><a href="#service-responsibilities-table"><span>Service <wbr/>Responsibilities <wbr/>Table</span></a></li><li><a href="#common-service-interface"><span>Common <wbr/>Service <wbr/>Interface</span></a></li></ul></li><li><a href="#schema-validation"><span>Schema <wbr/>Validation</span></a></li><li><ul><li><a href="#registration-time-validation"><span>Registration-<wbr/>Time <wbr/>Validation</span></a></li><li><a href="#validation-checks-by-component-type"><span>Validation <wbr/>Checks by <wbr/>Component <wbr/>Type</span></a></li><li><ul><li><a href="#strategy-validation"><span>Strategy <wbr/>Validation</span></a></li><li><a href="#exchange-validation"><span>Exchange <wbr/>Validation</span></a></li><li><a href="#frame-validation"><span>Frame <wbr/>Validation</span></a></li><li><a href="#risk-validation"><span>Risk <wbr/>Validation</span></a></li><li><a href="#sizing-validation"><span>Sizing <wbr/>Validation</span></a></li><li><a href="#walker-validation"><span>Walker <wbr/>Validation</span></a></li></ul></li><li><a href="#memoization-pattern"><span>Memoization <wbr/>Pattern</span></a></li></ul></li><li><a href="#signal-validation"><span>Signal <wbr/>Validation</span></a></li><li><ul><li><a href="#validate_signal_fn-runtime-signal-checks"><span>VALIDATE_<wbr/>SIGNAL_<wbr/>FN: <wbr/>Runtime <wbr/>Signal <wbr/>Checks</span></a></li><li><a href="#price-validation-checks"><span>Price <wbr/>Validation <wbr/>Checks</span></a></li><li><a href="#price-validation-checks-1"><span>Price <wbr/>Validation <wbr/>Checks</span></a></li><li><a href="#tpsl-logic-validation"><span>TP/SL <wbr/>Logic <wbr/>Validation</span></a></li><li><a href="#distance-validation"><span>Distance <wbr/>Validation</span></a></li><li><a href="#lifetime-validation"><span>Lifetime <wbr/>Validation</span></a></li></ul></li><li><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a></li><li><ul><li><a href="#configuration-parameters-table"><span>Configuration <wbr/>Parameters <wbr/>Table</span></a></li></ul></li><li><a href="#common-patterns"><span>Common <wbr/>Patterns</span></a></li><li><ul><li><a href="#pattern-1-validation-at-registration"><span>Pattern 1: <wbr/>Validation at <wbr/>Registration</span></a></li><li><a href="#pattern-2-validation-result-memoization"><span>Pattern 2: <wbr/>Validation <wbr/>Result <wbr/>Memoization</span></a></li><li><a href="#pattern-3-listing-registered-schemas"><span>Pattern 3: <wbr/>Listing <wbr/>Registered <wbr/>Schemas</span></a></li><li><a href="#pattern-4-reference-validation"><span>Pattern 4: <wbr/>Reference <wbr/>Validation</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#validation-errors"><span>Validation <wbr/>Errors</span></a></li><li><a href="#signal-rejection-vs-validation-errors"><span>Signal <wbr/>Rejection vs. <wbr/>Validation <wbr/>Errors</span></a></li></ul></li><li><a href="#integration-with-other-services"><span>Integration with <wbr/>Other <wbr/>Services</span></a></li><li><ul><li><a href="#validation-→-schema-storage-flow"><span>Validation → <wbr/>Schema <wbr/>Storage <wbr/>Flow</span></a></li><li><a href="#validation-service-di-bindings"><span>Validation <wbr/>Service DI <wbr/>Bindings</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

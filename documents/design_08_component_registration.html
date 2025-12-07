@@ -1,271 +1,204 @@
-<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/08_component_registration | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_08_component_registration.html">design/08_component_registration</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="component-registration" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Component Registration<a href="#component-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page explains how to register components in backtest-kit using the <code>add*</code> family of functions. Component registration is the first step in using the framework—you define strategies, exchanges, frames, risk profiles, sizing configurations, and walkers before running backtests or live trading.</p>
-<p>For information about the structure and properties of each component type, see <a href="design_23_component_types.html">Component Types</a>. For details on how registered components are instantiated during execution, see <a href="design_38_connection_services.html">Connection Services</a>.</p>
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/08_component_registration | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_08_component_registration.html">design/08_component_registration</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="component-registration" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Component Registration<a href="#component-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Component registration is the configuration phase where users define the building blocks of their trading system: strategies, exchanges, timeframes, risk rules, position sizing algorithms, strategy comparisons, and AI optimizers. All components are registered before execution begins, creating an immutable registry that the framework queries during backtest, live trading, or walker execution.</p>
+<p>This page explains the registration pattern and architecture. For detailed API signatures and parameters, see <a href="design_16_component_registration_functions.html">Component Registration Functions</a>. For the schema interfaces that define component structure, see <a href="design_23_component_types.html">Component Types</a>.</p>
 <hr>
-<a id="component-types-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Types Overview<a href="#component-types-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework supports six types of components that can be registered:</p>
-<table>
-<thead>
-<tr>
-<th>Component Type</th>
-<th>Add Function</th>
-<th>Purpose</th>
-<th>Required For</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Strategy</strong></td>
-<td><code>addStrategy()</code></td>
-<td>Signal generation logic and lifecycle callbacks</td>
-<td>Backtest, Live</td>
-</tr>
-<tr>
-<td><strong>Exchange</strong></td>
-<td><code>addExchange()</code></td>
-<td>Market data source and price/quantity formatting</td>
-<td>Backtest, Live, Walker</td>
-</tr>
-<tr>
-<td><strong>Frame</strong></td>
-<td><code>addFrame()</code></td>
-<td>Backtest timeframe generation (start/end dates, interval)</td>
-<td>Backtest, Walker</td>
-</tr>
-<tr>
-<td><strong>Risk</strong></td>
-<td><code>addRisk()</code></td>
-<td>Portfolio-level risk management and custom validations</td>
-<td>Optional (strategy-level)</td>
-</tr>
-<tr>
-<td><strong>Sizing</strong></td>
-<td><code>addSizing()</code></td>
-<td>Position size calculation methods</td>
-<td>Optional (strategy-level)</td>
-</tr>
-<tr>
-<td><strong>Walker</strong></td>
-<td><code>addWalker()</code></td>
-<td>Multi-strategy comparison configuration</td>
-<td>Walker mode only</td>
-</tr>
-</tbody>
-</table>
-<p>Each component is identified by a unique name (<code>strategyName</code>, <code>exchangeName</code>, etc.) and stored in a corresponding schema service.</p>
-<hr>
-<a id="registration-functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Functions<a href="#registration-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="function-signatures" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Function Signatures<a href="#function-signatures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All registration functions follow the same pattern: accept a schema object and store it in the framework's internal registry.</p>
-<p><img src="../media/08_Component_Registration_0.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Registration Function Flow</strong></p>
-<a id="addstrategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addStrategy<a href="#addstrategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a trading strategy with signal generation logic and lifecycle callbacks.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>strategyName</code>: Unique identifier (string)</li>
-<li><code>interval</code>: Signal generation throttle interval (<code>SignalInterval</code>)</li>
-<li><code>getSignal</code>: Async function returning <code>ISignalDto | null</code></li>
-<li><code>callbacks</code>: Optional lifecycle hooks (<code>onTick</code>, <code>onOpen</code>, <code>onClose</code>, <code>onSchedule</code>, <code>onCancel</code>)</li>
-<li><code>riskName</code>: Optional risk profile name to use</li>
-<li><code>sizingName</code>: Optional sizing configuration name to use</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-breakout&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> ({</span><br/><span class="hl-1">    </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-8">50000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-8">51000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-8">49000</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-8">60</span><span class="hl-1">,</span><br/><span class="hl-1">  }),</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onOpen</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">signal</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-6">${</span><span class="hl-4">symbol</span><span class="hl-6">}</span><span class="hl-2">] Signal opened at </span><span class="hl-6">${</span><span class="hl-4">price</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<a id="addexchange" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addExchange<a href="#addexchange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a market data source with candle fetching and formatting functions.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>exchangeName</code>: Unique identifier (string)</li>
-<li><code>getCandles</code>: Async function fetching <code>ICandleData[]</code></li>
-<li><code>formatPrice</code>: Async function formatting prices for exchange precision</li>
-<li><code>formatQuantity</code>: Async function formatting quantities for exchange precision</li>
-<li><code>callbacks</code>: Optional <code>onCandleData</code> callback</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch from API or database</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> [...];</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">2</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">8</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<a id="addframe" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addFrame<a href="#addframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a backtest timeframe with start/end dates and interval.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>frameName</code>: Unique identifier (string)</li>
-<li><code>interval</code>: Timeframe granularity (<code>FrameInterval</code>)</li>
-<li><code>startDate</code>: Backtest period start (Date)</li>
-<li><code>endDate</code>: Backtest period end (Date)</li>
-<li><code>callbacks</code>: Optional <code>onTimeframe</code> callback</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-q1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-03-31T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<a id="addrisk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addRisk<a href="#addrisk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a risk management profile with custom validations.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>riskName</code>: Unique identifier (string)</li>
-<li><code>validations</code>: Array of <code>IRiskValidation</code> or <code>IRiskValidationFn</code></li>
-<li><code>callbacks</code>: Optional <code>onRejected</code> and <code>onAllowed</code> callbacks</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-0">validate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> ({ </span><span class="hl-4">activePositionCount</span><span class="hl-1"> }) </span><span class="hl-6">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-8">5</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Max 5 concurrent positions&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Portfolio-level position limit&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<a id="addsizing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addSizing<a href="#addsizing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a position sizing configuration (fixed-percentage, kelly-criterion, or atr-based).</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>sizingName</code>: Unique identifier (string)</li>
-<li><code>method</code>: Sizing method discriminator</li>
-<li>Method-specific parameters (see <a href="design_28_sizing_schemas.html">Sizing Schemas</a>)</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;fixed-1pct&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">method:</span><span class="hl-1"> </span><span class="hl-2">&quot;fixed-percentage&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskPercentage:</span><span class="hl-1"> </span><span class="hl-8">1</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxPositionPercentage:</span><span class="hl-1"> </span><span class="hl-8">10</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<a id="addwalker" class="tsd-anchor"></a><h3 class="tsd-anchor-link">addWalker<a href="#addwalker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registers a walker for multi-strategy comparison.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>walkerName</code>: Unique identifier (string)</li>
-<li><code>exchangeName</code>: Exchange to use for all backtests</li>
-<li><code>frameName</code>: Frame to use for all backtests</li>
-<li><code>strategies</code>: Array of strategy names to compare</li>
-<li><code>metric</code>: Optimization metric (<code>WalkerMetric</code>)</li>
-</ul>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;strategy-optimizer&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;2024-q1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;momentum-v1&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;momentum-v2&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;momentum-v3&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
-</code><button type="button">Copy</button></pre>
-
-<hr>
-<a id="registration-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Flow<a href="#registration-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="internal-mechanics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Internal Mechanics<a href="#internal-mechanics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a component is registered via an <code>add*</code> function, the framework performs two operations:</p>
-<ol>
-<li><strong>Validation</strong>: Schema is validated and stored in a validation service</li>
-<li><strong>Registration</strong>: Schema is stored in a schema service for later retrieval</li>
-</ol>
-<p><img src="../media/08_Component_Registration_1.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Registration Sequence</strong></p>
-<p>Each <code>add*</code> function follows this pattern in <a href="">src/function/add.ts:50-341</a>:</p>
-<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-6">function</span><span class="hl-1"> </span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">strategySchema</span><span class="hl-1">: </span><span class="hl-10">IStrategySchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// 1. Log registration</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-7">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 2. Validate schema</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 3. Store in registry</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
-</code><button type="button">Copy</button></pre>
-
-<hr>
-<a id="schema-storage-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Storage Architecture<a href="#schema-storage-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="service-layer-organization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Layer Organization<a href="#service-layer-organization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Registered schemas are stored in schema services that follow the ToolRegistry pattern. Each component type has a dedicated schema service:</p>
-<p><img src="../media/08_Component_Registration_2.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Schema Service Architecture</strong></p>
-<p>The dependency injection configuration is defined in:</p>
-<ul>
-<li>Symbol definitions: <a href="">src/lib/core/types.ts:18-25</a></li>
-<li>Service binding: <a href="">src/lib/core/provide.ts:62-68</a></li>
-<li>Service injection: <a href="">src/lib/index.ts:80-91</a></li>
-</ul>
-<a id="toolregistry-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ToolRegistry Pattern<a href="#toolregistry-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Schema services use the ToolRegistry pattern for name-based storage and retrieval:</p>
-<table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Purpose</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>register(name, schema)</code></td>
-<td>Store schema by unique name</td>
-</tr>
-<tr>
-<td><code>get(name)</code></td>
-<td>Retrieve schema by name (throws if not found)</td>
-</tr>
-<tr>
-<td><code>has(name)</code></td>
-<td>Check if schema exists</td>
-</tr>
-<tr>
-<td><code>list()</code></td>
-<td>Get all registered schemas</td>
-</tr>
-</tbody>
-</table>
-<p>This pattern enables:</p>
-<ul>
-<li><strong>Name-based lookup</strong>: Components retrieved by string identifier during execution</li>
-<li><strong>Duplicate prevention</strong>: Registration fails if name already exists</li>
-<li><strong>Runtime introspection</strong>: All schemas can be listed for debugging</li>
-</ul>
-<hr>
-<a id="validation-layer" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Layer<a href="#validation-layer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validation-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Services<a href="#validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each component type has a corresponding validation service that performs schema validation during registration:</p>
-<p><img src="../media/08_Component_Registration_3.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Validation Layer</strong></p>
-<p>Validation services are bound in the DI container:</p>
-<ul>
-<li>Symbol definitions: <a href="">src/lib/core/types.ts:59-66</a></li>
-<li>Service binding: <a href="">src/lib/core/provide.ts:103-109</a></li>
-<li>Service injection: <a href="">src/lib/index.ts:143-150</a></li>
-</ul>
-<a id="memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization<a href="#memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation services use memoization to cache validation results per component name. This ensures validation only runs once per component, even if the schema is retrieved multiple times during execution.</p>
-<hr>
-<a id="component-introspection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Introspection<a href="#component-introspection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="list-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">List Functions<a href="#list-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework provides <code>list*</code> functions for runtime introspection of registered components:</p>
+<a id="registration-functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Functions<a href="#registration-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides seven registration functions, each accepting a schema object that defines component behavior:</p>
 <table>
 <thead>
 <tr>
 <th>Function</th>
-<th>Returns</th>
+<th>Schema Type</th>
 <th>Purpose</th>
+<th>Validation Service</th>
+<th>Schema Service</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>listStrategies()</code></td>
-<td><code>Promise&lt;IStrategySchema[]&gt;</code></td>
-<td>All registered strategies</td>
+<td><code>addStrategy</code></td>
+<td><code>IStrategySchema</code></td>
+<td>Register trading signal logic</td>
+<td><code>StrategyValidationService</code></td>
+<td><code>StrategySchemaService</code></td>
 </tr>
 <tr>
-<td><code>listExchanges()</code></td>
-<td><code>Promise&lt;IExchangeSchema[]&gt;</code></td>
-<td>All registered exchanges</td>
+<td><code>addExchange</code></td>
+<td><code>IExchangeSchema</code></td>
+<td>Register market data source</td>
+<td><code>ExchangeValidationService</code></td>
+<td><code>ExchangeSchemaService</code></td>
 </tr>
 <tr>
-<td><code>listFrames()</code></td>
-<td><code>Promise&lt;IFrameSchema[]&gt;</code></td>
-<td>All registered frames</td>
+<td><code>addFrame</code></td>
+<td><code>IFrameSchema</code></td>
+<td>Register backtest timeframe</td>
+<td><code>FrameValidationService</code></td>
+<td><code>FrameSchemaService</code></td>
 </tr>
 <tr>
-<td><code>listRisks()</code></td>
-<td><code>Promise&lt;IRiskSchema[]&gt;</code></td>
-<td>All registered risk profiles</td>
+<td><code>addRisk</code></td>
+<td><code>IRiskSchema</code></td>
+<td>Register risk management rules</td>
+<td><code>RiskValidationService</code></td>
+<td><code>RiskSchemaService</code></td>
 </tr>
 <tr>
-<td><code>listSizings()</code></td>
-<td><code>Promise&lt;ISizingSchema[]&gt;</code></td>
-<td>All registered sizing configs</td>
+<td><code>addSizing</code></td>
+<td><code>ISizingSchema</code></td>
+<td>Register position sizing algorithm</td>
+<td><code>SizingValidationService</code></td>
+<td><code>SizingSchemaService</code></td>
 </tr>
 <tr>
-<td><code>listWalkers()</code></td>
-<td><code>Promise&lt;IWalkerSchema[]&gt;</code></td>
-<td>All registered walkers</td>
+<td><code>addWalker</code></td>
+<td><code>IWalkerSchema</code></td>
+<td>Register strategy comparison</td>
+<td><code>WalkerValidationService</code></td>
+<td><code>WalkerSchemaService</code></td>
+</tr>
+<tr>
+<td><code>addOptimizer</code></td>
+<td><code>IOptimizerSchema</code></td>
+<td>Register AI strategy generator</td>
+<td><code>OptimizerValidationService</code></td>
+<td><code>OptimizerSchemaService</code></td>
 </tr>
 </tbody>
 </table>
-<p><strong>Example:</strong></p>
-<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">listStrategies</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> ({ </span><span class="hl-5">/* ... */</span><span class="hl-1"> }),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">strategies</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">listStrategies</span><span class="hl-1">();</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">strategies</span><span class="hl-1">);</span><br/><span class="hl-5">// [{ strategyName: &quot;momentum&quot;, interval: &quot;5m&quot;, ... }]</span>
+<p>All registration functions follow the same pattern: validate schema structure, then store in the appropriate schema service registry. The framework uses a name-based lookup system where each component type has a unique identifier (<code>strategyName</code>, <code>exchangeName</code>, etc.).</p>
+<hr>
+<a id="registration-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Architecture<a href="#registration-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/08_Component_Registration_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Component Registration Flow</strong></p>
+<p>This diagram shows the complete registration pipeline from user code to runtime execution. Each registration function performs a two-step process: validation then storage. The schema registries are immutable after registration and act as configuration databases queried by execution services.</p>
+<hr>
+<a id="registration-implementation-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Implementation Pattern<a href="#registration-implementation-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All seven registration functions follow an identical implementation pattern:</p>
+<p><img src="../media/08_Component_Registration_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Registration Sequence</strong></p>
+<p>Each <code>add*</code> function executes the same three-step pattern: logging, validation, and registration. Validation errors throw immediately, preventing invalid schemas from entering the registry. The registration phase is synchronous and completes before the function returns.</p>
+<hr>
+<a id="schema-service-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Service Architecture<a href="#schema-service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Schema services implement a simple name-to-schema registry using <code>Map</code> data structures. Each service provides three core methods:</p>
+<p><img src="../media/08_Component_Registration_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Schema Service Class Hierarchy</strong></p>
+<p>All schema services follow the same pattern but are specialized for their respective component types. The <code>register()</code> method is called by <code>add*</code> functions, while <code>get()</code> and <code>has()</code> are called by Connection and Global services during execution.</p>
+<hr>
+<a id="validation-at-registration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation at Registration<a href="#validation-at-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Validation occurs synchronously during registration, ensuring only valid schemas enter the registry. Each component type has specific validation rules:</p>
+<a id="strategy-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Validation<a href="#strategy-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>strategyName</code>, <code>interval</code>, <code>getSignal</code></li>
+<li><strong>Interval validation:</strong> Must be valid <code>SignalInterval</code> enum value</li>
+<li><strong>Callback validation:</strong> Optional callbacks must be functions if provided</li>
+<li><strong>Business rules:</strong> Enforced during signal generation, not registration</li>
+</ul>
+<a id="exchange-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Validation<a href="#exchange-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>exchangeName</code>, <code>getCandles</code>, <code>formatPrice</code>, <code>formatQuantity</code></li>
+<li><strong>Function validation:</strong> All methods must be async functions</li>
+<li><strong>Candle structure:</strong> Validated at runtime, not registration</li>
+</ul>
+<a id="frame-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Frame Validation<a href="#frame-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>frameName</code>, <code>interval</code>, <code>startDate</code>, <code>endDate</code></li>
+<li><strong>Date validation:</strong> <code>startDate</code> must precede <code>endDate</code></li>
+<li><strong>Interval validation:</strong> Must be valid <code>FrameInterval</code> enum value</li>
+</ul>
+<a id="walker-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Validation<a href="#walker-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>walkerName</code>, <code>strategies</code>, <code>exchangeName</code>, <code>frameName</code></li>
+<li><strong>Strategies array:</strong> Must be non-empty array of strings</li>
+<li><strong>Metric validation:</strong> Must be valid <code>WalkerMetric</code> enum value (defaults to <code>&quot;sharpeRatio&quot;</code>)</li>
+<li><strong>Reference validation:</strong> <code>exchangeName</code> and <code>frameName</code> must exist in respective registries</li>
+</ul>
+<a id="risk-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Validation<a href="#risk-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>riskName</code></li>
+<li><strong>Optional fields:</strong> <code>maxConcurrentPositions</code>, <code>validations</code>, <code>callbacks</code></li>
+<li><strong>Validations array:</strong> Each validation must be function or object with <code>validate</code> function</li>
+<li><strong>Callback validation:</strong> Callbacks must be functions if provided</li>
+</ul>
+<a id="sizing-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Sizing Validation<a href="#sizing-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>sizingName</code>, <code>method</code></li>
+<li><strong>Method validation:</strong> Must be <code>&quot;fixed-percentage&quot;</code>, <code>&quot;kelly-criterion&quot;</code>, or <code>&quot;atr-based&quot;</code></li>
+<li><strong>Discriminated union:</strong> Fields validated based on <code>method</code> value</li>
+<li><strong>Percentage validation:</strong> Risk/position percentages must be positive numbers</li>
+</ul>
+<a id="optimizer-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Optimizer Validation<a href="#optimizer-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Required fields:</strong> <code>optimizerName</code>, <code>rangeTrain</code>, <code>rangeTest</code>, <code>source</code>, <code>getPrompt</code></li>
+<li><strong>Range validation:</strong> Train and test ranges must have valid date pairs</li>
+<li><strong>Source validation:</strong> Each source must have <code>name</code> and <code>fetch</code> function</li>
+<li><strong>Template validation:</strong> Optional template overrides must be functions</li>
+</ul>
+<hr>
+<a id="component-lifecycle-registration-to-execution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Lifecycle: Registration to Execution<a href="#component-lifecycle-registration-to-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/08_Component_Registration_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Component State Transitions</strong></p>
+<p>Components transition from registration (configuration) to execution (runtime) through a series of services. The schema acts as an immutable blueprint that Connection services use to create memoized instances. This separation enables multiple executions with different symbols to share the same schema but maintain separate runtime state.</p>
+<hr>
+<a id="dependency-injection-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Integration<a href="#dependency-injection-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Component registration integrates with the dependency injection system through service instantiation at application startup:</p>
+<p><img src="../media/08_Component_Registration_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Service Instantiation Flow</strong></p>
+<p>The <code>TYPES</code> registry defines symbol keys for all services. The <code>provide.ts</code> file instantiates all services and registers them in the DI container. The <code>init()</code> function resolves dependencies and creates the <code>backtest</code> aggregation object. Registration functions (<code>add*</code>) import this object to access validation and schema services.</p>
+<hr>
+<a id="registration-access-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Access Patterns<a href="#registration-access-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides multiple ways to interact with the component registry:</p>
+<a id="direct-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Direct Registration<a href="#direct-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Primary pattern used in all examples</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({ </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">, ... });</span>
 </code><button type="button">Copy</button></pre>
 
-<p>These functions delegate to the validation services' <code>list()</code> method, which returns all schemas stored in the registry.</p>
+<a id="list-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">List Functions<a href="#list-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Query registered components</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listStrategies</span><span class="hl-1">, </span><span class="hl-4">listExchanges</span><span class="hl-1">, </span><span class="hl-4">listFrames</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">strategies</span><span class="hl-1"> = </span><span class="hl-0">listStrategies</span><span class="hl-1">();  </span><span class="hl-5">// string[]</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">exchanges</span><span class="hl-1"> = </span><span class="hl-0">listExchanges</span><span class="hl-1">();    </span><span class="hl-5">// string[]</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">frames</span><span class="hl-1"> = </span><span class="hl-0">listFrames</span><span class="hl-1">();          </span><span class="hl-5">// string[]</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="internal-service-access" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Internal Service Access<a href="#internal-service-access" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Low-level access (advanced use cases)</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">schema</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">exists</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">.</span><span class="hl-0">has</span><span class="hl-1">(</span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>list*</code> functions are convenience wrappers that query schema services and return arrays of registered names. These are useful for validation, debugging, and dynamic configuration.</p>
 <hr>
-<a id="registration-and-execution-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration and Execution Lifecycle<a href="#registration-and-execution-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="timeline-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timeline Overview<a href="#timeline-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The relationship between registration and execution follows this sequence:</p>
-<p><img src="../media/08_Component_Registration_4.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Registration to Execution Lifecycle</strong></p>
-<p>Key points:</p>
-<ol>
-<li><strong>Registration phase</strong> (user calls <code>add*</code>): Schemas validated and stored</li>
-<li><strong>Ready phase</strong>: No client instances created, schemas in memory</li>
-<li><strong>Execution phase</strong> (user calls <code>Backtest.run</code> or <code>Live.run</code>): Connection services retrieve schemas and create memoized client instances</li>
-</ol>
-<p>For details on client instantiation, see <a href="design_38_connection_services.html">Connection Services</a>. For execution orchestration, see <a href="design_06_execution_modes.html">Execution Modes</a>.</p>
+<a id="registration-timing-and-order" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Timing and Order<a href="#registration-timing-and-order" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Component registration must complete before execution begins. The framework does not enforce registration order for most components, but some have implicit dependencies:</p>
+<a id="required-before-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Required Before Execution<a href="#required-before-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All execution methods (<code>Backtest.run</code>, <code>Live.run</code>, <code>Walker.run</code>) require:</p>
+<ul>
+<li>At least one strategy registered</li>
+<li>At least one exchange registered</li>
+<li>For backtest/walker: at least one frame registered</li>
+</ul>
+<a id="walker-dependencies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Dependencies<a href="#walker-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>addWalker</code> requires:</p>
+<ul>
+<li>All referenced strategies must be registered via <code>addStrategy</code></li>
+<li>Referenced <code>exchangeName</code> must be registered via <code>addExchange</code></li>
+<li>Referenced <code>frameName</code> must be registered via <code>addFrame</code></li>
+</ul>
+<p>Walker validation checks these references at registration time and throws if any are missing.</p>
+<a id="optional-components" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Optional Components<a href="#optional-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Risk, sizing, and optimizer components are optional:</p>
+<ul>
+<li>Strategies execute without explicit risk/sizing if not specified</li>
+<li>Optimizer is only needed when using <code>Optimizer.dump()</code> for code generation</li>
+</ul>
+<a id="re-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Re-registration<a href="#re-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Calling <code>add*</code> with the same name twice overwrites the previous registration. The latest schema wins. This enables dynamic reconfiguration during development but should be avoided in production.</p>
 <hr>
-<a id="symbol-based-dependency-injection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Symbol-Based Dependency Injection<a href="#symbol-based-dependency-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="di-token-system" class="tsd-anchor"></a><h3 class="tsd-anchor-link">DI Token System<a href="#di-token-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All schema services and validation services are bound using Symbol-based tokens in the DI container. This prevents naming collisions and provides type safety:</p>
+<a id="registration-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Error Handling<a href="#registration-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Registration functions throw synchronously when validation fails:</p>
 <p><img src="../media/08_Component_Registration_5.svg" alt="Mermaid Diagram"></p>
-<p><strong>Diagram: Symbol-Based DI Token Flow</strong></p>
-<p>The complete DI setup is defined across three files:</p>
-<ol>
-<li>Token symbols: <a href="">src/lib/core/types.ts:1-81</a></li>
-<li>Service binding: <a href="">src/lib/core/provide.ts:1-111</a></li>
-<li>Service injection: <a href="">src/lib/index.ts:1-170</a></li>
-</ol>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#component-registration"><span>Component <wbr/>Registration</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#component-types-overview"><span>Component <wbr/>Types <wbr/>Overview</span></a></li><li><a href="#registration-functions"><span>Registration <wbr/>Functions</span></a></li><li><ul><li><a href="#function-signatures"><span>Function <wbr/>Signatures</span></a></li><li><a href="#addstrategy"><span>add<wbr/>Strategy</span></a></li><li><a href="#addexchange"><span>add<wbr/>Exchange</span></a></li><li><a href="#addframe"><span>add<wbr/>Frame</span></a></li><li><a href="#addrisk"><span>add<wbr/>Risk</span></a></li><li><a href="#addsizing"><span>add<wbr/>Sizing</span></a></li><li><a href="#addwalker"><span>add<wbr/>Walker</span></a></li></ul></li><li><a href="#registration-flow"><span>Registration <wbr/>Flow</span></a></li><li><ul><li><a href="#internal-mechanics"><span>Internal <wbr/>Mechanics</span></a></li></ul></li><li><a href="#schema-storage-architecture"><span>Schema <wbr/>Storage <wbr/>Architecture</span></a></li><li><ul><li><a href="#service-layer-organization"><span>Service <wbr/>Layer <wbr/>Organization</span></a></li><li><a href="#toolregistry-pattern"><span>Tool<wbr/>Registry <wbr/>Pattern</span></a></li></ul></li><li><a href="#validation-layer"><span>Validation <wbr/>Layer</span></a></li><li><ul><li><a href="#validation-services"><span>Validation <wbr/>Services</span></a></li><li><a href="#memoization"><span>Memoization</span></a></li></ul></li><li><a href="#component-introspection"><span>Component <wbr/>Introspection</span></a></li><li><ul><li><a href="#list-functions"><span>List <wbr/>Functions</span></a></li></ul></li><li><a href="#registration-and-execution-lifecycle"><span>Registration and <wbr/>Execution <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#timeline-overview"><span>Timeline <wbr/>Overview</span></a></li></ul></li><li><a href="#symbol-based-dependency-injection"><span>Symbol-<wbr/>Based <wbr/>Dependency <wbr/>Injection</span></a></li><li><ul><li><a href="#di-token-system"><span>DI <wbr/>Token <wbr/>System</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+<p><strong>Error Propagation</strong></p>
+<p>Validation errors propagate immediately to the caller. There is no error recovery mechanism within the registration pipeline. The user must catch errors if they want to handle invalid schemas gracefully.</p>
+<p>Common validation errors include:</p>
+<ul>
+<li>Missing required fields</li>
+<li>Invalid enum values (interval, metric)</li>
+<li>Type mismatches (function expected, string provided)</li>
+<li>Invalid date ranges (endDate before startDate)</li>
+<li>Missing dependencies (walker references non-existent strategy)</li>
+</ul>
+<hr>
+<a id="cross-component-registration-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cross-Component Registration Examples<a href="#cross-component-registration-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="minimal-backtest-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Minimal Backtest Configuration<a href="#minimal-backtest-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Three components required: strategy, exchange, frame</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">getCandles:</span><span class="hl-1"> </span><span class="hl-0">async</span><span class="hl-1"> (...) </span><span class="hl-6">=&gt;</span><span class="hl-1"> [...],</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">2</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">qty</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> </span><span class="hl-4">qty</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-8">8</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-6">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-6">=&gt;</span><span class="hl-1"> ({ ... }),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Now ready for: Backtest.run(&quot;BTCUSDT&quot;, { strategyName, exchangeName, frameName })</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-trading-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading Configuration<a href="#live-trading-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Live mode requires strategy + exchange (no frame needed)</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><br/><span class="hl-5">// Optional: add risk management</span><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxConcurrentPositions:</span><span class="hl-1"> </span><span class="hl-8">3</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Now ready for: Live.run(&quot;BTCUSDT&quot;, { strategyName, exchangeName, riskName })</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="walker-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Configuration<a href="#walker-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Walker requires: strategies, exchange, frame, walker</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({ </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">, ... });</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-v1&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-v2&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;macd-v1&quot;</span><span class="hl-1">, ... });</span><br/><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;compare-rsi-macd&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;rsi-v1&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;rsi-v2&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;macd-v1&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Now ready for: Walker.run(&quot;BTCUSDT&quot;, { walkerName })</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="registration-and-memoization" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration and Memoization<a href="#registration-and-memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Component registration creates schemas (immutable configuration), while Connection services create runtime instances (memoized by key). This separation enables:</p>
+<a id="schema-reuse-across-symbols" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Reuse Across Symbols<a href="#schema-reuse-across-symbols" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Register once</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">, ... });</span><br/><br/><span class="hl-5">// Execute multiple times with different symbols</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;ETHUSDT&quot;</span><span class="hl-1">, { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;ADAUSDT&quot;</span><span class="hl-1">, { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;rsi-strategy&quot;</span><span class="hl-1">, ... });</span><br/><br/><span class="hl-5">// Each execution creates separate ClientStrategy instances</span><br/><span class="hl-5">// but shares the same IStrategySchema</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="instance-memoization-by-symbol-name" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Instance Memoization by (Symbol, Name)<a href="#instance-memoization-by-symbol-name" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services cache instances using a composite key:</p>
+<pre><code class="typescript"><span class="hl-5">// Key: `${symbol}_${strategyName}`</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">key1</span><span class="hl-1"> = </span><span class="hl-2">&quot;BTCUSDT_rsi-strategy&quot;</span><span class="hl-1">;  </span><span class="hl-5">// First instance</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">key2</span><span class="hl-1"> = </span><span class="hl-2">&quot;ETHUSDT_rsi-strategy&quot;</span><span class="hl-1">;  </span><span class="hl-5">// Second instance</span><br/><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">key3</span><span class="hl-1"> = </span><span class="hl-2">&quot;BTCUSDT_rsi-strategy&quot;</span><span class="hl-1">;  </span><span class="hl-5">// Returns first instance (cached)</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This enables parallel execution of the same strategy across multiple symbols without state interference. Each symbol maintains independent signal state, but all share the same underlying schema and <code>getSignal</code> function.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Component registration is a synchronous, validate-then-store operation that populates schema registries. The seven <code>add*</code> functions provide a uniform interface for configuring strategies, exchanges, frames, walkers, risk rules, sizing algorithms, and optimizers. Validation occurs immediately at registration time, preventing invalid configurations from entering the system. The schema registries act as immutable configuration databases that Connection and Global services query during execution. This separation between configuration (registration) and instantiation (runtime) enables schema reuse across multiple executions while maintaining independent state per symbol.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#component-registration"><span>Component <wbr/>Registration</span></a><ul><li><a href="#registration-functions"><span>Registration <wbr/>Functions</span></a></li><li><a href="#registration-architecture"><span>Registration <wbr/>Architecture</span></a></li><li><a href="#registration-implementation-pattern"><span>Registration <wbr/>Implementation <wbr/>Pattern</span></a></li><li><a href="#schema-service-architecture"><span>Schema <wbr/>Service <wbr/>Architecture</span></a></li><li><a href="#validation-at-registration"><span>Validation at <wbr/>Registration</span></a></li><li><ul><li><a href="#strategy-validation"><span>Strategy <wbr/>Validation</span></a></li><li><a href="#exchange-validation"><span>Exchange <wbr/>Validation</span></a></li><li><a href="#frame-validation"><span>Frame <wbr/>Validation</span></a></li><li><a href="#walker-validation"><span>Walker <wbr/>Validation</span></a></li><li><a href="#risk-validation"><span>Risk <wbr/>Validation</span></a></li><li><a href="#sizing-validation"><span>Sizing <wbr/>Validation</span></a></li><li><a href="#optimizer-validation"><span>Optimizer <wbr/>Validation</span></a></li></ul></li><li><a href="#component-lifecycle-registration-to-execution"><span>Component <wbr/>Lifecycle: <wbr/>Registration to <wbr/>Execution</span></a></li><li><a href="#dependency-injection-integration"><span>Dependency <wbr/>Injection <wbr/>Integration</span></a></li><li><a href="#registration-access-patterns"><span>Registration <wbr/>Access <wbr/>Patterns</span></a></li><li><ul><li><a href="#direct-registration"><span>Direct <wbr/>Registration</span></a></li><li><a href="#list-functions"><span>List <wbr/>Functions</span></a></li><li><a href="#internal-service-access"><span>Internal <wbr/>Service <wbr/>Access</span></a></li></ul></li><li><a href="#registration-timing-and-order"><span>Registration <wbr/>Timing and <wbr/>Order</span></a></li><li><ul><li><a href="#required-before-execution"><span>Required <wbr/>Before <wbr/>Execution</span></a></li><li><a href="#walker-dependencies"><span>Walker <wbr/>Dependencies</span></a></li><li><a href="#optional-components"><span>Optional <wbr/>Components</span></a></li><li><a href="#re-registration"><span>Re-<wbr/>registration</span></a></li></ul></li><li><a href="#registration-error-handling"><span>Registration <wbr/>Error <wbr/>Handling</span></a></li><li><a href="#cross-component-registration-examples"><span>Cross-<wbr/>Component <wbr/>Registration <wbr/>Examples</span></a></li><li><ul><li><a href="#minimal-backtest-configuration"><span>Minimal <wbr/>Backtest <wbr/>Configuration</span></a></li><li><a href="#live-trading-configuration"><span>Live <wbr/>Trading <wbr/>Configuration</span></a></li><li><a href="#walker-configuration"><span>Walker <wbr/>Configuration</span></a></li></ul></li><li><a href="#registration-and-memoization"><span>Registration and <wbr/>Memoization</span></a></li><li><ul><li><a href="#schema-reuse-across-symbols"><span>Schema <wbr/>Reuse <wbr/>Across <wbr/>Symbols</span></a></li><li><a href="#instance-memoization-by-symbol-name"><span>Instance <wbr/>Memoization by (<wbr/>Symbol, <wbr/>Name)</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

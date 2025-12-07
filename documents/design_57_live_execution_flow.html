@@ -1,0 +1,309 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/57_live_execution_flow | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_57_live_execution_flow.html">design/57_live_execution_flow</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="live-execution-flow" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Live Execution Flow<a href="#live-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the live trading execution flow implemented by <code>LiveLogicPrivateService</code> and <code>LiveLogicPublicService</code>. The focus is on the infinite <code>while(true)</code> loop mechanics, real-time <code>Date()</code> progression, <code>TICK_TTL</code> sleep intervals, and async generator result streaming.</p>
+<p>Related pages: <a href="">Crash Recovery (10.2)</a> for persistence layer, <a href="">Real-time Monitoring (10.3)</a> for signal lifecycle callbacks, <a href="">Backtest Execution Flow (9.1)</a> for comparison with historical mode.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live execution operates as an infinite async generator that monitors trading signals at 61-second intervals (<code>TICK_TTL = 1 * 60 * 1_000 + 1</code>). Unlike backtest mode which iterates through pre-defined timeframes, live mode progresses in real-time using <code>new Date()</code> at each tick.</p>
+<p><strong>Two-Layer Architecture:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Class</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Private</td>
+<td><code>LiveLogicPrivateService</code></td>
+<td>Infinite loop, tick execution, result filtering</td>
+</tr>
+<tr>
+<td>Public</td>
+<td><code>LiveLogicPublicService</code></td>
+<td>Context injection via <code>MethodContextService</code></td>
+</tr>
+</tbody>
+</table>
+<p>The generator yields only <code>opened</code> and <code>closed</code> results to consumers, filtering out <code>idle</code>, <code>active</code>, and <code>scheduled</code> states internally.</p>
+<hr>
+<a id="service-layer-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Layer Architecture<a href="#service-layer-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Live Execution Service Stack</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="infinite-loop-mechanics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Infinite Loop Mechanics<a href="#infinite-loop-mechanics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService.run()</code> implements an infinite async generator with precise timing control:</p>
+<p><strong>Infinite Loop Implementation</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Implementation Details:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Line</th>
+<th>Construct</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="">12</a></td>
+<td><code>const TICK_TTL = 1 * 60 * 1_000 + 1</code></td>
+<td>61-second interval (60s + 1ms margin)</td>
+</tr>
+<tr>
+<td><a href="">68</a></td>
+<td><code>while (true)</code></td>
+<td>Infinite loop - never completes</td>
+</tr>
+<tr>
+<td><a href="">70</a></td>
+<td><code>when = new Date()</code></td>
+<td>Real-time timestamp (not historical)</td>
+</tr>
+<tr>
+<td><a href="">74</a></td>
+<td><code>strategyGlobalService.tick(symbol, when, false)</code></td>
+<td><code>backtest=false</code> flag enables live mode</td>
+</tr>
+<tr>
+<td><a href="">76-88</a></td>
+<td><code>try-catch</code> with <code>errorEmitter.next(error)</code></td>
+<td>Recoverable error handling - loop continues</td>
+</tr>
+<tr>
+<td><a href="">96-108</a></td>
+<td><code>performanceEmitter.next(...)</code></td>
+<td>Timing metrics for monitoring</td>
+</tr>
+<tr>
+<td><a href="">110-123</a></td>
+<td><code>if (action === 'active/idle/scheduled')</code></td>
+<td>Filter non-terminal states</td>
+</tr>
+<tr>
+<td><a href="">126</a></td>
+<td><code>yield result</code></td>
+<td>Stream opened/closed results to consumer</td>
+</tr>
+<tr>
+<td><a href="">86, 111, 116, 121, 128</a></td>
+<td><code>await sleep(TICK_TTL)</code></td>
+<td>Sleep between iterations</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="context-injection-via-methodcontextservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Injection via MethodContextService<a href="#context-injection-via-methodcontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPublicService</code> wraps the private service with <code>MethodContextService.runAsyncIterator()</code> to inject context:</p>
+<p><strong>Context Injection Flow</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Context Schema:</strong></p>
+<pre><code class="typescript"><span class="hl-6">interface</span><span class="hl-1"> </span><span class="hl-10">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-10">StrategyName</span><span class="hl-1">;   </span><span class="hl-5">// Routes to registered strategy schema</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-10">ExchangeName</span><span class="hl-1">;   </span><span class="hl-5">// Routes to registered exchange schema</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-10">FrameName</span><span class="hl-1">;         </span><span class="hl-5">// Empty string for live mode (no frame iteration)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>MethodContextService</code> uses <code>AsyncLocalStorage</code> to provide scoped context access throughout the call chain. Services read <code>this.methodContextService.context</code> to retrieve the current context without parameter passing.</p>
+<hr>
+<a id="result-filtering-and-streaming" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Result Filtering and Streaming<a href="#result-filtering-and-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService</code> filters tick results before yielding to consumers:</p>
+<p><strong>Result Filtering State Machine</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Filtering Logic:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Action</th>
+<th>Yielded?</th>
+<th>Lines</th>
+<th>Return Type</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code></td>
+<td>No</td>
+<td><a href="">115-117</a></td>
+<td>-</td>
+<td>No signal exists, nothing to report</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>No</td>
+<td><a href="">110-112</a></td>
+<td>-</td>
+<td>Monitoring in progress, no state change</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td>No</td>
+<td><a href="">120-122</a></td>
+<td>-</td>
+<td>Limit order pending activation</td>
+</tr>
+<tr>
+<td><code>opened</code></td>
+<td>Yes</td>
+<td><a href="">126</a></td>
+<td><code>IStrategyTickResultOpened</code></td>
+<td>New position opened</td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td>Yes</td>
+<td><a href="">126</a></td>
+<td><code>IStrategyTickResultClosed</code></td>
+<td>Position closed with PNL</td>
+</tr>
+</tbody>
+</table>
+<p>The generator type signature enforces this filtering:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><br/><span class="hl-1">  </span><span class="hl-4">IStrategyTickResultOpened</span><span class="hl-1"> | </span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-6">void</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">unknown</span><br/><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="tick_ttl-sleep-interval" class="tsd-anchor"></a><h2 class="tsd-anchor-link">TICK_TTL Sleep Interval<a href="#tick_ttl-sleep-interval" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live execution uses <code>TICK_TTL</code> to control polling frequency:</p>
+<p><strong>TICK_TTL Configuration:</strong></p>
+<pre><code class="typescript"><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">TICK_TTL</span><span class="hl-1"> = </span><span class="hl-8">1</span><span class="hl-1"> * </span><span class="hl-8">60</span><span class="hl-1"> * </span><span class="hl-8">1_000</span><span class="hl-1"> + </span><span class="hl-8">1</span><span class="hl-1">;  </span><span class="hl-5">// 60,001 milliseconds</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Value</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base interval</td>
+<td><code>1 * 60 * 1_000</code> (60,000ms)</td>
+<td>1-minute candle alignment</td>
+</tr>
+<tr>
+<td>Safety margin</td>
+<td><code>+ 1</code> (1ms)</td>
+<td>Prevents edge case timing issues</td>
+</tr>
+<tr>
+<td>Total</td>
+<td><code>60,001ms</code></td>
+<td>61 seconds</td>
+</tr>
+</tbody>
+</table>
+<p>The 1ms margin ensures that operations complete before the next minute boundary, preventing race conditions when fetching candles that span minute transitions.</p>
+<p><strong>Sleep Locations:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Line 86: After error recovery</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-3">continue</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Line 111: After active state check</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;active&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Line 116: After idle state check</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;idle&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Line 121: After scheduled state check</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;scheduled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Line 128: After yielding opened/closed result</span><br/><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-7">TICK_TTL</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="service-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Integration<a href="#service-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService</code> orchestrates multiple services during each tick:</p>
+<p><strong>Service Call Chain</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Service Dependencies:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Method</th>
+<th>Purpose</th>
+<th>Lines</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LoggerService</code></td>
+<td><code>log()</code>, <code>info()</code>, <code>warn()</code></td>
+<td>Logging execution events</td>
+<td><a href="">62-63, 90-93, 77-84</a></td>
+</tr>
+<tr>
+<td><code>StrategyGlobalService</code></td>
+<td><code>tick(symbol, when, backtest)</code></td>
+<td>Execute strategy logic with context</td>
+<td><a href="">74</a></td>
+</tr>
+<tr>
+<td><code>performanceEmitter</code></td>
+<td><code>next({...})</code></td>
+<td>Emit timing metrics</td>
+<td><a href="">98-108</a></td>
+</tr>
+<tr>
+<td><code>errorEmitter</code></td>
+<td><code>next(error)</code></td>
+<td>Emit recoverable errors</td>
+<td><a href="">85</a></td>
+</tr>
+</tbody>
+</table>
+<p><strong>backtest=false Parameter:</strong></p>
+<p>The <code>backtest</code> flag passed to <code>tick()</code> controls mode-specific behavior:</p>
+<ul>
+<li><code>false</code>: Live mode - uses persistence, real-time VWAP, enables crash recovery</li>
+<li><code>true</code>: Backtest mode - fast-forward simulation, uses historical data</li>
+</ul>
+<hr>
+<a id="crash-recovery-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery Integration<a href="#crash-recovery-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>LiveLogicPrivateService</code> does not handle initialization directly. Instead, <code>ClientStrategy.waitForInit()</code> is called internally on the first <code>tick()</code> invocation:</p>
+<p><strong>Lazy Initialization Flow</strong></p>
+<p><img src="../media/57_Live_Execution_Flow_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>Initialization Characteristics:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Timing</strong></td>
+<td>Lazy - on first <code>tick()</code> call, not during service construction</td>
+</tr>
+<tr>
+<td><strong>Location</strong></td>
+<td>Inside <code>ClientStrategy</code>, not in <code>LiveLogicPrivateService</code></td>
+</tr>
+<tr>
+<td><strong>State Sources</strong></td>
+<td><code>PersistSignalAdapter</code> and <code>PersistScheduleAdapter</code></td>
+</tr>
+<tr>
+<td><strong>Crash Safety</strong></td>
+<td>Restored signals resume monitoring without re-opening</td>
+</tr>
+<tr>
+<td><strong>Idempotency</strong></td>
+<td><code>_isInitialized</code> flag prevents multiple initialization attempts</td>
+</tr>
+</tbody>
+</table>
+<p>After initialization, subsequent ticks use the in-memory <code>_signal</code> and <code>_scheduledSignal</code> state, only persisting changes to disk atomically.</p>
+<p>For detailed persistence mechanisms, see <a href="">Crash Recovery (10.2)</a>.</p>
+<hr>
+<a id="usage-example" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Example<a href="#usage-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following example demonstrates live execution with result streaming:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Live</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Infinite generator - runs until process terminates</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-6">const</span><span class="hl-1"> </span><span class="hl-7">result</span><span class="hl-1"> </span><span class="hl-6">of</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[OPENED] Signal ID: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Position: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Entry: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  TP: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  SL: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceStopLoss</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[CLOSED] Signal ID: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Reason: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">closeReason</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  PNL: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-8">2</span><span class="hl-9">)</span><span class="hl-6">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Entry: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Exit: </span><span class="hl-6">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">priceClose</span><span class="hl-6">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Loop continues indefinitely</span><br/><span class="hl-1">  </span><span class="hl-5">// Use Ctrl+C or process.exit() to stop</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each iteration of the loop represents one 1-minute tick. Results stream immediately when signals open or close, enabling real-time event processing and logging.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#live-execution-flow"><span>Live <wbr/>Execution <wbr/>Flow</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#service-layer-architecture"><span>Service <wbr/>Layer <wbr/>Architecture</span></a></li><li><a href="#infinite-loop-mechanics"><span>Infinite <wbr/>Loop <wbr/>Mechanics</span></a></li><li><a href="#context-injection-via-methodcontextservice"><span>Context <wbr/>Injection via <wbr/>Method<wbr/>Context<wbr/>Service</span></a></li><li><a href="#result-filtering-and-streaming"><span>Result <wbr/>Filtering and <wbr/>Streaming</span></a></li><li><a href="#tick_ttl-sleep-interval"><span>TICK_<wbr/>TTL <wbr/>Sleep <wbr/>Interval</span></a></li><li><a href="#service-integration"><span>Service <wbr/>Integration</span></a></li><li><a href="#crash-recovery-integration"><span>Crash <wbr/>Recovery <wbr/>Integration</span></a></li><li><a href="#usage-example"><span>Usage <wbr/>Example</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
