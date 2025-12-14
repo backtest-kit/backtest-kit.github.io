@@ -1,0 +1,526 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/33_advanced-features | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_33_advanced-features.html">design/33_advanced-features</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="advanced-features" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Advanced Features<a href="#advanced-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document covers advanced capabilities of the backtest-kit framework that extend beyond basic strategy execution. These features enable production-ready live trading, comprehensive monitoring, and sophisticated profit/loss tracking. For basic strategy definition, see <a href="design_11_strategy-system.html">Strategy System</a>. For execution modes, see <a href="design_16_execution-modes-detailed.html">Execution Modes (Detailed)</a>.</p>
+<p>The three advanced features covered are:</p>
+<ol>
+<li><strong>Crash Recovery and Persistence</strong>: Atomic state storage with automatic recovery for live trading resilience</li>
+<li><strong>Event Listeners and Monitoring</strong>: Comprehensive pub/sub event system for real-time tracking and alerting</li>
+<li><strong>Partial Profit and Loss</strong>: Milestone-based tracking of unrealized profits and losses during active trades</li>
+</ol>
+<hr>
+<a id="crash-recovery-and-persistence-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery and Persistence Architecture<a href="#crash-recovery-and-persistence-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a crash-safe persistence system that enables live trading processes to recover from unexpected termination. All critical state is written atomically to JSON files, allowing processes to resume exactly where they left off.</p>
+<a id="persistence-layer-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Layer Overview<a href="#persistence-layer-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/33-advanced-features_0.svg" alt="Mermaid Diagram"></p>
+<p>, <a href="">src/client/ClientStrategy.ts:491-552</a>, Diagram 1 (Overall System Architecture)</p>
+<a id="persistbase-abstract-class" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PersistBase Abstract Class<a href="#persistbase-abstract-class" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>PersistBase&lt;TEntity&gt;</code> provides the foundation for all persistence adapters with generic type-safe operations. Adapters extend this class and implement entity-specific file path logic.</p>
+<p><strong>Key Methods</strong>:</p>
+<ul>
+<li><code>write(entity: TEntity | null)</code>: Atomic write to JSON file</li>
+<li><code>read(): Promise&lt;TEntity | null&gt;</code>: Read and parse JSON file</li>
+<li><code>remove()</code>: Delete persisted state</li>
+</ul>
+<p><strong>File Naming Pattern</strong>: <code>./dump/{type}_{identifier}.json</code></p>
+<a id="signal-and-schedule-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal and Schedule Persistence<a href="#signal-and-schedule-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientStrategy</code> uses two persistence adapters to maintain state across restarts:</p>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>Purpose</th>
+<th>File Pattern</th>
+<th>Data Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PersistSignalAdapter</code></td>
+<td>Active pending signals</td>
+<td><code>signal_{symbol}_{strategy}.json</code></td>
+<td><code>ISignalRow</code></td>
+</tr>
+<tr>
+<td><code>PersistScheduleAdapter</code></td>
+<td>Scheduled signals awaiting activation</td>
+<td><code>schedule_{symbol}_{strategy}.json</code></td>
+<td><code>IScheduledSignalRow</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recovery Flow</strong>:</p>
+<p><img src="../media/33-advanced-features_1.svg" alt="Mermaid Diagram"></p>
+<a id="atomic-write-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Atomic Write Pattern<a href="#atomic-write-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All persistence adapters implement atomic writes to prevent data corruption during crashes:</p>
+<ol>
+<li><strong>Serialize</strong>: Convert entity to JSON string</li>
+<li><strong>Write Atomic</strong>: Write to file system with atomic guarantees</li>
+<li><strong>Validate</strong>: Ensure write succeeded before continuing</li>
+</ol>
+<p>This ensures that persisted state is always either the complete previous version or the complete new version—never a partial write.</p>
+<p><strong>Key Implementation</strong>: Each <code>ClientStrategy</code> method that modifies signal state calls <code>setPendingSignal()</code> or <code>setScheduledSignal()</code>, which internally triggers <code>PersistSignalAdapter.write()</code> or <code>PersistScheduleAdapter.write()</code>.</p>
+<a id="singleshot-initialization-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Singleshot Initialization Pattern<a href="#singleshot-initialization-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientStrategy.waitForInit()</code> uses the <code>singleshot</code> pattern from <code>functools-kit</code> to ensure persistence recovery happens exactly once per strategy instance:</p>
+<pre><code class="typescript"><span class="hl-5">// First call: executes recovery logic and caches promise</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">waitForInit</span><span class="hl-1">();</span><br/><br/><span class="hl-5">// Subsequent calls: return cached promise (no-op)</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">waitForInit</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This prevents duplicate recovery attempts and ensures consistent initialization across multiple ticks.</p>
+<a id="risk-state-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk State Persistence<a href="#risk-state-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientRisk</code> uses <code>PersistRiskAdapter</code> to track active positions across process restarts. This is critical for portfolio-level risk management that must survive crashes.</p>
+<p><strong>Persisted Data</strong>:</p>
+<ul>
+<li>Active position count</li>
+<li>List of active positions with signal details</li>
+<li>Risk validation state</li>
+</ul>
+<p><strong>File Pattern</strong>: <code>./dump/risk_{symbol}_{riskName}.json</code></p>
+<p>, Diagram 1 (Overall System Architecture)</p>
+<a id="partial-state-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial State Persistence<a href="#partial-state-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientPartial</code> uses <code>PersistPartialAdapter</code> to maintain partial profit/loss milestone tracking across restarts. This ensures milestone events aren't duplicated after recovery.</p>
+<p><strong>Persisted Data</strong>:</p>
+<ul>
+<li>Signal ID to partial state mapping</li>
+<li>Reached profit levels (Set serialized as array)</li>
+<li>Reached loss levels (Set serialized as array)</li>
+</ul>
+<p><strong>File Pattern</strong>: <code>./dump/partial_{symbol}.json</code></p>
+<hr>
+<a id="event-listeners-and-monitoring-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Listeners and Monitoring System<a href="#event-listeners-and-monitoring-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides a comprehensive pub/sub event system for monitoring strategy execution, handling errors, and tracking progress. All events use <code>functools-kit</code> Subject for type-safe event emission and subscription.</p>
+<a id="event-emitter-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emitter Architecture<a href="#event-emitter-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/33-advanced-features_2.svg" alt="Mermaid Diagram"></p>
+<p>, <a href="">src/function/event.ts:1-564</a>, Diagram 4 (Event System and Communication Flow)</p>
+<a id="signal-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Event Listeners<a href="#signal-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Signal events track the complete lifecycle of trading signals from generation through closure:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Mode</th>
+<th>Processing</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenSignal()</code></td>
+<td>All</td>
+<td>Queued</td>
+<td>All signal events (idle, opened, active, closed)</td>
+</tr>
+<tr>
+<td><code>listenSignalOnce()</code></td>
+<td>All</td>
+<td>Queued + Filter</td>
+<td>Single filtered event, auto-unsubscribe</td>
+</tr>
+<tr>
+<td><code>listenSignalLive()</code></td>
+<td>Live</td>
+<td>Queued</td>
+<td>Live-only signal events</td>
+</tr>
+<tr>
+<td><code>listenSignalLiveOnce()</code></td>
+<td>Live</td>
+<td>Queued + Filter</td>
+<td>Single filtered live event</td>
+</tr>
+<tr>
+<td><code>listenSignalBacktest()</code></td>
+<td>Backtest</td>
+<td>Queued</td>
+<td>Backtest-only signal events</td>
+</tr>
+<tr>
+<td><code>listenSignalBacktestOnce()</code></td>
+<td>Backtest</td>
+<td>Queued + Filter</td>
+<td>Single filtered backtest event</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Event Payload</strong>: <code>IStrategyTickResult</code> (discriminated union with <code>action</code> field)</p>
+<p><strong>Action Types</strong>:</p>
+<ul>
+<li><code>&quot;idle&quot;</code>: No active signal</li>
+<li><code>&quot;scheduled&quot;</code>: Scheduled signal created, awaiting activation</li>
+<li><code>&quot;opened&quot;</code>: New signal opened after validation</li>
+<li><code>&quot;active&quot;</code>: Signal being monitored (TP/SL checks)</li>
+<li><code>&quot;closed&quot;</code>: Signal completed (TP/SL/time_expired)</li>
+<li><code>&quot;cancelled&quot;</code>: Scheduled signal cancelled without activation</li>
+</ul>
+<a id="queued-processing-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Queued Processing Pattern<a href="#queued-processing-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All listener functions wrap callbacks with <code>queued()</code> from <code>functools-kit</code> to ensure sequential processing:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">listenSignal</span><span class="hl-1">(</span><span class="hl-0">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-0">queued</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fn</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">)));</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits</strong>:</p>
+<ul>
+<li>Events processed in order received</li>
+<li>Async callbacks don't cause race conditions</li>
+<li>Prevents concurrent execution conflicts</li>
+</ul>
+<p>Even if callback contains <code>await</code>, next event waits for current callback to complete.</p>
+<a id="filter-predicates-with-once-variants" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Filter Predicates with Once Variants<a href="#filter-predicates-with-once-variants" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>&quot;Once&quot; listener variants accept a filter predicate for conditional triggering:</p>
+<pre><code class="typescript"><span class="hl-0">listenSignalOnce</span><span class="hl-1">(</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1"> === </span><span class="hl-2">&quot;take_profit&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Take profit hit:&quot;</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>After first matching event:</p>
+<ol>
+<li>Filter predicate evaluated</li>
+<li>If true, callback executed</li>
+<li>Subscription automatically cancelled</li>
+</ol>
+<p><strong>Use Case</strong>: Wait for specific condition during backtest/live execution without manual unsubscribe.</p>
+<a id="completion-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Completion Event Listeners<a href="#completion-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Completion events signal the end of background execution:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Mode</th>
+<th>Emitter</th>
+<th>Contract</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenDoneLive()</code></td>
+<td>Live</td>
+<td><code>doneLiveSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+<tr>
+<td><code>listenDoneLiveOnce()</code></td>
+<td>Live</td>
+<td><code>doneLiveSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+<tr>
+<td><code>listenDoneBacktest()</code></td>
+<td>Backtest</td>
+<td><code>doneBacktestSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+<tr>
+<td><code>listenDoneBacktestOnce()</code></td>
+<td>Backtest</td>
+<td><code>doneBacktestSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+<tr>
+<td><code>listenDoneWalker()</code></td>
+<td>Walker</td>
+<td><code>doneWalkerSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+<tr>
+<td><code>listenDoneWalkerOnce()</code></td>
+<td>Walker</td>
+<td><code>doneWalkerSubject</code></td>
+<td><code>DoneContract</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>DoneContract Payload</strong>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">backtest</span><span class="hl-1">: </span><span class="hl-4">boolean</span><span class="hl-1">;      </span><span class="hl-5">// Execution mode</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;         </span><span class="hl-5">// Trading pair</span><br/><span class="hl-1">  </span><span class="hl-10">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;   </span><span class="hl-5">// Strategy identifier</span><br/><span class="hl-1">  </span><span class="hl-10">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;   </span><span class="hl-5">// Exchange identifier</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">?: </span><span class="hl-4">string</span><span class="hl-1">;     </span><span class="hl-5">// Frame identifier (backtest only)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="progress-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Event Listeners<a href="#progress-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Progress events track execution advancement during long-running operations:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Emitter</th>
+<th>Contract</th>
+<th>Tracks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenBacktestProgress()</code></td>
+<td><code>progressBacktestEmitter</code></td>
+<td><code>ProgressBacktestContract</code></td>
+<td>Timeframe iteration</td>
+</tr>
+<tr>
+<td><code>listenWalkerProgress()</code></td>
+<td><code>progressWalkerEmitter</code></td>
+<td><code>ProgressWalkerContract</code></td>
+<td>Strategy completion</td>
+</tr>
+<tr>
+<td><code>listenOptimizerProgress()</code></td>
+<td><code>progressOptimizerEmitter</code></td>
+<td><code>ProgressOptimizerContract</code></td>
+<td>Data source fetching</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Progress Contracts</strong> include:</p>
+<ul>
+<li>Current index/count</li>
+<li>Total count</li>
+<li>Percentage completion</li>
+<li>Context information (symbol, strategy, etc.)</li>
+</ul>
+<a id="error-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Event Listeners<a href="#error-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Error events distinguish between recoverable and fatal errors:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Emitter</th>
+<th>Severity</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenError()</code></td>
+<td><code>errorEmitter</code></td>
+<td>Recoverable</td>
+<td>Execution continues</td>
+</tr>
+<tr>
+<td><code>listenExit()</code></td>
+<td><code>exitEmitter</code></td>
+<td>Fatal</td>
+<td>Execution terminates</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Error Types</strong>:</p>
+<ul>
+<li><strong>Recoverable</strong>: API failures, validation errors, retry-able operations</li>
+<li><strong>Fatal</strong>: Unrecoverable failures requiring process restart</li>
+</ul>
+<a id="walker-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Event Listeners<a href="#walker-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker events track multi-strategy comparison progress and results:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Emitter</th>
+<th>Contract</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenWalker()</code></td>
+<td><code>walkerEmitter</code></td>
+<td><code>WalkerContract</code></td>
+<td>Each strategy completion</td>
+</tr>
+<tr>
+<td><code>listenWalkerOnce()</code></td>
+<td><code>walkerEmitter</code></td>
+<td><code>WalkerContract</code></td>
+<td>Filtered strategy result</td>
+</tr>
+<tr>
+<td><code>listenWalkerComplete()</code></td>
+<td><code>walkerCompleteSubject</code></td>
+<td><code>IWalkerResults</code></td>
+<td>Final comparison results</td>
+</tr>
+<tr>
+<td><code>listenWalkerProgress()</code></td>
+<td><code>progressWalkerEmitter</code></td>
+<td><code>ProgressWalkerContract</code></td>
+<td>Strategy iteration progress</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-and-risk-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation and Risk Event Listeners<a href="#validation-and-risk-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Specialized listeners for risk management and validation errors:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Emitter</th>
+<th>Contract</th>
+<th>Tracks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenValidation()</code></td>
+<td><code>validationSubject</code></td>
+<td><code>Error</code></td>
+<td>Schema/config validation errors</td>
+</tr>
+<tr>
+<td><code>listenRisk()</code></td>
+<td><code>riskSubject</code></td>
+<td><code>RiskContract</code></td>
+<td>Risk check rejections only</td>
+</tr>
+<tr>
+<td><code>listenRiskOnce()</code></td>
+<td><code>riskSubject</code></td>
+<td><code>RiskContract</code></td>
+<td>Filtered risk rejection</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important</strong>: <code>riskSubject</code> emits only when signals are <strong>rejected</strong> by risk checks. Allowed signals do not emit events (prevents spam).</p>
+<a id="performance-event-listener" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Event Listener<a href="#performance-event-listener" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>listenPerformance()</code> tracks execution timing for bottleneck identification:</p>
+<p><strong>PerformanceContract</strong> includes:</p>
+<ul>
+<li>Metric type (enum)</li>
+<li>Duration in milliseconds</li>
+<li>Context information</li>
+<li>Timestamp</li>
+</ul>
+<p><strong>Metric Types</strong>:</p>
+<ul>
+<li>Strategy execution time</li>
+<li>Exchange data fetch time</li>
+<li>Risk validation time</li>
+<li>Persistence write time</li>
+</ul>
+<hr>
+<a id="partial-profit-and-loss-tracking" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Partial Profit and Loss Tracking<a href="#partial-profit-and-loss-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework tracks unrealized profit and loss milestones during active trades, emitting events when positions reach 10%, 20%, 30%, etc. profit or loss thresholds. This enables real-time monitoring and alert systems without closing positions.</p>
+<a id="partial-tracking-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Tracking Architecture<a href="#partial-tracking-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/33-advanced-features_3.svg" alt="Mermaid Diagram"></p>
+<p>, Diagram 4 (Event System and Communication Flow)</p>
+<a id="partiallevel-type" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PartialLevel Type<a href="#partiallevel-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Profit and loss milestones are defined as discrete percentage thresholds:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">PartialLevel</span><span class="hl-1"> = </span><span class="hl-6">10</span><span class="hl-1"> | </span><span class="hl-6">20</span><span class="hl-1"> | </span><span class="hl-6">30</span><span class="hl-1"> | </span><span class="hl-6">40</span><span class="hl-1"> | </span><span class="hl-6">50</span><span class="hl-1"> | </span><span class="hl-6">60</span><span class="hl-1"> | </span><span class="hl-6">70</span><span class="hl-1"> | </span><span class="hl-6">80</span><span class="hl-1"> | </span><span class="hl-6">90</span><span class="hl-1"> | </span><span class="hl-6">100</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each <code>PartialLevel</code> represents a percentage point milestone. When a signal reaches 10% profit, the <code>10</code> level is emitted. When it reaches 25% profit, levels <code>10</code> and <code>20</code> have been reached, but only <code>20</code> is emitted (deduplication via Set).</p>
+<a id="ipartial-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IPartial Interface<a href="#ipartial-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientPartial</code> implements the <code>IPartial</code> interface with three core methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Called When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profit(symbol, data, currentPrice, revenuePercent, backtest, when)</code></td>
+<td>Track profit milestones</td>
+<td><code>revenuePercent &gt; 0</code> in active signal</td>
+</tr>
+<tr>
+<td><code>loss(symbol, data, currentPrice, lossPercent, backtest, when)</code></td>
+<td>Track loss milestones</td>
+<td><code>revenuePercent &lt; 0</code> in active signal</td>
+</tr>
+<tr>
+<td><code>clear(symbol, data, priceClose, backtest)</code></td>
+<td>Clear tracking state</td>
+<td>Signal closes (TP/SL/time_expired)</td>
+</tr>
+</tbody>
+</table>
+<a id="set-based-deduplication" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Set-Based Deduplication<a href="#set-based-deduplication" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each signal's partial state maintains two Sets for deduplication:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPartialState</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">profitLevels</span><span class="hl-1">: </span><span class="hl-13">Set</span><span class="hl-1">&lt;</span><span class="hl-13">PartialLevel</span><span class="hl-1">&gt;;  </span><span class="hl-5">// In-memory</span><br/><span class="hl-1">  </span><span class="hl-4">lossLevels</span><span class="hl-1">: </span><span class="hl-13">Set</span><span class="hl-1">&lt;</span><span class="hl-13">PartialLevel</span><span class="hl-1">&gt;;    </span><span class="hl-5">// In-memory</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Deduplication Logic</strong>:</p>
+<ol>
+<li>Calculate which levels have been reached</li>
+<li>Check if level already in Set</li>
+<li>If new, add to Set and emit event</li>
+<li>If already in Set, skip (no duplicate event)</li>
+</ol>
+<p>This ensures each milestone emits exactly once per signal, even across process restarts (state persisted).</p>
+<a id="profit-tracking-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Profit Tracking Flow<a href="#profit-tracking-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/33-advanced-features_4.svg" alt="Mermaid Diagram"></p>
+<a id="loss-tracking-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Loss Tracking Flow<a href="#loss-tracking-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Loss tracking follows the same pattern as profit tracking, but uses negative percentage values:</p>
+<p><strong>Key Differences</strong>:</p>
+<ul>
+<li>Input: <code>lossPercent</code> (negative value, e.g., -15.5)</li>
+<li>Comparison: <code>Math.abs(lossPercent) &gt;= level</code></li>
+<li>Storage: <code>lossLevels</code> Set</li>
+<li>Emission: <code>partialLossSubject</code></li>
+</ul>
+<a id="clear-operation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Clear Operation<a href="#clear-operation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a signal closes, <code>ClientPartial.clear()</code> removes the tracking state:</p>
+<ol>
+<li>Delete <code>signalId</code> from in-memory Map</li>
+<li>Serialize remaining state (other active signals)</li>
+<li>Write updated state to disk (atomic)</li>
+<li>Memoized <code>ClientPartial</code> instance cleared from <code>PartialConnectionService</code></li>
+</ol>
+<p><strong>Important</strong>: Clear operation does NOT emit events—it only cleans up state.</p>
+<a id="partial-event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Event Listeners<a href="#partial-event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Four listener functions provide access to partial profit/loss events:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Emitter</th>
+<th>Processing</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>listenPartialProfit()</code></td>
+<td><code>partialProfitSubject</code></td>
+<td>Queued</td>
+<td>All profit milestones</td>
+</tr>
+<tr>
+<td><code>listenPartialProfitOnce()</code></td>
+<td><code>partialProfitSubject</code></td>
+<td>Queued + Filter</td>
+<td>Single filtered profit event</td>
+</tr>
+<tr>
+<td><code>listenPartialLoss()</code></td>
+<td><code>partialLossSubject</code></td>
+<td>Queued</td>
+<td>All loss milestones</td>
+</tr>
+<tr>
+<td><code>listenPartialLossOnce()</code></td>
+<td><code>partialLossSubject</code></td>
+<td>Queued + Filter</td>
+<td>Single filtered loss event</td>
+</tr>
+</tbody>
+</table>
+<p><strong>PartialProfitContract Payload</strong>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">data</span><span class="hl-1">: </span><span class="hl-4">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">currentPrice</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">level</span><span class="hl-1">: </span><span class="hl-4">PartialLevel</span><span class="hl-1">;        </span><span class="hl-5">// 10, 20, 30, etc.</span><br/><span class="hl-1">  </span><span class="hl-10">revenuePercent</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;     </span><span class="hl-5">// Actual profit percentage</span><br/><span class="hl-1">  </span><span class="hl-10">backtest</span><span class="hl-1">: </span><span class="hl-4">boolean</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">timestamp</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>PartialLossContract Payload</strong>: Same structure, but with <code>lossPercent</code> instead of <code>revenuePercent</code>.</p>
+<a id="strategy-callback-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Callback Integration<a href="#strategy-callback-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>IStrategySchema</code> includes two callbacks for partial profit/loss:</p>
+<pre><code class="typescript"><span class="hl-10">callbacks</span><span class="hl-1">: {</span><br/><span class="hl-1">  </span><span class="hl-10">onPartialProfit</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">revenuePercent</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">onPartialLoss</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">lossPercent</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These callbacks fire on <strong>every tick</strong> while signal is in profit or loss, NOT just at milestones. For milestone-specific logic, use event listeners instead.</p>
+<p><strong>Use Case</strong>: Strategy callbacks for real-time UI updates; event listeners for discrete alerts.</p>
+<a id="persistence-across-restarts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Across Restarts<a href="#persistence-across-restarts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>PersistPartialAdapter</code> ensures milestone state survives process crashes:</p>
+<p><strong>Serialization</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// In-memory (Sets)</span><br/><span class="hl-1">{ </span><span class="hl-10">profitLevels</span><span class="hl-1">: </span><span class="hl-0">Set</span><span class="hl-1">(</span><span class="hl-6">10</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">), </span><span class="hl-10">lossLevels</span><span class="hl-1">: </span><span class="hl-0">Set</span><span class="hl-1">(</span><span class="hl-6">10</span><span class="hl-1">) }</span><br/><br/><span class="hl-5">// Persisted (Arrays)</span><br/><span class="hl-1">{ </span><span class="hl-10">profitLevels</span><span class="hl-1">: [</span><span class="hl-6">10</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">], </span><span class="hl-10">lossLevels</span><span class="hl-1">: [</span><span class="hl-6">10</span><span class="hl-1">] }</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>On Recovery</strong>:</p>
+<ol>
+<li>Load JSON file</li>
+<li>Convert arrays back to Sets</li>
+<li>Restore state in <code>ClientPartial</code></li>
+<li>Continue tracking from saved milestone state</li>
+</ol>
+<p>This prevents duplicate milestone events after crashes.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The three advanced features work together to create a production-ready trading system:</p>
+<ol>
+<li><strong>Crash Recovery</strong>: Atomic persistence enables process restarts without state loss</li>
+<li><strong>Event Monitoring</strong>: Comprehensive pub/sub system tracks all execution aspects</li>
+<li><strong>Partial Tracking</strong>: Milestone-based monitoring provides real-time unrealized P/L insights</li>
+</ol>
+<p>These features are optional—strategies can run without custom event listeners or partial tracking—but they're essential for professional live trading deployments.</p>
+<p>, All sections above</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#advanced-features"><span>Advanced <wbr/>Features</span></a><ul><li><a href="#crash-recovery-and-persistence-architecture"><span>Crash <wbr/>Recovery and <wbr/>Persistence <wbr/>Architecture</span></a></li><li><ul><li><a href="#persistence-layer-overview"><span>Persistence <wbr/>Layer <wbr/>Overview</span></a></li><li><a href="#persistbase-abstract-class"><span>Persist<wbr/>Base <wbr/>Abstract <wbr/>Class</span></a></li><li><a href="#signal-and-schedule-persistence"><span>Signal and <wbr/>Schedule <wbr/>Persistence</span></a></li><li><a href="#atomic-write-pattern"><span>Atomic <wbr/>Write <wbr/>Pattern</span></a></li><li><a href="#singleshot-initialization-pattern"><span>Singleshot <wbr/>Initialization <wbr/>Pattern</span></a></li><li><a href="#risk-state-persistence"><span>Risk <wbr/>State <wbr/>Persistence</span></a></li><li><a href="#partial-state-persistence"><span>Partial <wbr/>State <wbr/>Persistence</span></a></li></ul></li><li><a href="#event-listeners-and-monitoring-system"><span>Event <wbr/>Listeners and <wbr/>Monitoring <wbr/>System</span></a></li><li><ul><li><a href="#event-emitter-architecture"><span>Event <wbr/>Emitter <wbr/>Architecture</span></a></li><li><a href="#signal-event-listeners"><span>Signal <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#queued-processing-pattern"><span>Queued <wbr/>Processing <wbr/>Pattern</span></a></li><li><a href="#filter-predicates-with-once-variants"><span>Filter <wbr/>Predicates with <wbr/>Once <wbr/>Variants</span></a></li><li><a href="#completion-event-listeners"><span>Completion <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#progress-event-listeners"><span>Progress <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#error-event-listeners"><span>Error <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#walker-event-listeners"><span>Walker <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#validation-and-risk-event-listeners"><span>Validation and <wbr/>Risk <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#performance-event-listener"><span>Performance <wbr/>Event <wbr/>Listener</span></a></li></ul></li><li><a href="#partial-profit-and-loss-tracking"><span>Partial <wbr/>Profit and <wbr/>Loss <wbr/>Tracking</span></a></li><li><ul><li><a href="#partial-tracking-architecture"><span>Partial <wbr/>Tracking <wbr/>Architecture</span></a></li><li><a href="#partiallevel-type"><span>Partial<wbr/>Level <wbr/>Type</span></a></li><li><a href="#ipartial-interface"><span>IPartial <wbr/>Interface</span></a></li><li><a href="#set-based-deduplication"><span>Set-<wbr/>Based <wbr/>Deduplication</span></a></li><li><a href="#profit-tracking-flow"><span>Profit <wbr/>Tracking <wbr/>Flow</span></a></li><li><a href="#loss-tracking-flow"><span>Loss <wbr/>Tracking <wbr/>Flow</span></a></li><li><a href="#clear-operation"><span>Clear <wbr/>Operation</span></a></li><li><a href="#partial-event-listeners"><span>Partial <wbr/>Event <wbr/>Listeners</span></a></li><li><a href="#strategy-callback-integration"><span>Strategy <wbr/>Callback <wbr/>Integration</span></a></li><li><a href="#persistence-across-restarts"><span>Persistence <wbr/>Across <wbr/>Restarts</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

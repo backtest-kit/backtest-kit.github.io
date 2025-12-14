@@ -1,327 +1,360 @@
-<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/01_overview | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_01_overview.html">design/01_overview</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="overview" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p><strong>backtest-kit</strong> is a production-ready TypeScript framework for developing, backtesting, and deploying algorithmic trading strategies with enterprise-grade reliability. The framework provides three execution modes (historical simulation, live trading, crash-safe state recovery), comprehensive signal validation, and event-driven observability. This document introduces the framework's purpose, architecture, and core concepts at a high level.</p>
-<p>For detailed information about specific subsystems, see:</p>
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/01_overview | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_01_overview.html">design/01_overview</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="overview" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document provides a high-level introduction to the <strong>backtest-kit</strong> framework, a production-ready TypeScript system for backtesting and live trading cryptocurrency strategies. The framework is designed to enable seamless transition between historical simulation and real-time execution with identical code, while providing crash-safe persistence, comprehensive validation, and AI-powered strategy optimization.</p>
+<p>This overview covers the framework's purpose, core capabilities, architectural layers, and execution modes. For detailed information on specific subsystems:</p>
 <ul>
-<li>Execution modes: <a href="design_52_backtesting.html">Backtest Mode</a>, <a href="design_56_live_trading.html">Live Trading</a>, <a href="design_61_walker_mode.html">Walker Comparison</a></li>
-<li>Strategy development: <a href="design_24_strategy_schemas.html">Strategy Schemas</a>, <a href="design_46_signal_lifecycle.html">Signal Lifecycle</a></li>
-<li>System architecture: <a href="design_09_architecture.html">Architecture</a>, <a href="design_38_service_layer.html">Service Layer</a></li>
-<li>Advanced features: <a href="design_65_risk_management.html">Risk Management</a>, <a href="design_87_ai-powered_strategy_optimization.html">AI Optimization</a></li>
+<li>Core concepts (signals, execution contexts, events) - see <a href="design_02_core-concepts.html">Core Concepts</a></li>
+<li>Detailed architecture (DI, services, clients) - see <a href="design_06_system-architecture.html">System Architecture</a></li>
+<li>Strategy development - see <a href="design_11_strategy-system.html">Strategy System</a></li>
+<li>Execution mode implementations - see <a href="design_16_execution-modes-detailed.html">Execution Modes (Detailed)</a></li>
+<li>Data integration - see <a href="design_21_data-and-exchanges.html">Data and Exchanges</a></li>
+<li>Configuration - see <a href="design_25_configuration-system.html">Configuration System</a></li>
+<li>Reporting - see <a href="design_29_reporting-and-analytics.html">Reporting and Analytics</a></li>
 </ul>
-<a id="purpose-and-design-goals" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Design Goals<a href="#purpose-and-design-goals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework solves a critical problem in algorithmic trading: <strong>bridging the gap between backtesting and production deployment</strong>. Traditional backtesting tools often fail when strategies move to live trading due to state management issues, unrealistic execution assumptions, or missing crash recovery. backtest-kit addresses these challenges through:</p>
-<ol>
-<li><strong>Unified Strategy Code</strong>: Identical strategy logic runs in backtest and live modes without modifications</li>
-<li><strong>Crash-Safe Persistence</strong>: Atomic file writes ensure state recovery after process crashes with no duplicate signals</li>
-<li><strong>Realistic Execution Simulation</strong>: VWAP pricing, fee/slippage modeling, and time-aware context propagation</li>
-<li><strong>Portfolio-Level Risk Controls</strong>: Cross-strategy validation and position tracking</li>
-<li><strong>Memory-Efficient Streaming</strong>: AsyncGenerator-based execution processes years of historical data without loading everything into memory</li>
-</ol>
-<p>The framework is structured as a <strong>dependency injection container</strong> that orchestrates ~60 services across 8 major subsystems, with a public API layer that hides internal complexity behind intuitive registration functions.</p>
-<a id="core-architecture-layers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Architecture Layers<a href="#core-architecture-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system implements a <strong>layered architecture</strong> with clear separation of concerns across five tiers, from user-facing API to persistence layer.</p>
-<p><img src="../media/01_Overview_0.svg" alt="Mermaid Diagram"></p>
-<p><strong>Layer Responsibilities</strong>:</p>
+<hr>
+<a id="core-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Features<a href="#core-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides seven major feature categories:</p>
 <table>
 <thead>
 <tr>
-<th>Layer</th>
-<th>Purpose</th>
+<th>Feature Category</th>
+<th>Description</th>
 <th>Key Components</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>Public API</strong></td>
-<td>User-facing functions for registration and execution</td>
-<td><code>addStrategy()</code>, <code>Backtest</code>, <code>Live</code>, <code>Walker</code>, event listeners</td>
+<td><strong>Production-Ready Execution</strong></td>
+<td>Seamless switch between backtest/live modes with identical strategy code</td>
+<td><code>Backtest</code>, <code>Live</code> classes</td>
 </tr>
 <tr>
-<td><strong>Command</strong></td>
-<td>Validation and orchestration entry points</td>
-<td><code>BacktestCommandService</code>, <code>LiveCommandService</code>, <code>WalkerCommandService</code></td>
+<td><strong>Crash-Safe Persistence</strong></td>
+<td>Atomic JSON file writes with automatic state recovery</td>
+<td><code>PersistSignalAdapter</code>, <code>waitForInit()</code></td>
 </tr>
 <tr>
-<td><strong>Logic</strong></td>
-<td>Execution orchestration and AsyncGenerator streaming</td>
-<td><code>BacktestLogicPrivateService</code>, <code>LiveLogicPrivateService</code>, <code>WalkerLogicPrivateService</code></td>
+<td><strong>Validation System</strong></td>
+<td>Checks signals for TP/SL logic, risk/reward ratios, portfolio limits</td>
+<td><code>addRisk()</code>, validation services</td>
 </tr>
 <tr>
-<td><strong>Business Logic</strong></td>
-<td>Core trading logic and state management</td>
-<td><code>ClientStrategy</code>, <code>ClientExchange</code>, <code>ClientRisk</code>, <code>ClientFrame</code></td>
+<td><strong>Memory-Efficient Streaming</strong></td>
+<td>Async generator architecture for processing large datasets</td>
+<td><code>BacktestLogicPrivateService</code>, <code>LiveLogicPrivateService</code></td>
 </tr>
 <tr>
-<td><strong>Persistence</strong></td>
-<td>Crash-safe state storage with atomic writes</td>
-<td><code>PersistSignalAdapter</code>, <code>PersistScheduleAdapter</code>, <code>PersistRiskAdapter</code></td>
+<td><strong>AI Integration</strong></td>
+<td>LLM-powered strategy generation via Ollama API</td>
+<td><code>Optimizer</code> class, <code>OptimizerTemplateService</code></td>
+</tr>
+<tr>
+<td><strong>Event-Driven Monitoring</strong></td>
+<td>Pub/sub system for signals, errors, progress, completion</td>
+<td><code>listenSignal*()</code>, emitter subjects</td>
+</tr>
+<tr>
+<td><strong>Risk Management</strong></td>
+<td>Custom rules for position limits, time windows, multi-strategy coordination</td>
+<td><code>IRiskSchema</code>, <code>ClientRisk</code></td>
 </tr>
 </tbody>
 </table>
-<p>Each layer depends only on layers below it, creating a <strong>unidirectional dependency graph</strong> that simplifies testing and maintenance. The Command layer validates inputs and delegates to Logic services, which orchestrate Business Logic components through dependency injection.</p>
-<a id="component-registration-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Registration Pattern<a href="#component-registration-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a <strong>registry-based dependency injection pattern</strong> where components are registered by name before execution. Registration functions (<code>addStrategy</code>, <code>addExchange</code>, <code>addFrame</code>, etc.) store schemas in registry services, which are later instantiated by Connection services during execution.</p>
-<p><img src="../media/01_Overview_1.svg" alt="Mermaid Diagram"></p>
-<p>This pattern enables <strong>dependency inversion</strong>: strategies reference exchanges by name (<code>exchangeName: &quot;binance&quot;</code>), not by direct import. Components can be registered in separate modules and assembled at runtime through string identifiers. The memoization layer in Connection services ensures each symbol-strategy-exchange combination gets exactly one instance, preventing duplicate state.</p>
-<p><strong>Registration Flow</strong>:</p>
-<ol>
-<li>User calls <code>addStrategy({ strategyName: &quot;my-strategy&quot;, ... })</code></li>
-<li>Function stores schema in <code>StrategySchemaService.schemas</code> Map</li>
-<li>During execution, <code>StrategyConnectionService.getStrategy(&quot;my-strategy&quot;)</code> retrieves schema</li>
-<li>Schema is instantiated into <code>ClientStrategy</code> instance with dependencies injected</li>
-<li>Instance is memoized by <code>(symbol, strategyName)</code> key for reuse</li>
-</ol>
-<a id="execution-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Modes<a href="#execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides three execution modes with distinct temporal semantics and completion behavior, but all share the same strategy logic and signal lifecycle.</p>
-<p><img src="../media/01_Overview_2.svg" alt="Mermaid Diagram"></p>
-<p><strong>Mode Characteristics</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>Mode</th>
-<th>Temporal Progression</th>
-<th>Completion</th>
-<th>State Persistence</th>
-<th>Use Case</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Backtest</strong></td>
-<td>Historical, sequential through timeframes</td>
-<td>Finite, when all frames processed</td>
-<td>Optional, for testing only</td>
-<td>Historical strategy validation</td>
-</tr>
-<tr>
-<td><strong>Live</strong></td>
-<td>Real-time, <code>new Date()</code></td>
-<td>Infinite, manual stop required</td>
-<td>Required, crash-safe</td>
-<td>Production trading</td>
-</tr>
-<tr>
-<td><strong>Walker</strong></td>
-<td>Historical, parallel strategy iteration</td>
-<td>Finite, when all strategies tested</td>
-<td>Optional</td>
-<td>Strategy comparison and optimization</td>
-</tr>
-</tbody>
-</table>
-<p>All three modes use the same <code>ClientStrategy.tick()</code> method for signal generation and monitoring, ensuring consistent behavior across environments. The key difference is <strong>temporal context</strong>: Backtest iterates through fixed dates, Live uses current time, and Walker orchestrates multiple Backtest runs.</p>
-<a id="signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle<a href="#signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signals (trading positions) progress through a <strong>state machine</strong> with six possible states and multiple terminal outcomes. The lifecycle is identical in backtest and live modes, with different timing mechanisms.</p>
-<p><img src="../media/01_Overview_3.svg" alt="Mermaid Diagram"></p>
-<p><strong>State Descriptions</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>State</th>
-<th>Description</th>
-<th>Persistence</th>
-<th>Validation</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>idle</strong></td>
-<td>No active signal, waiting for entry conditions</td>
-<td>None</td>
-<td>N/A</td>
-</tr>
-<tr>
-<td><strong>scheduled</strong></td>
-<td>Limit order waiting for price to reach <code>priceOpen</code></td>
-<td><code>PersistScheduleAdapter</code> (live mode)</td>
-<td>Risk check on activation</td>
-</tr>
-<tr>
-<td><strong>opened</strong></td>
-<td>Signal just created, position about to activate</td>
-<td><code>PersistSignalAdapter</code> (live mode)</td>
-<td>Already validated</td>
-</tr>
-<tr>
-<td><strong>active</strong></td>
-<td>Position monitoring TP/SL/time expiration</td>
-<td><code>PersistSignalAdapter</code> (live mode)</td>
-<td>N/A</td>
-</tr>
-<tr>
-<td><strong>closed</strong></td>
-<td>Position closed via TP/SL/timeout</td>
-<td>Removed from persistence</td>
-<td>N/A</td>
-</tr>
-<tr>
-<td><strong>cancelled</strong></td>
-<td>Scheduled signal cancelled before activation</td>
-<td>Removed from persistence</td>
-<td>N/A</td>
-</tr>
-</tbody>
-</table>
-<p>The <strong>scheduled state</strong> is unique: it represents a limit order waiting for <code>priceOpen</code> to be reached. If the price moves against the position and hits the stop loss before activation, the signal is cancelled without ever opening a position. This prevents entering positions after conditions have deteriorated.</p>
-<p><strong>Validation Pipeline</strong> (during <code>getSignal()</code>):</p>
-<ol>
-<li><strong>Interval throttling</strong>: Enforce minimum time between signal generation (e.g., &quot;5m&quot; = max one signal per 5 minutes)</li>
-<li><strong>Risk gates</strong>: <code>ClientRisk.checkSignal()</code> validates portfolio-level constraints</li>
-<li><strong>Signal validation</strong>: 30+ rules check TP/SL logic, price sanity, time limits, etc.</li>
-</ol>
-<a id="event-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event System<a href="#event-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a <strong>pub-sub event architecture</strong> with 16 emitters organized into 5 functional categories. All event callbacks use queued processing to ensure sequential execution even with async handlers.</p>
-<p><img src="../media/01_Overview_4.svg" alt="Mermaid Diagram"></p>
-<p><strong>Event Categories</strong>:</p>
-<ol>
-<li><strong>Signal Events</strong>: <code>signalEmitter</code>, <code>signalLiveEmitter</code>, <code>signalBacktestEmitter</code> - Emit <code>IStrategyTickResult</code> with action discriminator</li>
-<li><strong>Progress Events</strong>: <code>progressBacktestEmitter</code>, <code>progressWalkerEmitter</code>, <code>progressOptimizerEmitter</code> - Emit completion percentages</li>
-<li><strong>Completion Events</strong>: <code>doneLiveSubject</code>, <code>doneBacktestSubject</code>, <code>doneWalkerSubject</code> - Emit <code>DoneContract</code> with metadata</li>
-<li><strong>Error Events</strong>: <code>errorEmitter</code>, <code>exitEmitter</code> - Emit <code>Error</code> objects (recoverable vs fatal)</li>
-<li><strong>Analysis Events</strong>: <code>partialProfitSubject</code>, <code>partialLossSubject</code> - Emit profit/loss milestone data</li>
-</ol>
-<p>All listeners use the <code>queued()</code> wrapper from <code>functools-kit</code> to serialize async callback execution. This prevents race conditions when multiple events arrive rapidly and callbacks perform stateful operations.</p>
-<a id="context-propagation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Propagation<a href="#context-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses <strong>async context propagation</strong> via <code>di-scoped</code> to implicitly pass runtime parameters through the call stack without explicit function arguments. This enables the same strategy code to work in both backtest (historical time) and live (real-time) modes.</p>
-<p>Two context services provide implicit parameters:</p>
-<p><strong>1. ExecutionContextService</strong> - Runtime execution parameters:</p>
-<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IExecutionContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;      </span><span class="hl-5">// Trading pair (e.g., &quot;BTCUSDT&quot;)</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;          </span><span class="hl-5">// Current timestamp (historical or real-time)</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">;   </span><span class="hl-5">// Execution mode flag</span><br/><span class="hl-1">}</span>
-</code><button type="button">Copy</button></pre>
-
-<p><strong>2. MethodContextService</strong> - Component routing parameters:</p>
-<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;   </span><span class="hl-5">// Which strategy to use</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;   </span><span class="hl-5">// Which exchange to use</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;      </span><span class="hl-5">// Which frame to use (empty in live mode)</span><br/><span class="hl-1">}</span>
-</code><button type="button">Copy</button></pre>
-
-<p>These contexts are injected at the execution entry point and automatically propagated through all service calls:</p>
-<pre><code><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1"> })</span><br/><span class="hl-1">  → </span><span class="hl-4">BacktestLogicPrivateService</span><span class="hl-1">.</span><span class="hl-0">execute</span><span class="hl-1">() [</span><span class="hl-4">sets</span><span class="hl-1"> </span><span class="hl-4">contexts</span><span class="hl-1">]</span><br/><span class="hl-1">    → </span><span class="hl-4">StrategyGlobalService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">() [</span><span class="hl-4">reads</span><span class="hl-1"> </span><span class="hl-4">contexts</span><span class="hl-1">]</span><br/><span class="hl-1">      → </span><span class="hl-4">ClientStrategy</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">() [</span><span class="hl-4">uses</span><span class="hl-1"> </span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">]</span><br/><span class="hl-1">        → </span><span class="hl-4">ClientExchange</span><span class="hl-1">.</span><span class="hl-0">getCandles</span><span class="hl-1">() [</span><span class="hl-4">uses</span><span class="hl-1"> </span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">]</span>
-</code><button>Copy</button></pre>
-
-<p>This architecture eliminates the need to pass <code>symbol</code>, <code>when</code>, <code>strategyName</code>, etc. as function parameters through every layer of the call stack. Strategy code can call <code>getAveragePrice(symbol)</code> and it automatically uses the correct timestamp from context.</p>
-<a id="dependency-injection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection<a href="#dependency-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a <strong>symbol-based dependency injection container</strong> with ~60 services registered at startup. Services are organized into a matrix pattern by component type (Strategy, Exchange, Frame, etc.) and function category (Connection, Schema, Global, Validation, etc.).</p>
-<p><img src="../media/01_Overview_5.svg" alt="Mermaid Diagram"></p>
-<p><strong>Service Organization Pattern</strong>:</p>
-<p>Each component type (Strategy, Exchange, Frame, Risk, Sizing) has four service types:</p>
-<ol>
-<li><strong>Schema Service</strong>: Registry of user-registered schemas (<code>Map&lt;name, schema&gt;</code>)</li>
-<li><strong>Connection Service</strong>: Instantiation and memoization of client instances</li>
-<li><strong>Global Service</strong>: Context injection wrapper around connection service</li>
-<li><strong>Validation Service</strong>: Schema validation logic</li>
-</ol>
-<p>Example for Strategy component:</p>
+<hr>
+<a id="execution-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Modes<a href="#execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements four distinct execution modes, each optimized for specific use cases:</p>
+<p><img src="../media/01-overview_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Backtest Mode</strong> (<code>Backtest.run()</code>, <code>Backtest.background()</code>):</p>
 <ul>
-<li><code>StrategySchemaService</code> - Stores <code>IStrategySchema</code> objects in Map</li>
-<li><code>StrategyConnectionService</code> - Creates and memoizes <code>ClientStrategy</code> instances</li>
-<li><code>StrategyGlobalService</code> - Wraps connection service with <code>ExecutionContextService.runInContext()</code></li>
-<li><code>StrategyValidationService</code> - Validates strategy schemas on registration</li>
+<li>Iterates through pre-generated timeframes sequentially</li>
+<li>Fast candle processing with skip-to-close optimization</li>
+<li>Generator yields closed signals for memory efficiency</li>
+<li>Use case: Historical validation, strategy research</li>
 </ul>
-<p>The <code>backtest</code> aggregation object (exported as <code>lib</code>) provides a flat namespace for accessing all services, used internally by public API functions.</p>
-<a id="crash-recovery-and-persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery and Persistence<a href="#crash-recovery-and-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In live mode, the framework uses <strong>atomic file-based persistence</strong> to enable crash recovery with exactly-once execution guarantees. Four persistence adapters manage different state types:</p>
+<p><strong>Live Mode</strong> (<code>Live.run()</code>, <code>Live.background()</code>):</p>
+<ul>
+<li>Infinite loop with <code>sleep(61 seconds)</code> between ticks</li>
+<li>Atomic persistence via <code>PersistSignalAdapter</code> after each operation</li>
+<li><code>waitForInit()</code> recovers state from disk on restart</li>
+<li>Use case: Real-time trading with crash safety</li>
+</ul>
+<p><strong>Walker Mode</strong> (<code>Walker.run()</code>, <code>Walker.background()</code>):</p>
+<ul>
+<li>Sequential execution of multiple backtests</li>
+<li>Compares strategies by metrics (Sharpe ratio, max drawdown, etc.)</li>
+<li>Tracks best strategy and best metric value</li>
+<li>Use case: Strategy comparison, A/B testing</li>
+</ul>
+<p><strong>Optimizer Mode</strong> (<code>Optimizer.run()</code>, <code>Optimizer.dump()</code>):</p>
+<ul>
+<li>Fetches multi-timeframe historical data (1h, 30m, 15m, 1m)</li>
+<li>Formats data for LLM consumption (Ollama API)</li>
+<li>Generates complete executable <code>.mjs</code> files</li>
+<li>Use case: AI-driven strategy development</li>
+</ul>
+<p>For detailed implementation details, see <a href="design_16_execution-modes-detailed.html">Execution Modes (Detailed)</a>.</p>
+<hr>
+<a id="key-components-and-public-api" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key Components and Public API<a href="#key-components-and-public-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="component-registration-api" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Component Registration API<a href="#component-registration-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses a registration pattern for defining strategies, exchanges, data sources, and risk profiles:</p>
+<p><img src="../media/01-overview_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Registration Functions</strong> (exported from <a href="">src/lib/index.ts</a>):</p>
+<ul>
+<li><code>addStrategy(IStrategySchema)</code> - Define signal generation logic and lifecycle callbacks</li>
+<li><code>addExchange(IExchangeSchema)</code> - Configure data source (CCXT integration, custom APIs)</li>
+<li><code>addFrame(IFrameSchema)</code> - Specify date range and interval for backtests</li>
+<li><code>addRisk(IRiskSchema)</code> - Set portfolio limits and validation rules</li>
+<li><code>addSizing(ISizingSchema)</code> - Configure position sizing methods (fixed, Kelly, ATR)</li>
+<li><code>addWalker(IWalkerSchema)</code> - Define strategy comparison configuration</li>
+<li><code>addOptimizer(IOptimizerSchema)</code> - Configure LLM prompt templates and data sources</li>
+</ul>
+<a id="execution-api" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution API<a href="#execution-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/01-overview_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Execution Methods</strong>:</p>
+<ul>
+<li><code>Backtest.run(symbol, context)</code> - Synchronous backtest with generator iteration</li>
+<li><code>Backtest.background(symbol, context)</code> - Fire-and-forget backtest with event listeners</li>
+<li><code>Live.run(symbol, context)</code> - Synchronous live execution</li>
+<li><code>Live.background(symbol, context)</code> - Background live execution</li>
+<li><code>Walker.run(symbol, context)</code> - Strategy comparison</li>
+<li><code>Optimizer.run(symbol, optimizerName)</code> - LLM strategy generation</li>
+</ul>
+<a id="event-listener-api" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listener API<a href="#event-listener-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/01-overview_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Event Listeners</strong> (all use queued async processing):</p>
+<ul>
+<li><code>listenSignal(fn)</code> - All signal events (idle, opened, active, closed)</li>
+<li><code>listenSignalBacktest(fn)</code> - Backtest signals only</li>
+<li><code>listenSignalLive(fn)</code> - Live signals only</li>
+<li><code>listenSignalOnce(filter, fn)</code> - Single-execution with predicate filter</li>
+<li><code>listenError(fn)</code> - Background execution errors</li>
+<li><code>listenRisk(fn)</code> - Risk validation rejections</li>
+<li><code>listenPartialProfit(fn)</code> - Profit milestone tracking (10%, 20%, 30%, etc.)</li>
+<li><code>listenDoneBacktest(fn)</code> - Backtest completion</li>
+<li><code>listenWalkerComplete(fn)</code> - Walker final results</li>
+</ul>
+<hr>
+<a id="architectural-layers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architectural Layers<a href="#architectural-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a five-layer architecture with clear separation of concerns:</p>
+<p><img src="../media/01-overview_4.svg" alt="Mermaid Diagram"></p>
+<a id="layer-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Layer Responsibilities<a href="#layer-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Layer 1 - Public API</strong>:</p>
+<ul>
+<li>User-facing functions exported from <a href="">src/lib/index.ts</a></li>
+<li>Configuration registration (<code>addStrategy</code>, <code>addExchange</code>, etc.)</li>
+<li>Execution triggers (<code>Backtest.run</code>, <code>Live.background</code>, etc.)</li>
+<li>Event subscription (<code>listenSignal</code>, <code>listenError</code>, etc.)</li>
+</ul>
+<p><strong>Layer 2 - Orchestration</strong>:</p>
+<ul>
+<li>Command services: <code>BacktestCommandService</code>, <code>LiveCommandService</code>, <code>WalkerCommandService</code></li>
+<li>Validation coordination (ensures all required components are registered)</li>
+<li>Delegates to Logic services for actual execution</li>
+</ul>
+<p><strong>Layer 3 - Service Layer</strong>:</p>
+<ul>
+<li><strong>Logic Services</strong>: Public/private split for execution flow
+<ul>
+<li>Public: Context setup and validation wrapper</li>
+<li>Private: Generator implementation with business logic</li>
+</ul>
+</li>
+<li><strong>Core Services</strong>: Domain operations (strategy tick, exchange candles, frame timeframes)</li>
+<li><strong>Connection Services</strong>: Memoized client factory pattern (cache by <code>symbol:strategyName</code>)</li>
+<li><strong>Schema Services</strong>: ToolRegistry pattern for immutable configuration storage</li>
+<li><strong>Validation Services</strong>: Runtime existence checks with memoization</li>
+<li><strong>Global Services</strong>: Portfolio-level state management (risk tracking, partial tracking)</li>
+</ul>
+<p><strong>Layer 4 - Client Layer</strong>:</p>
+<ul>
+<li>Pure business logic implementations without DI</li>
+<li>Prototype methods (not arrow functions) for memory efficiency</li>
+<li>Classes: <code>ClientStrategy</code>, <code>ClientExchange</code>, <code>ClientFrame</code>, <code>ClientRisk</code>, <code>ClientSizing</code>, <code>ClientPartial</code>, <code>ClientOptimizer</code></li>
+</ul>
+<p><strong>Layer 5 - Persistence &amp; Events</strong>:</p>
+<ul>
+<li>Atomic JSON file writes via <code>PersistSignalAdapter</code> and related adapters</li>
+<li>Pub/sub event system using <code>functools-kit</code> Subject</li>
+<li>Queued async processing to prevent race conditions</li>
+</ul>
+<p>For detailed architecture documentation, see <a href="design_06_system-architecture.html">System Architecture</a>.</p>
+<hr>
+<a id="dependency-injection-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection System<a href="#dependency-injection-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a custom DI container with Symbol-based keys and a centralized <code>backtest</code> aggregation object:</p>
+<p><img src="../media/01-overview_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key DI Components</strong>:</p>
+<ul>
+<li><code>types.ts</code> - Symbol-based service identifiers (e.g., <code>TYPES.strategyCoreService = Symbol.for(&quot;strategyCoreService&quot;)</code>)</li>
+<li><code>provide.ts</code> - Service registration with factory functions</li>
+<li><code>backtest</code> object - Central service locator providing access to all services</li>
+<li>Scoped contexts - <code>ExecutionContextService</code> and <code>MethodContextService</code> for nested context propagation</li>
+</ul>
+<p>For detailed DI documentation, see <a href="design_08_dependency-injection-system.html">Dependency Injection System</a>.</p>
+<hr>
+<a id="signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle<a href="#signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a type-safe discriminated union for signal states:</p>
+<p><img src="../media/01-overview_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>Signal States</strong>:</p>
+<ul>
+<li><code>idle</code> - No active signal, waiting for next signal generation</li>
+<li><code>scheduled</code> - Limit order created, waiting for price to reach <code>priceOpen</code></li>
+<li><code>cancelled</code> - Scheduled signal cancelled (TP/SL hit before activation)</li>
+<li><code>opened</code> - Market order filled OR limit order activated, position now open</li>
+<li><code>active</code> - Position being monitored for TP/SL/timeout</li>
+<li><code>closed</code> - Position closed with <code>closeReason</code> (<code>take_profit</code>, <code>stop_loss</code>, <code>time_expired</code>)</li>
+</ul>
+<p>Each state is a discriminated union type with an <code>action</code> discriminator property, enabling TypeScript type narrowing. For detailed signal lifecycle documentation, see <a href="design_03_signal-lifecycle-and-state-machine.html">Signal Lifecycle and State Machine</a>.</p>
+<hr>
+<a id="configuration-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration System<a href="#configuration-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a global configuration object with economic viability validation:</p>
+<p><img src="../media/01-overview_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Configuration Parameters</strong>:</p>
+<ul>
+<li><code>CC_PERCENT_SLIPPAGE</code> - Slippage percentage (default: 0.1%)</li>
+<li><code>CC_PERCENT_FEE</code> - Trading fee percentage (default: 0.1%)</li>
+<li><code>CC_AVG_PRICE_CANDLES_COUNT</code> - VWAP calculation window (default: 5 candles)</li>
+<li><code>CC_SCHEDULE_AWAIT_MINUTES</code> - Pending signal timeout (default: 120 minutes)</li>
+<li><code>CC_MIN_TAKE_PROFIT_DISTANCE</code> - Minimum TP distance (calculated from slippage + fees)</li>
+<li><code>CC_MIN_STOP_LOSS_DISTANCE</code> - Minimum SL distance</li>
+<li><code>CC_TICK_TTL</code> - Time between live ticks (default: 61 seconds)</li>
+</ul>
+<p>The <code>ConfigValidationService</code> ensures that the combination of slippage and fees doesn't make trading economically unviable. For detailed configuration documentation, see <a href="design_25_configuration-system.html">Configuration System</a>.</p>
+<hr>
+<a id="testing-and-reliability" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing and Reliability<a href="#testing-and-reliability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework includes 280+ tests covering validation, recovery, reports, and events:</p>
 <table>
 <thead>
 <tr>
-<th>Adapter</th>
-<th>State Type</th>
-<th>File Location</th>
+<th>Test Category</th>
+<th>Coverage</th>
+<th>Key Test Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal Lifecycle</strong></td>
+<td>Idle → opened → active → closed state transitions</td>
+<td><a href="">test/spec/backtest.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>Validation</strong></td>
+<td>TP/SL logic, negative prices, timestamp checks</td>
+<td><a href="">test/spec/validation.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>PNL Calculation</strong></td>
+<td>Fees (0.1%), slippage (0.1%), realistic simulations</td>
+<td><a href="">test/spec/pnl.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>Event System</strong></td>
+<td>Listener coordination, Once variants with filters</td>
+<td><a href="">test/spec/event.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>Crash Recovery</strong></td>
+<td>Atomic writes, waitForInit recovery</td>
+<td><a href="">test/e2e/restore.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>Risk Management</strong></td>
+<td>Portfolio limits, symbol filters, price-based logic</td>
+<td><a href="">test/e2e/risk.test.mjs</a></td>
+</tr>
+<tr>
+<td><strong>Edge Cases</strong></td>
+<td>Concurrent positions, same-candle activation/close</td>
+<td><a href="">test/e2e/defend.test.mjs</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="use-cases" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Use Cases<a href="#use-cases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework is designed for:</p>
+<ol>
+<li>
+<p><strong>Algorithmic Trading Development</strong></p>
+<ul>
+<li>Backtest validation on historical data</li>
+<li>Live deployment with identical code</li>
+<li>Real-time signal generation with ML models or technical indicators</li>
+</ul>
+</li>
+<li>
+<p><strong>Strategy Research</strong></p>
+<ul>
+<li>Multi-strategy comparison via Walker mode</li>
+<li>Statistical analysis (Sharpe ratio, max drawdown, win rate)</li>
+<li>Portfolio heatmaps for symbol-level performance</li>
+</ul>
+</li>
+<li>
+<p><strong>AI-Driven Optimization</strong></p>
+<ul>
+<li>LLM-powered strategy generation via Optimizer mode</li>
+<li>Multi-timeframe data analysis</li>
+<li>Automated code export</li>
+</ul>
+</li>
+<li>
+<p><strong>Risk Management</strong></p>
+<ul>
+<li>Portfolio-level position limits</li>
+<li>Multi-strategy coordination</li>
+<li>Custom validation rules (symbol filters, time windows, price ranges)</li>
+</ul>
+</li>
+<li>
+<p><strong>Educational Projects</strong></p>
+<ul>
+<li>Learning trading system architecture</li>
+<li>Understanding signal lifecycle</li>
+<li>Event-driven system design</li>
+</ul>
+</li>
+<li>
+<p><strong>Production Trading Bots</strong></p>
+<ul>
+<li>Crash-safe persistence</li>
+<li>Graceful shutdown (waits for position close)</li>
+<li>Real-time notifications via event listeners</li>
+</ul>
+</li>
+</ol>
+<hr>
+<a id="technology-stack" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Technology Stack<a href="#technology-stack" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework is built on:</p>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
 <th>Purpose</th>
+<th>Version</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>PersistSignalAdapter</code></td>
-<td>Active signals</td>
-<td><code>.backtest-kit/signals/{symbol}/{strategyName}.json</code></td>
-<td>Resume monitoring after crash</td>
+<td><strong>TypeScript</strong></td>
+<td>Type-safe development</td>
+<td>5.0+</td>
 </tr>
 <tr>
-<td><code>PersistScheduleAdapter</code></td>
-<td>Scheduled signals</td>
-<td><code>.backtest-kit/schedule/{symbol}/{strategyName}.json</code></td>
-<td>Resume waiting for activation</td>
+<td><strong>di-kit</strong></td>
+<td>Dependency injection container</td>
+<td>1.0.18</td>
 </tr>
 <tr>
-<td><code>PersistRiskAdapter</code></td>
-<td>Active positions</td>
-<td><code>.backtest-kit/risk/{symbol}.json</code></td>
-<td>Track portfolio-level risk</td>
+<td><strong>di-scoped</strong></td>
+<td>Scoped context propagation</td>
+<td>1.0.20</td>
 </tr>
 <tr>
-<td><code>PersistPartialAdapter</code></td>
-<td>Partial P&amp;L</td>
-<td><code>.backtest-kit/partial/{symbol}/{strategyName}.json</code></td>
-<td>Track milestone progress</td>
+<td><strong>functools-kit</strong></td>
+<td>Subject pattern, queued async, memoization</td>
+<td>1.0.94</td>
+</tr>
+<tr>
+<td><strong>get-moment-stamp</strong></td>
+<td>Timestamp utilities</td>
+<td>1.1.1</td>
+</tr>
+<tr>
+<td><strong>CCXT</strong></td>
+<td>Exchange data integration (peer dependency)</td>
+<td>-</td>
+</tr>
+<tr>
+<td><strong>Ollama</strong></td>
+<td>LLM API integration (peer dependency)</td>
+<td>-</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Persistence Flow</strong>:</p>
-<ol>
-<li>Signal state changes (opened → active → closed)</li>
-<li><code>ClientStrategy.setPendingSignal()</code> calls <code>PersistSignalAdapter.writeValue()</code></li>
-<li>Adapter writes JSON to temporary file: <code>{path}.tmp</code></li>
-<li>Atomic rename: <code>{path}.tmp</code> → <code>{path}</code></li>
-<li>On crash and restart, <code>waitForInit()</code> reads persisted state</li>
-<li>Strategy resumes from last persisted state</li>
-</ol>
-<p><strong>Custom Persistence Backends</strong>: Users can replace the default file-based adapters with custom implementations (Redis, MongoDB, PostgreSQL) by implementing <code>PersistBase</code> interface and registering via <code>use*Adapter()</code> methods:</p>
-<pre><code class="typescript"><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisAdapter</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">MongoAdapter</span><span class="hl-1">);</span>
-</code><button type="button">Copy</button></pre>
-
-<p>The atomic write pattern (write to <code>.tmp</code>, then rename) ensures that crashes during write operations leave either the old valid state or the new valid state, never corrupted partial data.</p>
-<a id="reporting-and-analytics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Reporting and Analytics<a href="#reporting-and-analytics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework generates <strong>markdown reports</strong> with statistical analysis for each execution mode. Reports are accumulated via event subscription and calculated on-demand or saved to disk.</p>
-<p><img src="../media/01_Overview_6.svg" alt="Mermaid Diagram"></p>
-<p><strong>Report Types</strong>:</p>
-<table>
-<thead>
-<tr>
-<th>Report</th>
-<th>Service</th>
-<th>Tracked Data</th>
-<th>Key Metrics</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Backtest</strong></td>
-<td><code>BacktestMarkdownService</code></td>
-<td>Closed signals only</td>
-<td>Sharpe Ratio, Win Rate, Total PNL, Expected Yearly Returns</td>
-</tr>
-<tr>
-<td><strong>Live</strong></td>
-<td><code>LiveMarkdownService</code></td>
-<td>All events (idle, opened, active, closed)</td>
-<td>Same as Backtest, plus event counts</td>
-</tr>
-<tr>
-<td><strong>Schedule</strong></td>
-<td><code>ScheduleMarkdownService</code></td>
-<td>Scheduled/cancelled signals</td>
-<td>Cancellation rate, Average wait time</td>
-</tr>
-<tr>
-<td><strong>Walker</strong></td>
-<td><code>WalkerMarkdownService</code></td>
-<td>Strategy comparison results</td>
-<td>Best strategy, Best metric value</td>
-</tr>
-<tr>
-<td><strong>Partial</strong></td>
-<td><code>PartialMarkdownService</code></td>
-<td>Profit/loss milestones</td>
-<td>Milestone distribution (10%, 20%, 30%...)</td>
-</tr>
-<tr>
-<td><strong>Performance</strong></td>
-<td><code>PerformanceMarkdownService</code></td>
-<td>Execution timing metrics</td>
-<td>P95/P99 latencies, Bottleneck detection</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Statistics Calculation</strong> (Safe Math):</p>
-<p>All numeric calculations use <code>isUnsafe()</code> checks to detect NaN/Infinity:</p>
-<pre><code class="typescript"><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">isUnsafe</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">): </span><span class="hl-13">boolean</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">typeof</span><span class="hl-1"> </span><span class="hl-4">value</span><span class="hl-1"> !== </span><span class="hl-2">&quot;number&quot;</span><span class="hl-1"> || </span><span class="hl-0">isNaN</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">) || !</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
-</code><button type="button">Copy</button></pre>
-
-<p>Metrics return <code>null</code> instead of invalid numbers, preventing downstream errors from propagating. Report generation uses null-safe formatting to display &quot;N/A&quot; for invalid values.</p>
-<p><strong>Key Metrics</strong>:</p>
-<ul>
-<li><strong>Sharpe Ratio</strong>: <code>avgPnl / stdDev</code> (risk-adjusted return)</li>
-<li><strong>Annualized Sharpe</strong>: <code>sharpeRatio × √365</code></li>
-<li><strong>Certainty Ratio</strong>: <code>avgWin / |avgLoss|</code> (win quality metric)</li>
-<li><strong>Expected Yearly Returns</strong>: <code>avgPnl × (365 / avgDurationDays)</code> (annualized return)</li>
-</ul>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#overview"><span>Overview</span></a><ul><li><a href="#purpose-and-design-goals"><span>Purpose and <wbr/>Design <wbr/>Goals</span></a></li><li><a href="#core-architecture-layers"><span>Core <wbr/>Architecture <wbr/>Layers</span></a></li><li><a href="#component-registration-pattern"><span>Component <wbr/>Registration <wbr/>Pattern</span></a></li><li><a href="#execution-modes"><span>Execution <wbr/>Modes</span></a></li><li><a href="#signal-lifecycle"><span>Signal <wbr/>Lifecycle</span></a></li><li><a href="#event-system"><span>Event <wbr/>System</span></a></li><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li><li><a href="#dependency-injection"><span>Dependency <wbr/>Injection</span></a></li><li><a href="#crash-recovery-and-persistence"><span>Crash <wbr/>Recovery and <wbr/>Persistence</span></a></li><li><a href="#reporting-and-analytics"><span>Reporting and <wbr/>Analytics</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#overview"><span>Overview</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#core-features"><span>Core <wbr/>Features</span></a></li><li><a href="#execution-modes"><span>Execution <wbr/>Modes</span></a></li><li><a href="#key-components-and-public-api"><span>Key <wbr/>Components and <wbr/>Public API</span></a></li><li><ul><li><a href="#component-registration-api"><span>Component <wbr/>Registration API</span></a></li><li><a href="#execution-api"><span>Execution API</span></a></li><li><a href="#event-listener-api"><span>Event <wbr/>Listener API</span></a></li></ul></li><li><a href="#architectural-layers"><span>Architectural <wbr/>Layers</span></a></li><li><ul><li><a href="#layer-responsibilities"><span>Layer <wbr/>Responsibilities</span></a></li></ul></li><li><a href="#dependency-injection-system"><span>Dependency <wbr/>Injection <wbr/>System</span></a></li><li><a href="#signal-lifecycle"><span>Signal <wbr/>Lifecycle</span></a></li><li><a href="#configuration-system"><span>Configuration <wbr/>System</span></a></li><li><a href="#testing-and-reliability"><span>Testing and <wbr/>Reliability</span></a></li><li><a href="#use-cases"><span>Use <wbr/>Cases</span></a></li><li><a href="#technology-stack"><span>Technology <wbr/>Stack</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

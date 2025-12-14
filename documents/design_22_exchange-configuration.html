@@ -1,0 +1,348 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/22_exchange-configuration | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_22_exchange-configuration.html">design/22_exchange-configuration</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="exchange-configuration" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Exchange Configuration<a href="#exchange-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document covers the exchange configuration system, which provides market data access for backtest and live trading execution. An exchange defines how to fetch historical candle data (OHLCV), format prices and quantities according to exchange precision rules, and calculate volume-weighted average prices (VWAP) for signal generation.</p>
+<p>For information about strategy configuration that consumes exchange data, see <a href="design_12_defining-strategies.html">Defining Strategies</a>. For timeframe configuration that controls backtest periods, see <a href="design_24_timeframes-and-frames.html">Timeframes and Frames</a>.</p>
+<hr>
+<a id="exchange-schema-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Exchange Schema Structure<a href="#exchange-schema-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>An exchange is registered via <code>addExchange()</code> with an <code>IExchangeSchema</code> object that defines:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code> (string)</td>
+<td>Yes</td>
+<td>Unique identifier for the exchange</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>No</td>
+<td>Optional developer documentation</td>
+</tr>
+<tr>
+<td><code>getCandles</code></td>
+<td>Function</td>
+<td>Yes</td>
+<td>Fetches historical OHLCV candle data</td>
+</tr>
+<tr>
+<td><code>formatPrice</code></td>
+<td>Function</td>
+<td>Yes</td>
+<td>Formats prices to exchange precision</td>
+</tr>
+<tr>
+<td><code>formatQuantity</code></td>
+<td>Function</td>
+<td>Yes</td>
+<td>Formats quantities to exchange precision</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IExchangeCallbacks&gt;</code></td>
+<td>No</td>
+<td>Optional lifecycle event handlers</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>getCandles</code> function signature:</p>
+<pre><code class="typescript"><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">CandleInterval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">ICandleData</span><span class="hl-1">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="candle-data-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Candle Data Structure<a href="#candle-data-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="candleinterval-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CandleInterval Types<a href="#candleinterval-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Supported intervals for candle fetching:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">CandleInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;2h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;4h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;6h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;8h&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="icandledata-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ICandleData Format<a href="#icandledata-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each candle contains six data points:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ICandleData</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;  </span><span class="hl-5">// Unix timestamp in milliseconds when candle opened</span><br/><span class="hl-1">  </span><span class="hl-4">open</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;       </span><span class="hl-5">// Opening price at candle start</span><br/><span class="hl-1">  </span><span class="hl-4">high</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;       </span><span class="hl-5">// Highest price during candle period</span><br/><span class="hl-1">  </span><span class="hl-4">low</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;        </span><span class="hl-5">// Lowest price during candle period</span><br/><span class="hl-1">  </span><span class="hl-4">close</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;      </span><span class="hl-5">// Closing price at candle end</span><br/><span class="hl-1">  </span><span class="hl-4">volume</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;     </span><span class="hl-5">// Trading volume during candle period</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="registration-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registration Flow<a href="#registration-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram shows how an exchange schema flows through validation and registration layers before becoming available for use:</p>
+<p><img src="../media/22-exchange-configuration_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Exchange Registration and Instantiation Flow</strong></p>
+<p>The registration process:</p>
+<ol>
+<li><strong>Validation</strong> - <a href="">ExchangeValidationService:128</a> checks schema structure using memoized validators</li>
+<li><strong>Storage</strong> - <a href="">ExchangeSchemaService:21</a> stores schema in registry using ToolRegistry pattern</li>
+<li><strong>Connection</strong> - <a href="">ExchangeConnectionService:18</a> creates memoized <a href="">ClientExchange:14</a> instances keyed by <code>exchangeName</code></li>
+<li><strong>Usage</strong> - <a href="">ExchangeCoreService:24</a> delegates to ClientExchange methods</li>
+</ol>
+<hr>
+<a id="exchange-implementation-layers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Exchange Implementation Layers<a href="#exchange-implementation-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="iexchange-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IExchange Interface<a href="#iexchange-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IExchange</code> interface defines methods available to strategies:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Usage Context</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getCandles(symbol, interval, limit)</code></td>
+<td>Fetch historical candles <strong>backwards</strong> from execution context time</td>
+<td>Backtest and live mode for indicators</td>
+</tr>
+<tr>
+<td><code>getNextCandles(symbol, interval, limit)</code></td>
+<td>Fetch future candles <strong>forward</strong> from execution context time</td>
+<td>Backtest mode only for fast processing</td>
+</tr>
+<tr>
+<td><code>formatPrice(symbol, price)</code></td>
+<td>Format price to exchange precision</td>
+<td>Signal validation, reporting</td>
+</tr>
+<tr>
+<td><code>formatQuantity(symbol, quantity)</code></td>
+<td>Format quantity to exchange precision</td>
+<td>Position sizing, reporting</td>
+</tr>
+<tr>
+<td><code>getAveragePrice(symbol)</code></td>
+<td>Calculate VWAP from last N candles</td>
+<td>Signal generation, execution price</td>
+</tr>
+</tbody>
+</table>
+<a id="clientexchange-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ClientExchange Implementation<a href="#clientexchange-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">ClientExchange:14</a> wraps the user-provided schema with retry logic, anomaly detection, and context awareness:</p>
+<p><img src="../media/22-exchange-configuration_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: ClientExchange Internal Flow</strong></p>
+<hr>
+<a id="vwap-calculation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">VWAP Calculation<a href="#vwap-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>getAveragePrice()</code> method calculates Volume-Weighted Average Price using the last <code>CC_AVG_PRICE_CANDLES_COUNT</code> (default: 5) 1-minute candles:</p>
+<p><strong>Formula</strong>:</p>
+<pre><code><span class="hl-8">VWAP</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">Typical</span><span class="hl-1"> </span><span class="hl-4">Price</span><span class="hl-1"> × </span><span class="hl-4">Volume</span><span class="hl-1">) / </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">Volume</span><span class="hl-1">)</span><br/><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">Typical</span><span class="hl-1"> </span><span class="hl-4">Price</span><span class="hl-1"> = (</span><span class="hl-4">High</span><span class="hl-1"> + </span><span class="hl-4">Low</span><span class="hl-1"> + </span><span class="hl-4">Close</span><span class="hl-1">) / </span><span class="hl-6">3</span>
+</code><button>Copy</button></pre>
+
+<p>This provides realistic execution prices by accounting for volume distribution across the price range.</p>
+<hr>
+<a id="retry-logic-and-anomaly-detection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Retry Logic and Anomaly Detection<a href="#retry-logic-and-anomaly-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="global-configuration-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Exchange data fetching is protected by configurable retry and validation settings:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td>3</td>
+<td>Number of retry attempts on failure</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td>5000</td>
+<td>Delay between retries (milliseconds)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></td>
+<td>1000</td>
+<td>Detects incomplete candles with near-zero prices</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</code></td>
+<td>5</td>
+<td>Minimum candles required for median-based anomaly detection</td>
+</tr>
+</tbody>
+</table>
+<a id="anomaly-detection-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Anomaly Detection Logic<a href="#anomaly-detection-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Incomplete candles from exchange APIs (e.g., Binance returning $0.01 for BTC) are filtered using:</p>
+<ol>
+<li><strong>Median calculation</strong> - Compute median price from all OHLC values</li>
+<li><strong>Threshold check</strong> - Reject candles where <code>price &lt; (median / threshold_factor)</code></li>
+<li><strong>Fallback</strong> - Use simple average if candle count &lt; minimum</li>
+</ol>
+<p>Example: BTC at $50,000 median → threshold $50 → catches $0.01-1 anomalies</p>
+<hr>
+<a id="service-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Architecture<a href="#service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram maps exchange-related services to their responsibilities:</p>
+<p><img src="../media/22-exchange-configuration_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Exchange Service Dependency Graph</strong></p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Type</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ExchangeSchemaService</td>
+<td>Schema</td>
+<td>Stores registered exchange configurations using ToolRegistry pattern</td>
+</tr>
+<tr>
+<td>ExchangeValidationService</td>
+<td>Validation</td>
+<td>Validates IExchangeSchema structure with memoized checks</td>
+</tr>
+<tr>
+<td>ExchangeConnectionService</td>
+<td>Connection</td>
+<td>Creates memoized ClientExchange instances keyed by <code>exchangeName</code></td>
+</tr>
+<tr>
+<td>ExchangeCoreService</td>
+<td>Core</td>
+<td>Provides high-level API wrapping ClientExchange methods</td>
+</tr>
+<tr>
+<td>ClientExchange</td>
+<td>Client</td>
+<td>Implements IExchange interface with retry/anomaly logic</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="context-injection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Injection<a href="#context-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Exchange operations are context-aware through dependency injection:</p>
+<a id="executioncontextservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ExecutionContextService<a href="#executioncontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Provides implicit context propagation:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IExecutionContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;    </span><span class="hl-5">// Trading pair (e.g., &quot;BTCUSDT&quot;)</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;        </span><span class="hl-5">// Current timestamp for operation</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">; </span><span class="hl-5">// True if backtest mode, false if live mode</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>when</code> field determines:</p>
+<ul>
+<li><strong>getCandles()</strong> - Fetches candles ending at <code>when</code> (looking backward)</li>
+<li><strong>getNextCandles()</strong> - Fetches candles starting after <code>when</code> (looking forward, backtest only)</li>
+</ul>
+<a id="methodcontextservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MethodContextService<a href="#methodcontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Routes exchange lookup by name:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;  </span><span class="hl-5">// Name of exchange schema to use</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;  </span><span class="hl-5">// (also used for strategy routing)</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">FrameName</span><span class="hl-1">;        </span><span class="hl-5">// (also used for frame routing)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Patterns<a href="#usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="basic-ccxt-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic CCXT Integration<a href="#basic-ccxt-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Standard pattern for integrating CCXT exchanges:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;ccxt&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exchange</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ohlcv</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">fetchOHLCV</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">(), </span><span class="hl-4">limit</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">ohlcv</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(([</span><span class="hl-4">timestamp</span><span class="hl-1">, </span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> ({</span><br/><span class="hl-1">      </span><span class="hl-4">timestamp</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">open</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">high</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">low</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">close</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">volume</span><br/><span class="hl-1">    }));</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exchange</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">loadMarkets</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">market</span><span class="hl-1"> = </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">market</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">priceToPrecision</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exchange</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">loadMarkets</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">amountToPrecision</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="custom-data-source" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Data Source<a href="#custom-data-source" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Pattern for database or file-based data:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;custom-db&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Query database for candles</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">db</span><span class="hl-1">.</span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">find</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">interval</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">timestamp:</span><span class="hl-1"> { </span><span class="hl-4">$gte:</span><span class="hl-1"> </span><span class="hl-4">since</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">() }</span><br/><span class="hl-1">    })</span><br/><span class="hl-1">    .</span><span class="hl-0">sort</span><span class="hl-1">({ </span><span class="hl-4">timestamp:</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1"> })</span><br/><span class="hl-1">    .</span><span class="hl-0">limit</span><span class="hl-1">(</span><span class="hl-4">limit</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> ({</span><br/><span class="hl-1">      </span><span class="hl-4">timestamp:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">timestamp</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">open:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">open</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">high:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">low:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">close:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">volume:</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">volume</span><br/><span class="hl-1">    }));</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="lifecycle-callbacks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lifecycle Callbacks<a href="#lifecycle-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Optional <code>onCandleData</code> callback for monitoring:</p>
+<pre><code class="typescript"><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onCandleData</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Fetched </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> </span><span class="hl-7">${</span><span class="hl-4">interval</span><span class="hl-7">}</span><span class="hl-2"> candles for </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Time range: </span><span class="hl-7">${</span><span class="hl-4">since</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2"> (limit: </span><span class="hl-7">${</span><span class="hl-4">limit</span><span class="hl-7">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="public-api-functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Functions<a href="#public-api-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration<a href="#registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">addExchange</span><span class="hl-1">(</span><span class="hl-4">exchangeSchema</span><span class="hl-1">: </span><span class="hl-13">IExchangeSchema</span><span class="hl-1">): </span><span class="hl-13">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Registers an exchange schema after validation. Throws error if <code>exchangeName</code> already exists or schema is invalid.</p>
+<a id="listing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Listing<a href="#listing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">listExchanges</span><span class="hl-1">(): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">IExchangeSchema</span><span class="hl-1">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Returns all registered exchange schemas. Useful for debugging or building dynamic UIs.</p>
+<a id="runtime-access" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Runtime Access<a href="#runtime-access" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">CandleInterval</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">ICandleData</span><span class="hl-1">[]&gt;</span><br/><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">number</span><span class="hl-1">&gt;</span><br/><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">formatPrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;</span><br/><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">formatQuantity</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These functions access the exchange configured in the current <code>MethodContextService</code> context. Called from within strategy <code>getSignal()</code> callbacks.</p>
+<hr>
+<a id="validation-rules" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Rules<a href="#validation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>ExchangeValidationService</code> enforces the following rules at registration:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Check</th>
+<th>Error Message</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unique name</td>
+<td><code>exchangeName</code> not already registered</td>
+<td>&quot;Exchange already exists: {name}&quot;</td>
+</tr>
+<tr>
+<td>Name type</td>
+<td><code>exchangeName</code> is string</td>
+<td>&quot;exchangeName must be a string&quot;</td>
+</tr>
+<tr>
+<td>getCandles</td>
+<td>Function exists</td>
+<td>&quot;getCandles must be a function&quot;</td>
+</tr>
+<tr>
+<td>formatPrice</td>
+<td>Function exists</td>
+<td>&quot;formatPrice must be a function&quot;</td>
+</tr>
+<tr>
+<td>formatQuantity</td>
+<td>Function exists</td>
+<td>&quot;formatQuantity must be a function&quot;</td>
+</tr>
+<tr>
+<td>Callbacks</td>
+<td>If provided, must be object</td>
+<td>&quot;callbacks must be an object&quot;</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="testing-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing Examples<a href="#testing-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="mock-exchange-for-tests" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Mock Exchange for Tests<a href="#mock-exchange-for-tests" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance-mock-test&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = [];</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">intervalMs</span><span class="hl-1"> = </span><span class="hl-6">60000</span><span class="hl-1">; </span><span class="hl-5">// 1 minute</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">i</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">limit</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1">++) {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">timestamp</span><span class="hl-1"> = </span><span class="hl-4">since</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">() + </span><span class="hl-4">i</span><span class="hl-1"> * </span><span class="hl-4">intervalMs</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">basePrice</span><span class="hl-1"> = </span><span class="hl-6">42000</span><span class="hl-1"> + </span><span class="hl-4">i</span><span class="hl-1"> * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-4">timestamp</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">open:</span><span class="hl-1"> </span><span class="hl-4">basePrice</span><span class="hl-1"> + </span><span class="hl-6">150.5</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">high:</span><span class="hl-1"> </span><span class="hl-4">basePrice</span><span class="hl-1"> + </span><span class="hl-6">380.2</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">low:</span><span class="hl-1"> </span><span class="hl-4">basePrice</span><span class="hl-1"> + </span><span class="hl-6">100.0</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">close:</span><span class="hl-1"> </span><span class="hl-4">basePrice</span><span class="hl-1"> + </span><span class="hl-6">250.8</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">volume:</span><span class="hl-1"> </span><span class="hl-6">100</span><span class="hl-1"> + </span><span class="hl-4">i</span><span class="hl-1"> * </span><span class="hl-6">10</span><br/><span class="hl-1">      });</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="retry-mechanism" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Retry Mechanism<a href="#retry-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>ClientExchange automatically retries failed <code>getCandles()</code> calls:</p>
+<ol>
+<li>Initial attempt</li>
+<li>If error thrown, wait <code>CC_GET_CANDLES_RETRY_DELAY_MS</code> (default: 5000ms)</li>
+<li>Retry up to <code>CC_GET_CANDLES_RETRY_COUNT</code> (default: 3) times</li>
+<li>If all retries exhausted, propagate error to caller</li>
+</ol>
+<a id="anomaly-filtering" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Anomaly Filtering<a href="#anomaly-filtering" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Invalid candles are silently filtered (not errors) if:</p>
+<ul>
+<li>Price is below <code>median / CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></li>
+<li>Occurs when exchange APIs return incomplete data (e.g., $0.01 for BTC)</li>
+</ul>
+<hr>
+<a id="integration-with-other-systems" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Systems<a href="#integration-with-other-systems" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="strategy-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Execution<a href="#strategy-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies call exchange methods during signal generation:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;my-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;5m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Get historical data for indicators</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;1h&#39;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Get current execution price</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentPrice</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate indicators and generate signal</span><br/><span class="hl-1">    </span><span class="hl-5">// ...</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="backtest-fast-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Fast Processing<a href="#backtest-fast-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>During backtest, <code>getNextCandles()</code> enables skip-to-close optimization:</p>
+<ol>
+<li>Signal opens at time T</li>
+<li>Fetch future candles from T to TP/SL/timeout</li>
+<li>Skip intermediate ticks, jump directly to close event</li>
+<li>Process only meaningful price points</li>
+</ol>
+<a id="live-trading" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading<a href="#live-trading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode:</p>
+<ul>
+<li><code>getCandles()</code> fetches recent historical data</li>
+<li><code>getNextCandles()</code> throws error (not applicable to live mode)</li>
+<li><code>getAveragePrice()</code> provides real-time VWAP for execution</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#exchange-configuration"><span>Exchange <wbr/>Configuration</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#exchange-schema-structure"><span>Exchange <wbr/>Schema <wbr/>Structure</span></a></li><li><a href="#candle-data-structure"><span>Candle <wbr/>Data <wbr/>Structure</span></a></li><li><ul><li><a href="#candleinterval-types"><span>Candle<wbr/>Interval <wbr/>Types</span></a></li><li><a href="#icandledata-format"><span>ICandle<wbr/>Data <wbr/>Format</span></a></li></ul></li><li><a href="#registration-flow"><span>Registration <wbr/>Flow</span></a></li><li><a href="#exchange-implementation-layers"><span>Exchange <wbr/>Implementation <wbr/>Layers</span></a></li><li><ul><li><a href="#iexchange-interface"><span>IExchange <wbr/>Interface</span></a></li><li><a href="#clientexchange-implementation"><span>Client<wbr/>Exchange <wbr/>Implementation</span></a></li></ul></li><li><a href="#vwap-calculation"><span>VWAP <wbr/>Calculation</span></a></li><li><a href="#retry-logic-and-anomaly-detection"><span>Retry <wbr/>Logic and <wbr/>Anomaly <wbr/>Detection</span></a></li><li><ul><li><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a></li><li><a href="#anomaly-detection-logic"><span>Anomaly <wbr/>Detection <wbr/>Logic</span></a></li></ul></li><li><a href="#service-architecture"><span>Service <wbr/>Architecture</span></a></li><li><a href="#context-injection"><span>Context <wbr/>Injection</span></a></li><li><ul><li><a href="#executioncontextservice"><span>Execution<wbr/>Context<wbr/>Service</span></a></li><li><a href="#methodcontextservice"><span>Method<wbr/>Context<wbr/>Service</span></a></li></ul></li><li><a href="#usage-patterns"><span>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#basic-ccxt-integration"><span>Basic CCXT <wbr/>Integration</span></a></li><li><a href="#custom-data-source"><span>Custom <wbr/>Data <wbr/>Source</span></a></li><li><a href="#lifecycle-callbacks"><span>Lifecycle <wbr/>Callbacks</span></a></li></ul></li><li><a href="#public-api-functions"><span>Public API <wbr/>Functions</span></a></li><li><ul><li><a href="#registration"><span>Registration</span></a></li><li><a href="#listing"><span>Listing</span></a></li><li><a href="#runtime-access"><span>Runtime <wbr/>Access</span></a></li></ul></li><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li><li><a href="#testing-examples"><span>Testing <wbr/>Examples</span></a></li><li><ul><li><a href="#mock-exchange-for-tests"><span>Mock <wbr/>Exchange for <wbr/>Tests</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#retry-mechanism"><span>Retry <wbr/>Mechanism</span></a></li><li><a href="#anomaly-filtering"><span>Anomaly <wbr/>Filtering</span></a></li></ul></li><li><a href="#integration-with-other-systems"><span>Integration with <wbr/>Other <wbr/>Systems</span></a></li><li><ul><li><a href="#strategy-execution"><span>Strategy <wbr/>Execution</span></a></li><li><a href="#backtest-fast-processing"><span>Backtest <wbr/>Fast <wbr/>Processing</span></a></li><li><a href="#live-trading"><span>Live <wbr/>Trading</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

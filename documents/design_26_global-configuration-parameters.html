@@ -1,0 +1,307 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/26_global-configuration-parameters | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_26_global-configuration-parameters.html">design/26_global-configuration-parameters</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="global-configuration-parameters" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="overview-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview and Scope<a href="#overview-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents all global configuration parameters in <code>GLOBAL_CONFIG</code>, which control system-wide behavior for backtesting, live trading, data fetching, and economic calculations. These parameters affect signal validation, cost modeling, timeout enforcement, and report generation across all execution modes.</p>
+<p>For details on how these parameters are validated for economic viability, see <a href="design_27_economic-viability-and-validation.html">Economic Viability and Validation</a>. For the configuration API (<code>setConfig</code>, <code>getConfig</code>), see <a href="design_28_configuration-api.html">Configuration API</a>.</p>
+<hr>
+<a id="parameter-categories-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameter Categories Overview<a href="#parameter-categories-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The 14 global configuration parameters are organized into five functional categories:</p>
+<p><img src="../media/26-global-configuration-parameters_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="economic-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Economic Parameters<a href="#economic-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Economic parameters control transaction cost modeling and profitability constraints. These are the most critical parameters as they determine whether strategies can be profitable.</p>
+<a id="cost-modeling-slippage-and-fees" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cost Modeling: Slippage and Fees<a href="#cost-modeling-slippage-and-fees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="cc_percent_slippage" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_PERCENT_SLIPPAGE<a href="#cc_percent_slippage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>0.1</code> (0.1% per transaction)<br>
+<strong>Type</strong>: <code>number</code> (non-negative)<br>
+<strong>Purpose</strong>: Simulates market impact and order book depth by worsening execution prices.</p>
+<p>Applied twice per round-trip trade:</p>
+<ul>
+<li><strong>Entry</strong>: Long positions buy at higher price (+0.1%), short positions sell at lower price (-0.1%)</li>
+<li><strong>Exit</strong>: Long positions sell at lower price (-0.1%), short positions buy at higher price (+0.1%)</li>
+</ul>
+<p>Total slippage effect: <strong>0.2%</strong> (2 × 0.1%)</p>
+<a id="cc_percent_fee" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_PERCENT_FEE<a href="#cc_percent_fee" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>0.1</code> (0.1% per transaction)<br>
+<strong>Type</strong>: <code>number</code> (non-negative)<br>
+<strong>Purpose</strong>: Transaction fee charged by exchange or broker.</p>
+<p>Applied twice per round-trip trade:</p>
+<ul>
+<li>Entry transaction: 0.1% fee</li>
+<li>Exit transaction: 0.1% fee</li>
+</ul>
+<p>Total fee cost: <strong>0.2%</strong> (2 × 0.1%)</p>
+<a id="cost-breakdown-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cost Breakdown Diagram<a href="#cost-breakdown-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/26-global-configuration-parameters_1.svg" alt="Mermaid Diagram"></p>
+<a id="profitability-constraints" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Profitability Constraints<a href="#profitability-constraints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="cc_min_takeprofit_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT<a href="#cc_min_takeprofit_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>0.5</code> (0.5%)<br>
+<strong>Type</strong>: <code>number</code> (positive)<br>
+<strong>Purpose</strong>: Minimum distance from <code>priceOpen</code> to <code>priceTakeProfit</code> to ensure profitable trades.</p>
+<p><strong>Critical Constraint</strong>: Must be <strong>greater than</strong> total trading costs (slippage + fees) to guarantee profit when TP is hit.</p>
+<p><strong>Calculation</strong>:</p>
+<pre><code><span class="hl-4">Total</span><span class="hl-1"> </span><span class="hl-4">Costs</span><span class="hl-1"> = (</span><span class="hl-4">slippage</span><span class="hl-1"> × </span><span class="hl-6">2</span><span class="hl-1">) + (</span><span class="hl-4">fees</span><span class="hl-1"> × </span><span class="hl-6">2</span><span class="hl-1">)</span><br/><span class="hl-1">            = (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1">) + (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1">)</span><br/><span class="hl-1">            = </span><span class="hl-6">0.2</span><span class="hl-1">% + </span><span class="hl-6">0.2</span><span class="hl-1">%</span><br/><span class="hl-1">            = </span><span class="hl-6">0.4</span><span class="hl-1">%</span><br/><br/><span class="hl-4">Minimum</span><span class="hl-1"> </span><span class="hl-4">Required</span><span class="hl-1"> </span><span class="hl-8">TP</span><span class="hl-1"> </span><span class="hl-4">Distance</span><span class="hl-1"> = </span><span class="hl-6">0.4</span><span class="hl-1">% + </span><span class="hl-4">buffer</span><br/><span class="hl-10">Default</span><span class="hl-1">: </span><span class="hl-6">0.5</span><span class="hl-1">% (</span><span class="hl-4">covers</span><span class="hl-1"> </span><span class="hl-6">0.4</span><span class="hl-1">% </span><span class="hl-4">costs</span><span class="hl-1"> + </span><span class="hl-6">0.1</span><span class="hl-1">% </span><span class="hl-4">profit</span><span class="hl-1"> </span><span class="hl-4">margin</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Validation</strong>: If <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT &lt; (CC_PERCENT_SLIPPAGE × 2 + CC_PERCENT_FEE × 2)</code>, all TP signals will be unprofitable (see <a href="design_27_economic-viability-and-validation.html">Economic Viability and Validation</a>).</p>
+<a id="cc_min_stoploss_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MIN_STOPLOSS_DISTANCE_PERCENT<a href="#cc_min_stoploss_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>0.5</code> (0.5%)<br>
+<strong>Type</strong>: <code>number</code> (positive)<br>
+<strong>Purpose</strong>: Minimum distance from <code>priceOpen</code> to <code>priceStopLoss</code> to prevent signals from being immediately stopped out by normal price volatility.</p>
+<p>Prevents &quot;instant stop loss&quot; scenarios where minor price fluctuations trigger SL before the strategy has a chance to develop.</p>
+<a id="cc_max_stoploss_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MAX_STOPLOSS_DISTANCE_PERCENT<a href="#cc_max_stoploss_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>20</code> (20%)<br>
+<strong>Type</strong>: <code>number</code> (positive)<br>
+<strong>Purpose</strong>: Maximum distance from <code>priceOpen</code> to <code>priceStopLoss</code> to prevent catastrophic losses.</p>
+<p>Caps risk per signal to 20% of position value. Prevents single signals from causing devastating portfolio damage.</p>
+<p><strong>Constraint</strong>: Must be <strong>greater than</strong> <code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code>.</p>
+<hr>
+<a id="signal-lifecycle-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle Parameters<a href="#signal-lifecycle-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal lifecycle parameters control timeouts and maximum durations for various signal states.</p>
+<a id="parameter-summary-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Parameter Summary Table<a href="#parameter-summary-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td>120</td>
+<td><code>number</code> (positive integer)</td>
+<td>Scheduled signal activation timeout</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>1440</td>
+<td><code>number</code> (positive integer)</td>
+<td>Maximum signal duration (opened state)</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_GENERATION_SECONDS</code></td>
+<td>180</td>
+<td><code>number</code> (positive integer)</td>
+<td><code>getSignal</code> execution timeout</td>
+</tr>
+</tbody>
+</table>
+<a id="cc_schedule_await_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_SCHEDULE_AWAIT_MINUTES<a href="#cc_schedule_await_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>120</code> (2 hours)<br>
+<strong>Type</strong>: <code>number</code> (positive integer, minutes)<br>
+<strong>Purpose</strong>: Maximum time to wait for a scheduled signal to activate (price to reach <code>priceOpen</code>).</p>
+<p>If a scheduled signal does not activate within this timeout, it is automatically cancelled to prevent indefinite blocking of risk limits.</p>
+<p><strong>Related Signals</strong>: Scheduled signals (those with explicit <code>priceOpen</code> set in <code>getSignal</code> return value).</p>
+<a id="cc_max_signal_lifetime_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_MAX_SIGNAL_LIFETIME_MINUTES<a href="#cc_max_signal_lifetime_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>1440</code> (1 day = 24 hours)<br>
+<strong>Type</strong>: <code>number</code> (positive integer, minutes)<br>
+<strong>Purpose</strong>: Maximum duration a signal can remain in the &quot;opened&quot; state before being force-closed with reason <code>&quot;time_expired&quot;</code>.</p>
+<p>Prevents &quot;eternal signals&quot; that block risk limits for weeks/months without reaching TP or SL.</p>
+<a id="cc_max_signal_generation_seconds" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_MAX_SIGNAL_GENERATION_SECONDS<a href="#cc_max_signal_generation_seconds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>180</code> (3 minutes)<br>
+<strong>Type</strong>: <code>number</code> (positive integer, seconds)<br>
+<strong>Purpose</strong>: Maximum execution time allowed for the <code>getSignal</code> callback in strategy schemas.</p>
+<p>Prevents long-running or stuck signal generation routines from blocking execution or consuming resources indefinitely. If generation exceeds this threshold, the attempt is aborted and logged.</p>
+<a id="lifecycle-state-diagram-with-timeouts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lifecycle State Diagram with Timeouts<a href="#lifecycle-state-diagram-with-timeouts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/26-global-configuration-parameters_2.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="data-fetching-and-reliability-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Fetching and Reliability Parameters<a href="#data-fetching-and-reliability-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>These parameters control VWAP calculation, retry logic for failed <code>getCandles</code> calls, and anomaly detection for incomplete candle data.</p>
+<a id="vwap-calculation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">VWAP Calculation<a href="#vwap-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="cc_avg_price_candles_count" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_AVG_PRICE_CANDLES_COUNT<a href="#cc_avg_price_candles_count" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>5</code> (5 candles)<br>
+<strong>Type</strong>: <code>number</code> (positive integer)<br>
+<strong>Purpose</strong>: Number of 1-minute candles to use for Volume-Weighted Average Price (VWAP) calculation.</p>
+<p>Default of 5 means VWAP is calculated from the last 5 minutes of 1m candle data.</p>
+<p><strong>Formula</strong>:</p>
+<pre><code><span class="hl-8">VWAP</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">Typical</span><span class="hl-1"> </span><span class="hl-4">Price</span><span class="hl-1"> × </span><span class="hl-4">Volume</span><span class="hl-1">) / </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">Volume</span><span class="hl-1">)</span><br/><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">Typical</span><span class="hl-1"> </span><span class="hl-4">Price</span><span class="hl-1"> = (</span><span class="hl-4">High</span><span class="hl-1"> + </span><span class="hl-4">Low</span><span class="hl-1"> + </span><span class="hl-4">Close</span><span class="hl-1">) / </span><span class="hl-6">3</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Used By</strong>: <code>ClientExchange.getAveragePrice()</code> method, which is called by strategies to get current market price.</p>
+<a id="retry-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Retry Logic<a href="#retry-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="cc_get_candles_retry_count" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_RETRY_COUNT<a href="#cc_get_candles_retry_count" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>3</code> (3 retries)<br>
+<strong>Type</strong>: <code>number</code> (non-negative integer)<br>
+<strong>Purpose</strong>: Number of retry attempts for <code>getCandles</code> function when API calls fail.</p>
+<p>Total attempts = 1 initial + 3 retries = 4 attempts maximum.</p>
+<a id="cc_get_candles_retry_delay_ms" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_RETRY_DELAY_MS<a href="#cc_get_candles_retry_delay_ms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>5000</code> (5 seconds)<br>
+<strong>Type</strong>: <code>number</code> (non-negative integer, milliseconds)<br>
+<strong>Purpose</strong>: Delay between retry attempts for <code>getCandles</code> function.</p>
+<p>Provides backoff time to avoid overwhelming failing APIs or to wait for transient network issues to resolve.</p>
+<a id="anomaly-detection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Anomaly Detection<a href="#anomaly-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="cc_get_candles_price_anomaly_threshold_factor" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR<a href="#cc_get_candles_price_anomaly_threshold_factor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>1000</code> (factor of 1000)<br>
+<strong>Type</strong>: <code>number</code> (positive integer)<br>
+<strong>Purpose</strong>: Maximum allowed deviation factor for detecting incomplete/anomalous candles from exchange APIs.</p>
+<p><strong>Detection Logic</strong>: Price is rejected if it's more than <code>factor</code> times lower than reference price (median/average).</p>
+<p><strong>Reasoning</strong>:</p>
+<ul>
+<li>Incomplete candles from Binance API typically have prices near $0.01-$1</li>
+<li>Normal BTC price: $20,000-$100,000</li>
+<li>Factor 1000: Catches prices below $20-$100 when median is $20,000-$100,000</li>
+<li>Factor 100 would be too permissive ($200 allowed when median is $20,000)</li>
+<li>Factor 10000 might be too strict for low-cap altcoins</li>
+</ul>
+<p><strong>Example</strong>: BTC at $50,000 median → threshold $50 → catches $0.01-$1 anomalies.</p>
+<a id="cc_get_candles_min_candles_for_median" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN<a href="#cc_get_candles_min_candles_for_median" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default</strong>: <code>5</code> (5 candles)<br>
+<strong>Type</strong>: <code>number</code> (positive integer)<br>
+<strong>Purpose</strong>: Minimum number of candles required for reliable median calculation in anomaly detection.</p>
+<p><strong>Statistical Reasoning</strong>:</p>
+<ul>
+<li>Each candle provides 4 price points (OHLC)</li>
+<li>5 candles = 20 price points, sufficient for robust median</li>
+<li>Below 5 candles, single anomaly can heavily skew median</li>
+<li>Rule of thumb: minimum 7-10 data points for median stability</li>
+<li>Average is more stable than median for small datasets (n &lt; 20)</li>
+</ul>
+<p><strong>Behavior</strong>: If fewer than this threshold, use simple average instead of median for reference price calculation.</p>
+<a id="data-fetching-flow-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Fetching Flow Diagram<a href="#data-fetching-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/26-global-configuration-parameters_3.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="reporting-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Reporting Parameters<a href="#reporting-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cc_report_show_signal_note" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_REPORT_SHOW_SIGNAL_NOTE<a href="#cc_report_show_signal_note" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>false</code><br>
+<strong>Type</strong>: <code>boolean</code><br>
+<strong>Purpose</strong>: Controls visibility of the &quot;Note&quot; column in markdown report tables.</p>
+<p>When <code>true</code>, the &quot;Note&quot; column (populated from <code>ISignalDto.note</code> field) is displayed in all markdown reports:</p>
+<ul>
+<li><code>BacktestMarkdownService</code> reports</li>
+<li><code>LiveMarkdownService</code> reports</li>
+<li><code>ScheduleMarkdownService</code> reports</li>
+<li><code>RiskMarkdownService</code> reports</li>
+<li>Other markdown report tables</li>
+</ul>
+<p>When <code>false</code> (default), notes are hidden to reduce table width and improve readability.</p>
+<hr>
+<a id="complete-parameter-reference-table" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Complete Parameter Reference Table<a href="#complete-parameter-reference-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Type</th>
+<th>Constraints</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><code>120</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>Scheduled signal activation timeout (minutes)</td>
+</tr>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><code>5</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>Number of candles for VWAP calculation</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_SLIPPAGE</code></td>
+<td><code>0.1</code></td>
+<td><code>number</code></td>
+<td>Non-negative</td>
+<td>Slippage per transaction (%)</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_FEE</code></td>
+<td><code>0.1</code></td>
+<td><code>number</code></td>
+<td>Non-negative</td>
+<td>Fee per transaction (%)</td>
+</tr>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><code>0.5</code></td>
+<td><code>number</code></td>
+<td>Positive, must cover costs</td>
+<td>Minimum TP distance from priceOpen (%)</td>
+</tr>
+<tr>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>0.5</code></td>
+<td><code>number</code></td>
+<td>Positive, &lt; MAX_SL</td>
+<td>Minimum SL distance from priceOpen (%)</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>20</code></td>
+<td><code>number</code></td>
+<td>Positive, &gt; MIN_SL</td>
+<td>Maximum SL distance from priceOpen (%)</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>1440</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>Maximum signal duration (minutes)</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_GENERATION_SECONDS</code></td>
+<td><code>180</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>getSignal timeout (seconds)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td><code>3</code></td>
+<td><code>number</code></td>
+<td>Non-negative integer</td>
+<td>Number of retries for getCandles</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td><code>5000</code></td>
+<td><code>number</code></td>
+<td>Non-negative integer</td>
+<td>Delay between retries (milliseconds)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></td>
+<td><code>1000</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>Anomaly detection factor</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</code></td>
+<td><code>5</code></td>
+<td><code>number</code></td>
+<td>Positive integer</td>
+<td>Min candles for median calculation</td>
+</tr>
+<tr>
+<td><code>CC_REPORT_SHOW_SIGNAL_NOTE</code></td>
+<td><code>false</code></td>
+<td><code>boolean</code></td>
+<td>N/A</td>
+<td>Show note column in reports</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="parameter-relationships-and-dependencies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameter Relationships and Dependencies<a href="#parameter-relationships-and-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Some parameters have mathematical relationships and dependencies that are enforced by validation:</p>
+<p><img src="../media/26-global-configuration-parameters_4.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="type-definition-and-access" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Type Definition and Access<a href="#type-definition-and-access" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>GlobalConfig</code> type is defined as <code>typeof GLOBAL_CONFIG</code>, providing type safety for configuration access:</p>
+<pre><code class="typescript"><span class="hl-5">// Type definition</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">GlobalConfig</span><span class="hl-1"> = </span><span class="hl-7">typeof</span><span class="hl-1"> </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Access via global object</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">GLOBAL_CONFIG</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./config/params&quot;</span><span class="hl-1">;</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1">); </span><span class="hl-5">// 120</span><br/><br/><span class="hl-5">// Access via API functions (see page 7.3)</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">getConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./function/setup&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">config</span><span class="hl-1"> = </span><span class="hl-0">getConfig</span><span class="hl-1">(); </span><span class="hl-5">// Returns shallow copy</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">config</span><span class="hl-1">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1">); </span><span class="hl-5">// 120</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Type Location</strong>: <a href="">src/config/params.ts:121</a>, <a href="">types.d.ts:119</a></p>
+<p><strong>Default Configuration</strong>: <code>DEFAULT_CONFIG</code> is a frozen copy of initial <code>GLOBAL_CONFIG</code> values, providing reference to original defaults even after configuration changes.</p>
+<hr>
+<a id="validation-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Overview<a href="#validation-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All configuration parameters are validated when <code>setConfig()</code> is called (unless <code>_unsafe</code> flag is set). Validation ensures:</p>
+<ol>
+<li><strong>Type constraints</strong>: Integer parameters are integers, positive values are positive</li>
+<li><strong>Economic viability</strong>: <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> covers all costs</li>
+<li><strong>Range constraints</strong>: MIN &lt; MAX relationships (e.g., StopLoss distances)</li>
+<li><strong>Sanity checks</strong>: Timeouts, retry counts, and thresholds are reasonable</li>
+</ol>
+<p>If validation fails, <code>setConfig()</code> reverts to previous configuration and throws an error with detailed breakdown of all validation failures.</p>
+<p><strong>Validator Class</strong>: <code>ConfigValidationService</code> at <a href="">src/lib/services/validation/ConfigValidationService.ts:1-179</a></p>
+<p>For detailed validation rules and economic viability calculations, see <a href="design_27_economic-viability-and-validation.html">Economic Viability and Validation</a>.</p>
+<p>For configuration API usage (setting/getting config), see <a href="design_28_configuration-api.html">Configuration API</a>.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a><ul><li><a href="#overview-and-scope"><span>Overview and <wbr/>Scope</span></a></li><li><a href="#parameter-categories-overview"><span>Parameter <wbr/>Categories <wbr/>Overview</span></a></li><li><a href="#economic-parameters"><span>Economic <wbr/>Parameters</span></a></li><li><ul><li><a href="#cost-modeling-slippage-and-fees"><span>Cost <wbr/>Modeling: <wbr/>Slippage and <wbr/>Fees</span></a></li><li><ul><li><a href="#cc_percent_slippage"><span>CC_<wbr/>PERCENT_<wbr/>SLIPPAGE</span></a></li><li><a href="#cc_percent_fee"><span>CC_<wbr/>PERCENT_<wbr/>FEE</span></a></li></ul></li><li><a href="#cost-breakdown-diagram"><span>Cost <wbr/>Breakdown <wbr/>Diagram</span></a></li><li><a href="#profitability-constraints"><span>Profitability <wbr/>Constraints</span></a></li><li><ul><li><a href="#cc_min_takeprofit_distance_percent"><span>CC_<wbr/>MIN_<wbr/>TAKEPROFIT_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#cc_min_stoploss_distance_percent"><span>CC_<wbr/>MIN_<wbr/>STOPLOSS_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#cc_max_stoploss_distance_percent"><span>CC_<wbr/>MAX_<wbr/>STOPLOSS_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li></ul></li></ul></li><li><a href="#signal-lifecycle-parameters"><span>Signal <wbr/>Lifecycle <wbr/>Parameters</span></a></li><li><ul><li><a href="#parameter-summary-table"><span>Parameter <wbr/>Summary <wbr/>Table</span></a></li><li><a href="#cc_schedule_await_minutes"><span>CC_<wbr/>SCHEDULE_<wbr/>AWAIT_<wbr/>MINUTES</span></a></li><li><a href="#cc_max_signal_lifetime_minutes"><span>CC_<wbr/>MAX_<wbr/>SIGNAL_<wbr/>LIFETIME_<wbr/>MINUTES</span></a></li><li><a href="#cc_max_signal_generation_seconds"><span>CC_<wbr/>MAX_<wbr/>SIGNAL_<wbr/>GENERATION_<wbr/>SECONDS</span></a></li><li><a href="#lifecycle-state-diagram-with-timeouts"><span>Lifecycle <wbr/>State <wbr/>Diagram with <wbr/>Timeouts</span></a></li></ul></li><li><a href="#data-fetching-and-reliability-parameters"><span>Data <wbr/>Fetching and <wbr/>Reliability <wbr/>Parameters</span></a></li><li><ul><li><a href="#vwap-calculation"><span>VWAP <wbr/>Calculation</span></a></li><li><ul><li><a href="#cc_avg_price_candles_count"><span>CC_<wbr/>AVG_<wbr/>PRICE_<wbr/>CANDLES_<wbr/>COUNT</span></a></li></ul></li><li><a href="#retry-logic"><span>Retry <wbr/>Logic</span></a></li><li><ul><li><a href="#cc_get_candles_retry_count"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>RETRY_<wbr/>COUNT</span></a></li><li><a href="#cc_get_candles_retry_delay_ms"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>RETRY_<wbr/>DELAY_<wbr/>MS</span></a></li></ul></li><li><a href="#anomaly-detection"><span>Anomaly <wbr/>Detection</span></a></li><li><ul><li><a href="#cc_get_candles_price_anomaly_threshold_factor"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>PRICE_<wbr/>ANOMALY_<wbr/>THRESHOLD_<wbr/>FACTOR</span></a></li><li><a href="#cc_get_candles_min_candles_for_median"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>MIN_<wbr/>CANDLES_<wbr/>FOR_<wbr/>MEDIAN</span></a></li></ul></li><li><a href="#data-fetching-flow-diagram"><span>Data <wbr/>Fetching <wbr/>Flow <wbr/>Diagram</span></a></li></ul></li><li><a href="#reporting-parameters"><span>Reporting <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_report_show_signal_note"><span>CC_<wbr/>REPORT_<wbr/>SHOW_<wbr/>SIGNAL_<wbr/>NOTE</span></a></li></ul></li><li><a href="#complete-parameter-reference-table"><span>Complete <wbr/>Parameter <wbr/>Reference <wbr/>Table</span></a></li><li><a href="#parameter-relationships-and-dependencies"><span>Parameter <wbr/>Relationships and <wbr/>Dependencies</span></a></li><li><a href="#type-definition-and-access"><span>Type <wbr/>Definition and <wbr/>Access</span></a></li><li><a href="#validation-overview"><span>Validation <wbr/>Overview</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

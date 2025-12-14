@@ -1,0 +1,345 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/37_demo-applications | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_37_demo-applications.html">design/37_demo-applications</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="demo-applications" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Demo Applications<a href="#demo-applications" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the included demo applications that showcase the framework's capabilities. The demos provide practical examples of backtesting, live trading, and LLM-based strategy optimization using real market data and executable code.</p>
+<p>For framework configuration details, see <a href="design_26_global-configuration-parameters.html">Global Configuration Parameters</a>. For execution mode details, see <a href="design_04_execution-modes-overview.html">Execution Modes Overview</a> and the detailed execution mode pages (<a href="design_17_backtest-mode.html">Backtest Mode</a>, <a href="design_18_live-trading-mode.html">Live Trading Mode</a>, <a href="design_20_optimizer-mode.html">Optimizer Mode</a>).</p>
+<hr>
+<a id="demo-projects-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Demo Projects Structure<a href="#demo-projects-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The codebase includes three demonstration applications located in the <code>demo/</code> directory, each illustrating a different execution mode of the framework.</p>
+<p><img src="../media/37-demo-applications_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Demo Application Comparison</strong></p>
+<table>
+<thead>
+<tr>
+<th>Demo</th>
+<th>Purpose</th>
+<th>Execution Mode</th>
+<th>Key Features</th>
+<th>Output</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td>Historical simulation</td>
+<td>Finite iteration over timeframes</td>
+<td>Fast candle processing, TP/SL/time monitoring</td>
+<td>Closed signals, markdown reports</td>
+</tr>
+<tr>
+<td>Live</td>
+<td>Real-time trading</td>
+<td>Infinite loop with persistence</td>
+<td>Crash-safe recovery, atomic writes</td>
+<td>Opened/closed signals, state files</td>
+</tr>
+<tr>
+<td>Optimization</td>
+<td>LLM strategy generation</td>
+<td>Multi-source data aggregation</td>
+<td>Ollama API integration, code export</td>
+<td>Executable .mjs strategy files</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="shared-dependencies-and-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Shared Dependencies and Configuration<a href="#shared-dependencies-and-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All demo applications share a common dependency structure, with variations based on their specific requirements.</p>
+<p><strong>Core Dependencies</strong></p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Version</th>
+<th>Purpose</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backtest-kit</code></td>
+<td>1.5.20</td>
+<td>Core framework library</td>
+<td>All demos</td>
+</tr>
+<tr>
+<td><code>ccxt</code></td>
+<td>4.5.24</td>
+<td>Exchange API integration for market data</td>
+<td>All demos</td>
+</tr>
+<tr>
+<td><code>functools-kit</code></td>
+<td>1.0.94</td>
+<td>Functional utilities (Subject, fetchApi, etc.)</td>
+<td>All demos</td>
+</tr>
+<tr>
+<td><code>uuid</code></td>
+<td>13.0.0</td>
+<td>Signal ID generation</td>
+<td>All demos</td>
+</tr>
+<tr>
+<td><code>ollama</code></td>
+<td>0.6.3</td>
+<td>LLM API client for strategy generation</td>
+<td>Live, Optimization</td>
+</tr>
+<tr>
+<td><code>dotenv-cli</code></td>
+<td>11.0.0</td>
+<td>Environment variable management (dev)</td>
+<td>All demos</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Package Scripts</strong></p>
+<p>Each demo includes a standardized <code>start</code> script that loads environment variables and executes the main entry point:</p>
+<pre><code class="json"><span class="hl-2">&quot;scripts&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">  </span><span class="hl-11">&quot;start&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;dotenv -e .env -- node ./src/index.mjs&quot;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern is consistent across all demos at <a href="">demo/backtest/package.json:5-7</a>, <a href="">demo/live/package.json:5-7</a>, and <a href="">demo/optimization/package.json:5-7</a>.</p>
+<hr>
+<a id="backtest-demo" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest Demo<a href="#backtest-demo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest demo demonstrates historical simulation of trading strategies using the framework's <code>Backtest</code> execution mode. This is the simplest demo, focusing on core backtesting functionality without external API dependencies.</p>
+<p><strong>Key Characteristics</strong></p>
+<ul>
+<li><strong>Execution Mode:</strong> <code>Backtest.run()</code> or <code>Backtest.background()</code></li>
+<li><strong>Data Source:</strong> CCXT exchange API or mock data</li>
+<li><strong>Output:</strong> Closed signals with PnL calculations</li>
+<li><strong>Reporting:</strong> Markdown reports via <code>Backtest.dump()</code></li>
+</ul>
+<p><strong>Typical Usage Pattern</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Configuration</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1">, </span><span class="hl-4">formatPrice</span><span class="hl-1">, </span><span class="hl-4">formatQuantity</span><span class="hl-1"> });</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">getSignal</span><span class="hl-1">, </span><span class="hl-4">riskName</span><span class="hl-1"> });</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({ </span><span class="hl-4">frameName</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Execution</span><br/><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Event Monitoring</span><br/><span class="hl-0">listenSignalBacktest</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">));</span><br/><span class="hl-0">listenDoneBacktest</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The backtest demo iterates through a pre-generated timeframe array, processing each timestamp sequentially. For each tick, the framework checks for signal generation (throttled by <code>interval</code>), then uses fast candle processing to monitor TP/SL/time conditions and skip to the close timestamp for efficiency.</p>
+<hr>
+<a id="live-trading-demo" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live Trading Demo<a href="#live-trading-demo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The live trading demo demonstrates real-time execution with crash-safe persistence. This demo showcases the framework's production-ready capabilities for continuous operation.</p>
+<p><strong>Key Characteristics</strong></p>
+<ul>
+<li><strong>Execution Mode:</strong> <code>Live.run()</code> or <code>Live.background()</code></li>
+<li><strong>Persistence:</strong> Atomic JSON file writes via <code>PersistSignalAdapter</code></li>
+<li><strong>Recovery:</strong> <code>waitForInit()</code> loads previous state on restart</li>
+<li><strong>Loop:</strong> Infinite <code>while</code> loop with 61-second sleep intervals (<code>TICK_TTL</code>)</li>
+<li><strong>Output:</strong> Opened/closed signals only (filters idle/active states)</li>
+</ul>
+<p><strong>Typical Usage Pattern</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Configuration (same as backtest)</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({ </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1">, </span><span class="hl-4">formatPrice</span><span class="hl-1">, </span><span class="hl-4">formatQuantity</span><span class="hl-1"> });</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({ </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">getSignal</span><span class="hl-1">, </span><span class="hl-4">riskName</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Live Execution</span><br/><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Event Monitoring</span><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">));</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The live demo runs continuously, using <code>new Date()</code> for each tick's timestamp. State is persisted after each tick to JSON files in the <code>./dump/</code> directory, enabling crash recovery. The framework waits for all positions to close before allowing graceful shutdown via <code>doneLiveSubject</code>.</p>
+<hr>
+<a id="optimization-demo-llm-based-strategy-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Optimization Demo: LLM-Based Strategy Generation<a href="#optimization-demo-llm-based-strategy-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The optimization demo is the most complex, showcasing the framework's ability to generate trading strategies using large language models (LLMs). This demo fetches multi-timeframe historical data, formats it for LLM consumption, and generates executable strategy code.</p>
+<p><img src="../media/37-demo-applications_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Data Source Configuration</strong></p>
+<p>The demo defines four data sources with different timeframes and indicator sets. Each source has a <code>fetch</code> callback that queries the CCXT Dumper API and a <code>user</code> callback that formats the data into markdown tables for LLM consumption.</p>
+<table>
+<thead>
+<tr>
+<th>Source Name</th>
+<th>Timeframe</th>
+<th>Lookback</th>
+<th>Key Indicators</th>
+<th>API Endpoint</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>long-term-range</code></td>
+<td>1h</td>
+<td>48 candles</td>
+<td>RSI(14), MACD(12,26,9), ADX(14), Bollinger(20,2.0), EMA(20,34), Fibonacci</td>
+<td><code>/view/long-term-range</code></td>
+</tr>
+<tr>
+<td><code>swing-term-range</code></td>
+<td>30m</td>
+<td>96 candles</td>
+<td>RSI(14), MACD(12,26,9), Stochastic(14,3,3), CCI(20), DEMA(21)</td>
+<td><code>/view/swing-term-range</code></td>
+</tr>
+<tr>
+<td><code>short-term-range</code></td>
+<td>15m</td>
+<td>60 candles</td>
+<td>RSI(9), MACD(8,21,5), ADX(14), Bollinger(10,2.0), ROC(5,10)</td>
+<td><code>/view/short-term-range</code></td>
+</tr>
+<tr>
+<td><code>micro-term-range</code></td>
+<td>1m</td>
+<td>60 candles</td>
+<td>RSI(9), MACD(8,21,5), Stochastic(3,3,3), ADX(9), ATR(5,9)</td>
+<td><code>/view/micro-term-range</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each source configuration is defined at <a href="">demo/optimization/src/index.mjs:66-303</a>.</p>
+<p><strong>Training and Testing Date Ranges</strong></p>
+<p>The demo uses a 7-day training period and a 1-day testing period:</p>
+<ul>
+<li><strong>Training:</strong> <a href="">demo/optimization/src/index.mjs:19-55</a> defines <code>TRAIN_RANGE</code> with 7 consecutive days (November 24-30, 2025)</li>
+<li><strong>Testing:</strong> <a href="">demo/optimization/src/index.mjs:57-61</a> defines <code>TEST_RANGE</code> for December 1, 2025</li>
+</ul>
+<p><strong>LLM Message Formatting</strong></p>
+<p>Each data source provides a <code>user()</code> callback that formats fetched data into markdown tables with detailed explanations of indicators and their parameters. For example, the 1-hour source includes:</p>
+<pre><code class="markdown"># 1-Hour Candles Trading Analysis for BTCUSDT (Historical Data)
+
+| timestamp | rsi_14 | stoch_rsi_14 | macd | signal | ... |
+| --- | --- | --- | --- | --- | ... |
+| ... data rows ... |
+
+## Data Sources
+- **Timeframe**: 1-hour candles
+- **Lookback Period**: 48 candles (48 hours)
+- **RSI(14)**: over previous 14 candles before row timestamp (Min: 0, Max: 100)
+...
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern is repeated for all four sources at <a href="">demo/optimization/src/index.mjs:83-122</a>, <a href="">demo/optimization/src/index.mjs:141-179</a>, <a href="">demo/optimization/src/index.mjs:198-234</a>, and <a href="">demo/optimization/src/index.mjs:253-301</a>.</p>
+<p><strong>Code Generation and Export</strong></p>
+<p>The optimizer orchestrates the following workflow:</p>
+<ol>
+<li><strong>Iterate Data Sources:</strong> <code>OptimizerGlobalService</code> loops through each source in <code>SOURCE_LIST</code></li>
+<li><strong>Fetch Historical Data:</strong> For each training date range, the <code>fetch()</code> callback queries the CCXT Dumper API</li>
+<li><strong>Format for LLM:</strong> The <code>user()</code> callback converts data into markdown tables</li>
+<li><strong>Generate Strategy:</strong> The <code>getPrompt()</code> callback sends formatted data to Ollama API (model: <code>deepseek-v3.1:671b</code>)</li>
+<li><strong>Wrap in Template:</strong> <code>OptimizerTemplateService</code> wraps generated code in executable template</li>
+<li><strong>Export File:</strong> <code>Optimizer.dump()</code> writes the complete strategy to <code>./generated/{optimizerName}_{symbol}.mjs</code></li>
+</ol>
+<p>The generated file includes:</p>
+<ul>
+<li><code>addExchange()</code> configuration</li>
+<li><code>addStrategy()</code> with LLM-generated signal logic</li>
+<li><code>addFrame()</code> for testing period</li>
+<li><code>Walker.background()</code> to compare multiple strategies</li>
+</ul>
+<hr>
+<a id="environment-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Environment Configuration<a href="#environment-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All demos support environment variable configuration via <code>.env</code> files. The optimization demo requires specific environment variables for external service integration.</p>
+<p><strong>Optimization Demo Environment Variables</strong></p>
+<p>The optimization demo requires two environment variables defined in <a href="">demo/optimization/.env.example:1-3</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OLLAMA_API_KEY</code></td>
+<td>Authentication for Ollama API (optional)</td>
+<td><code>your-api-key-here</code></td>
+</tr>
+<tr>
+<td><code>CCXT_DUMPER_URL</code></td>
+<td>Base URL for CCXT Dumper API service</td>
+<td><code>http://localhost:3000</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>CCXT_DUMPER_URL</code> is used to construct API endpoints for fetching historical candle data with calculated indicators. This service is referenced in the code as a comment: <a href="">demo/optimization/src/index.mjs:64</a> points to <code>https://github.com/tripolskypetr/node-ccxt-dumper</code>.</p>
+<p><strong>General Configuration</strong></p>
+<p>All demos can use the framework's global configuration via <code>setConfig()</code> and <code>setLogger()</code> as shown in <a href="">README.md:42-58</a>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1">, </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Enable logging</span><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">log:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">log</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">debug:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">debug</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">info:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">info</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">warn:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">warn</span><span class="hl-1">,</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Global config (optional)</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,  </span><span class="hl-5">// % slippage</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,       </span><span class="hl-5">// % fee</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">120</span><span class="hl-1">,  </span><span class="hl-5">// Pending signal timeout</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="running-demo-applications" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Running Demo Applications<a href="#running-demo-applications" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All demo applications follow a consistent installation and execution pattern.</p>
+<p><strong>Installation Steps</strong></p>
+<ol>
+<li>
+<p><strong>Navigate to Demo Directory:</strong></p>
+<pre><code class="bash"><span class="hl-0">cd</span><span class="hl-1"> </span><span class="hl-2">demo/backtest</span><span class="hl-1">  </span><span class="hl-5"># or demo/live or demo/optimization</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong>Install Dependencies:</strong></p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong>Configure Environment (if needed):</strong></p>
+<pre><code class="bash"><span class="hl-0">cp</span><span class="hl-1"> </span><span class="hl-2">.env.example</span><span class="hl-1"> </span><span class="hl-2">.env</span><br/><span class="hl-5"># Edit .env with your configuration</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+</ol>
+<p><strong>Execution Commands</strong></p>
+<p>Each demo provides a <code>start</code> script that handles environment loading and execution:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This executes the command defined in <code>package.json</code>:</p>
+<pre><code class="json"><span class="hl-2">&quot;scripts&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">  </span><span class="hl-11">&quot;start&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;dotenv -e .env -- node ./src/index.mjs&quot;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>dotenv-cli</code> package (dev dependency) loads variables from <code>.env</code> before executing the Node.js script.</p>
+<p><strong>Execution Flow Diagram</strong></p>
+<p><img src="../media/37-demo-applications_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Expected Outputs</strong></p>
+<table>
+<thead>
+<tr>
+<th>Demo</th>
+<th>Console Output</th>
+<th>File Output</th>
+<th>Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td>Signal events, progress, final statistics</td>
+<td><code>./dump/backtest_{symbol}_{strategy}.md</code></td>
+<td>Minutes (depends on timeframe)</td>
+</tr>
+<tr>
+<td>Live</td>
+<td>Signal events, tick updates</td>
+<td><code>./dump/live_{symbol}_{strategy}.json</code> (state)</td>
+<td>Continuous (until stopped)</td>
+</tr>
+<tr>
+<td>Optimization</td>
+<td>Progress updates, LLM responses</td>
+<td><code>./generated/{optimizer}_{symbol}.mjs</code> (strategy code)</td>
+<td>Minutes to hours (depends on LLM)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="demo-code-examples-from-readme" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Demo Code Examples from README<a href="#demo-code-examples-from-readme" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The README includes complete working examples that can serve as templates for custom demos. These examples are located at <a href="">README.md:60-154</a> and demonstrate:</p>
+<p><strong>Basic Configuration Example</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;ccxt&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1">, </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">addFrame</span><span class="hl-1">, </span><span class="hl-4">addRisk</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Exchange registration</span><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exchange</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ohlcv</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">fetchOHLCV</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">(), </span><span class="hl-4">limit</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">ohlcv</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(([</span><span class="hl-4">timestamp</span><span class="hl-1">, </span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><br/><span class="hl-1">      ({ </span><span class="hl-4">timestamp</span><span class="hl-1">, </span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1"> })</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">2</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">8</span><span class="hl-1">),</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Risk profile with validation</span><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&#39;demo&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">pendingSignal</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceTakeProfit</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tpDistance</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&#39;long&#39;</span><span class="hl-1"> </span><br/><span class="hl-1">        ? ((</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1"> </span><br/><span class="hl-1">        : ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">tpDistance</span><span class="hl-1"> &lt; </span><span class="hl-6">1</span><span class="hl-1">) </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`TP too close: </span><span class="hl-7">${</span><span class="hl-4">tpDistance</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Timeframe definition</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&#39;1d-test&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;1m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&#39;2025-12-01&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&#39;2025-12-02&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>LLM-Enhanced Strategy Example</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">v4</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-4">uuid</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;uuid&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">dumpSignal</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;llm-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;5m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&#39;demo&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch multi-timeframe data</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1h</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles15m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">48</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles5m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">60</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">60</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-5">// Prepare messages with indicators</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">messages</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getMessages</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-4">candles1h</span><span class="hl-1">, </span><span class="hl-4">candles15m</span><span class="hl-1">, </span><span class="hl-4">candles5m</span><span class="hl-1">, </span><span class="hl-4">candles1m</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">    </span><span class="hl-5">// Generate signal via LLM</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">resultId</span><span class="hl-1"> = </span><span class="hl-0">uuid</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signal</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">json</span><span class="hl-1">(</span><span class="hl-4">messages</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">dumpSignal</span><span class="hl-1">(</span><span class="hl-4">resultId</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">, </span><span class="hl-4">signal</span><span class="hl-1">);</span><br/><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> { ...</span><span class="hl-4">signal</span><span class="hl-1">, </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-4">resultId</span><span class="hl-1"> };</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These examples demonstrate the framework's flexibility and can be adapted for custom demo applications.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#demo-applications"><span>Demo <wbr/>Applications</span></a><ul><li><a href="#demo-projects-structure"><span>Demo <wbr/>Projects <wbr/>Structure</span></a></li><li><a href="#shared-dependencies-and-configuration"><span>Shared <wbr/>Dependencies and <wbr/>Configuration</span></a></li><li><a href="#backtest-demo"><span>Backtest <wbr/>Demo</span></a></li><li><a href="#live-trading-demo"><span>Live <wbr/>Trading <wbr/>Demo</span></a></li><li><a href="#optimization-demo-llm-based-strategy-generation"><span>Optimization <wbr/>Demo: LLM-<wbr/>Based <wbr/>Strategy <wbr/>Generation</span></a></li><li><a href="#environment-configuration"><span>Environment <wbr/>Configuration</span></a></li><li><a href="#running-demo-applications"><span>Running <wbr/>Demo <wbr/>Applications</span></a></li><li><a href="#demo-code-examples-from-readme"><span>Demo <wbr/>Code <wbr/>Examples from README</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

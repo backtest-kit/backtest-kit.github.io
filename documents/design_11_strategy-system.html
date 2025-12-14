@@ -1,0 +1,473 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/11_strategy-system | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_11_strategy-system.html">design/11_strategy-system</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="strategy-system" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Strategy System<a href="#strategy-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Strategy System is the core mechanism for defining, registering, and executing trading strategies in the backtest-kit framework. This system handles signal generation, lifecycle management, risk validation, and execution across both backtest and live trading modes.</p>
+<p>This page covers strategy schema definition, signal types, execution flow, and integration with risk management. For details on specific execution modes, see Backtest Mode (<a href="design_17_backtest-mode.html">#5.1</a>), Live Trading Mode (<a href="design_18_live-trading-mode.html">#5.2</a>), and Walker Mode (<a href="design_19_walker-mode.html">#5.3</a>). For risk validation rules, see Risk Management (<a href="design_14_risk-management.html">#4.3</a>). For position sizing calculations, see Position Sizing (<a href="design_15_position-sizing.html">#4.4</a>).</p>
+<hr>
+<a id="core-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Architecture<a href="#core-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="strategy-system-component-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy System Component Hierarchy<a href="#strategy-system-component-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="strategy-schema-and-registration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Strategy Schema and Registration<a href="#strategy-schema-and-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="istrategyschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IStrategySchema Interface<a href="#istrategyschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies are registered via <code>addStrategy()</code> with an <code>IStrategySchema</code> object. The schema defines signal generation logic, throttling interval, lifecycle callbacks, and risk management configuration.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>✓</td>
+<td>Unique identifier for strategy registration</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>SignalInterval</code></td>
+<td>✓</td>
+<td>Minimum time between <code>getSignal()</code> calls</td>
+</tr>
+<tr>
+<td><code>getSignal</code></td>
+<td><code>function</code></td>
+<td>✓</td>
+<td>Signal generation callback function</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional developer documentation</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IStrategyCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Lifecycle event hooks</td>
+</tr>
+<tr>
+<td><code>riskName</code></td>
+<td><code>RiskName</code></td>
+<td>✗</td>
+<td>Single risk profile identifier</td>
+</tr>
+<tr>
+<td><code>riskList</code></td>
+<td><code>RiskName[]</code></td>
+<td>✗</td>
+<td>Multiple risk profiles (combined)</td>
+</tr>
+</tbody>
+</table>
+<a id="signal-generation-intervals" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Generation Intervals<a href="#signal-generation-intervals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>interval</code> property enforces throttling to prevent excessive <code>getSignal()</code> calls:</p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Minutes</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;1m&quot;</code></td>
+<td>1</td>
+<td>High-frequency scalping</td>
+</tr>
+<tr>
+<td><code>&quot;3m&quot;</code></td>
+<td>3</td>
+<td>Short-term momentum</td>
+</tr>
+<tr>
+<td><code>&quot;5m&quot;</code></td>
+<td>5</td>
+<td>Standard intraday</td>
+</tr>
+<tr>
+<td><code>&quot;15m&quot;</code></td>
+<td>15</td>
+<td>Medium-term swing</td>
+</tr>
+<tr>
+<td><code>&quot;30m&quot;</code></td>
+<td>30</td>
+<td>Position trading</td>
+</tr>
+<tr>
+<td><code>&quot;1h&quot;</code></td>
+<td>60</td>
+<td>Long-term strategies</td>
+</tr>
+</tbody>
+</table>
+<p>Throttling is enforced by <code>_lastSignalTimestamp</code> tracking in ClientStrategy. If less than the interval has elapsed since the last call, <code>getSignal()</code> is skipped.</p>
+<a id="registration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration Example<a href="#registration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-scalper&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;5-minute momentum strategy with 2% risk per trade&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal generation logic</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">shouldEnter</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-6">43500</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-6">41500</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-6">120</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Momentum breakout&quot;</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">; </span><span class="hl-5">// No signal</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onOpen</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal opened: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">onClose</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">priceClose</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal closed: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="signal-types-and-state-machine" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Types and State Machine<a href="#signal-types-and-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="signal-type-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Type Hierarchy<a href="#signal-type-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_1.svg" alt="Mermaid Diagram"></p>
+<a id="signal-state-machine" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal State Machine<a href="#signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Transitions</strong>:</p>
+<ol>
+<li><strong>Idle → Scheduled</strong>: <code>priceOpen</code> specified in <code>ISignalDto</code></li>
+<li><strong>Idle → Opened</strong>: <code>priceOpen</code> omitted (uses current VWAP)</li>
+<li><strong>Scheduled → Active</strong>: Price crosses <code>priceOpen</code> (long: price ≤ priceOpen, short: price ≥ priceOpen)</li>
+<li><strong>Scheduled → Cancelled</strong>: Timeout or SL hit before activation</li>
+<li><strong>Opened → Active</strong>: Signal validated and persisted</li>
+<li><strong>Active → Closed</strong>: TP/SL/Time condition met</li>
+</ol>
+<a id="timestamp-semantics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timestamp Semantics<a href="#timestamp-semantics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+<th>Set When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduledAt</code></td>
+<td>Signal creation time</td>
+<td><code>getSignal()</code> returns non-null</td>
+</tr>
+<tr>
+<td><code>pendingAt</code></td>
+<td>Position entry time</td>
+<td>Scheduled: activation time<br/>Immediate: same as <code>scheduledAt</code></td>
+</tr>
+</tbody>
+</table>
+<p>For scheduled signals, <code>pendingAt</code> is initially set to <code>scheduledAt</code> but updated to the activation timestamp when price reaches <code>priceOpen</code>.</p>
+<hr>
+<a id="strategy-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Strategy Execution Flow<a href="#strategy-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="execution-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Methods<a href="#execution-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>ClientStrategy provides two execution methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Mode</th>
+<th>Returns</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tick()</code></td>
+<td>Live/Backtest</td>
+<td><code>IStrategyTickResult</code></td>
+<td>Single tick with VWAP monitoring</td>
+</tr>
+<tr>
+<td><code>backtest()</code></td>
+<td>Backtest only</td>
+<td><code>IStrategyBacktestResult</code></td>
+<td>Fast candle-by-candle processing</td>
+</tr>
+</tbody>
+</table>
+<a id="tick-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">tick() Execution Flow<a href="#tick-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Steps</strong>:</p>
+<ol>
+<li><strong>Scheduled Signal Monitoring</strong>: Check for activation, timeout, or cancellation</li>
+<li><strong>Pending Signal Monitoring</strong>: Check TP/SL/Time conditions</li>
+<li><strong>Idle State</strong>: Check interval throttling, call <code>getSignal()</code>, validate risk</li>
+<li><strong>Signal Creation</strong>: Generate UUID, augment with context, persist to disk</li>
+<li><strong>Result Emission</strong>: Emit to <code>signalEmitter</code>, <code>signalBacktestEmitter</code>, or <code>signalLiveEmitter</code></li>
+</ol>
+<a id="backtest-fast-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">backtest() Fast Processing<a href="#backtest-fast-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>backtest()</code> method optimizes historical simulation by skipping to signal close timestamps:</p>
+<p><img src="../media/11-strategy-system_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Optimization</strong>: Skip directly to <code>closeTimestamp</code> instead of processing every intermediate timeframe.</p>
+<hr>
+<a id="risk-management-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Management Integration<a href="#risk-management-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="risk-profile-assignment" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Profile Assignment<a href="#risk-profile-assignment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies integrate risk management through two properties:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>riskName</code></td>
+<td><code>RiskName</code></td>
+<td>Single risk profile</td>
+</tr>
+<tr>
+<td><code>riskList</code></td>
+<td><code>RiskName[]</code></td>
+<td>Multiple risk profiles (combined)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Combination Logic</strong> (from <code>GET_RISK_FN</code>):</p>
+<p><img src="../media/11-strategy-system_5.svg" alt="Mermaid Diagram"></p>
+<a id="risk-check-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Check Flow<a href="#risk-check-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>IRiskCheckArgs Payload</strong>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">pendingSignal</span><span class="hl-1">: </span><span class="hl-4">ISignalDto</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">strategyName</span><span class="hl-1">: </span><span class="hl-4">StrategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">exchangeName</span><span class="hl-1">: </span><span class="hl-4">ExchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">currentPrice</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">timestamp</span><span class="hl-1">: </span><span class="hl-4">number</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="signal-validation-rules" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Validation Rules<a href="#signal-validation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="built-in-validation-validate_signal_fn" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Built-in Validation (VALIDATE_SIGNAL_FN)<a href="#built-in-validation-validate_signal_fn" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>ClientStrategy enforces comprehensive validation before signal creation:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Rule</th>
+<th>Long</th>
+<th>Short</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Price Logic</strong></td>
+<td>TP direction</td>
+<td>TP &gt; priceOpen</td>
+<td>TP &lt; priceOpen</td>
+</tr>
+<tr>
+<td></td>
+<td>SL direction</td>
+<td>SL &lt; priceOpen</td>
+<td>SL &gt; priceOpen</td>
+</tr>
+<tr>
+<td><strong>Distance Checks</strong></td>
+<td>Min TP distance</td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td></td>
+<td>Min SL distance</td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td></td>
+<td>Max SL distance</td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Time Limits</strong></td>
+<td>Max lifetime</td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Same</td>
+</tr>
+<tr>
+<td><strong>Immediate Close Prevention</strong></td>
+<td>SL not hit</td>
+<td>currentPrice &gt; SL</td>
+<td>currentPrice &lt; SL</td>
+</tr>
+<tr>
+<td></td>
+<td>TP not hit</td>
+<td>currentPrice &lt; TP</td>
+<td>currentPrice &gt; TP</td>
+</tr>
+</tbody>
+</table>
+<a id="global-configuration-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>0.5%</td>
+<td>Ensure TP covers fees + slippage</td>
+</tr>
+<tr>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>0.5%</td>
+<td>Prevent instant stop-out on volatility</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>20%</td>
+<td>Limit catastrophic losses</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>1440 (1 day)</td>
+<td>Prevent eternal signals blocking risk limits</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_SLIPPAGE</code></td>
+<td>0.1%</td>
+<td>Slippage per transaction</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_FEE</code></td>
+<td>0.1%</td>
+<td>Fee per transaction</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Economic Viability Check</strong>:</p>
+<pre><code><span class="hl-4">Minimum</span><span class="hl-1"> </span><span class="hl-8">TP</span><span class="hl-1"> </span><span class="hl-4">Distance</span><span class="hl-1"> = (</span><span class="hl-4">slippage</span><span class="hl-1"> × </span><span class="hl-6">2</span><span class="hl-1">) + (</span><span class="hl-4">fees</span><span class="hl-1"> × </span><span class="hl-6">2</span><span class="hl-1">) + </span><span class="hl-4">buffer</span><br/><span class="hl-1">                    = (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1">) + (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1">) + </span><span class="hl-6">0.1</span><span class="hl-1">%</span><br/><span class="hl-1">                    = </span><span class="hl-6">0.5</span><span class="hl-1">%</span>
+</code><button>Copy</button></pre>
+
+<a id="validation-error-examples" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Error Examples<a href="#validation-error-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// ❌ TP too close (covers fees + slippage)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">42100</span><span class="hl-1">,  </span><span class="hl-5">// Only 0.24% - fails</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-6">60</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ❌ SL in wrong direction</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">43500</span><span class="hl-1">,  </span><span class="hl-5">// SL &gt; priceOpen for long - fails</span><br/><span class="hl-1">  </span><span class="hl-10">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-6">60</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ❌ Immediate close (already hit TP)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">41500</span><span class="hl-1">,  </span><span class="hl-5">// currentPrice=42000 already &gt; TP - fails</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-6">60</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="lifecycle-callbacks-and-events" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Lifecycle Callbacks and Events<a href="#lifecycle-callbacks-and-events" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="istrategycallbacks-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IStrategyCallbacks Interface<a href="#istrategycallbacks-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies can register lifecycle hooks via the <code>callbacks</code> property:</p>
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Trigger</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onTick</code></td>
+<td>Every tick (all results)</td>
+<td><code>(symbol, result, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onIdle</code></td>
+<td>No active signal</td>
+<td><code>(symbol, currentPrice, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onSchedule</code></td>
+<td>Scheduled signal created</td>
+<td><code>(symbol, data, currentPrice, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onOpen</code></td>
+<td>Signal activated/opened</td>
+<td><code>(symbol, data, currentPrice, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onActive</code></td>
+<td>Signal being monitored</td>
+<td><code>(symbol, data, currentPrice, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onClose</code></td>
+<td>Signal closed (TP/SL/Time)</td>
+<td><code>(symbol, data, priceClose, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onCancel</code></td>
+<td>Scheduled signal cancelled</td>
+<td><code>(symbol, data, currentPrice, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onPartialProfit</code></td>
+<td>Profit milestone reached</td>
+<td><code>(symbol, data, currentPrice, revenuePercent, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onPartialLoss</code></td>
+<td>Loss milestone reached</td>
+<td><code>(symbol, data, currentPrice, lossPercent, backtest)</code></td>
+</tr>
+<tr>
+<td><code>onWrite</code></td>
+<td>Signal persisted (testing)</td>
+<td><code>(symbol, data, backtest)</code></td>
+</tr>
+</tbody>
+</table>
+<a id="event-emission-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emission Flow<a href="#event-emission-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/11-strategy-system_7.svg" alt="Mermaid Diagram"></p>
+<a id="callback-usage-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Callback Usage Example<a href="#callback-usage-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;monitored-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal generation logic</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onOpen</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">backtest</span><span class="hl-9"> </span><span class="hl-1">?</span><span class="hl-9"> </span><span class="hl-2">&#39;BT&#39;</span><span class="hl-9"> </span><span class="hl-1">:</span><span class="hl-9"> </span><span class="hl-2">&#39;LIVE&#39;</span><span class="hl-7">}</span><span class="hl-2">] Signal opened: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Position: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Entry: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  TP: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-7">}</span><span class="hl-2">, SL: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">priceStopLoss</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-0">onActive</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">backtest</span><span class="hl-9"> </span><span class="hl-1">?</span><span class="hl-9"> </span><span class="hl-2">&#39;BT&#39;</span><span class="hl-9"> </span><span class="hl-1">:</span><span class="hl-9"> </span><span class="hl-2">&#39;LIVE&#39;</span><span class="hl-7">}</span><span class="hl-2">] Monitoring: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Current: </span><span class="hl-7">${</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-0">onPartialProfit</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">revenuePercent</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">backtest</span><span class="hl-9"> </span><span class="hl-1">?</span><span class="hl-9"> </span><span class="hl-2">&#39;BT&#39;</span><span class="hl-9"> </span><span class="hl-1">:</span><span class="hl-9"> </span><span class="hl-2">&#39;LIVE&#39;</span><span class="hl-7">}</span><span class="hl-2">] Profit milestone: </span><span class="hl-7">${</span><span class="hl-4">revenuePercent</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">1</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-0">onClose</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">priceClose</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">backtest</span><span class="hl-9"> </span><span class="hl-1">?</span><span class="hl-9"> </span><span class="hl-2">&#39;BT&#39;</span><span class="hl-9"> </span><span class="hl-1">:</span><span class="hl-9"> </span><span class="hl-2">&#39;LIVE&#39;</span><span class="hl-7">}</span><span class="hl-2">] Signal closed: </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">id</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`  Close price: </span><span class="hl-7">${</span><span class="hl-4">priceClose</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="implementation-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="strategyconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">StrategyConnectionService<a href="#strategyconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The connection layer routes strategy operations to memoized <code>ClientStrategy</code> instances:</p>
+<p><img src="../media/11-strategy-system_8.svg" alt="Mermaid Diagram"></p>
+<p><strong>Memoization Key</strong>: <code>${symbol}:${strategyName}</code> (e.g., <code>&quot;BTCUSDT:momentum-scalper&quot;</code>)</p>
+<p><strong>Cache Clearing</strong>: Use <code>clear()</code> method to force re-initialization or release resources.</p>
+<a id="clientstrategy-internal-state" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ClientStrategy Internal State<a href="#clientstrategy-internal-state" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_pendingSignal</code></td>
+<td><code>ISignalRow | null</code></td>
+<td>Currently active position (monitoring TP/SL)</td>
+</tr>
+<tr>
+<td><code>_scheduledSignal</code></td>
+<td><code>IScheduledSignalRow | null</code></td>
+<td>Scheduled signal awaiting activation</td>
+</tr>
+<tr>
+<td><code>_lastSignalTimestamp</code></td>
+<td><code>number | null</code></td>
+<td>Last <code>getSignal()</code> call time (for throttling)</td>
+</tr>
+<tr>
+<td><code>_isStopped</code></td>
+<td><code>boolean</code></td>
+<td>Stop flag (prevents new signals)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>State Transitions</strong>:</p>
+<ol>
+<li><strong>Idle</strong>: Both <code>_pendingSignal</code> and <code>_scheduledSignal</code> are <code>null</code></li>
+<li><strong>Scheduled</strong>: <code>_scheduledSignal</code> is set, <code>_pendingSignal</code> is <code>null</code></li>
+<li><strong>Active</strong>: <code>_pendingSignal</code> is set, <code>_scheduledSignal</code> is <code>null</code></li>
+</ol>
+<a id="persistence-and-recovery" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence and Recovery<a href="#persistence-and-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>ClientStrategy integrates with <code>PersistSignalAdapter</code> and <code>PersistScheduleAdapter</code> for crash-safe state recovery:</p>
+<p><img src="../media/11-strategy-system_9.svg" alt="Mermaid Diagram"></p>
+<p><strong>File Paths</strong>:</p>
+<ul>
+<li>Pending: <code>./dump/signal_${symbol}_${strategyName}.json</code></li>
+<li>Scheduled: <code>./dump/schedule_${symbol}_${strategyName}.json</code></li>
+</ul>
+<p><strong>Atomic Writes</strong>: Uses <code>singleshot()</code> pattern to prevent write race conditions.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Strategy System provides a complete framework for defining, validating, executing, and monitoring trading strategies:</p>
+<ol>
+<li><strong>Registration</strong>: <code>addStrategy()</code> with <code>IStrategySchema</code> defines signal generation logic</li>
+<li><strong>Throttling</strong>: <code>SignalInterval</code> prevents excessive <code>getSignal()</code> calls</li>
+<li><strong>Validation</strong>: Comprehensive checks for TP/SL logic, distances, and economic viability</li>
+<li><strong>Risk Integration</strong>: <code>riskName</code>/<code>riskList</code> combine risk profiles via <code>MergeRisk</code></li>
+<li><strong>Lifecycle</strong>: State machine (idle → scheduled → active → closed) with callbacks</li>
+<li><strong>Execution</strong>: <code>tick()</code> for live monitoring, <code>backtest()</code> for fast historical simulation</li>
+<li><strong>Persistence</strong>: Crash-safe state recovery via <code>PersistSignalAdapter</code> and <code>PersistScheduleAdapter</code></li>
+<li><strong>Events</strong>: Global emitters (<code>signalEmitter</code>, <code>signalBacktestEmitter</code>, <code>signalLiveEmitter</code>) for monitoring</li>
+</ol>
+<p>For execution mode details, see Backtest Mode (<a href="design_17_backtest-mode.html">#5.1</a>), Live Trading Mode (<a href="design_18_live-trading-mode.html">#5.2</a>), and Walker Mode (<a href="design_19_walker-mode.html">#5.3</a>).</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#strategy-system"><span>Strategy <wbr/>System</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#core-architecture"><span>Core <wbr/>Architecture</span></a></li><li><ul><li><a href="#strategy-system-component-hierarchy"><span>Strategy <wbr/>System <wbr/>Component <wbr/>Hierarchy</span></a></li></ul></li><li><a href="#strategy-schema-and-registration"><span>Strategy <wbr/>Schema and <wbr/>Registration</span></a></li><li><ul><li><a href="#istrategyschema-interface"><span>IStrategy<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#signal-generation-intervals"><span>Signal <wbr/>Generation <wbr/>Intervals</span></a></li><li><a href="#registration-example"><span>Registration <wbr/>Example</span></a></li></ul></li><li><a href="#signal-types-and-state-machine"><span>Signal <wbr/>Types and <wbr/>State <wbr/>Machine</span></a></li><li><ul><li><a href="#signal-type-hierarchy"><span>Signal <wbr/>Type <wbr/>Hierarchy</span></a></li><li><a href="#signal-state-machine"><span>Signal <wbr/>State <wbr/>Machine</span></a></li><li><a href="#timestamp-semantics"><span>Timestamp <wbr/>Semantics</span></a></li></ul></li><li><a href="#strategy-execution-flow"><span>Strategy <wbr/>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#execution-methods"><span>Execution <wbr/>Methods</span></a></li><li><a href="#tick-execution-flow"><span>tick() <wbr/>Execution <wbr/>Flow</span></a></li><li><a href="#backtest-fast-processing"><span>backtest() <wbr/>Fast <wbr/>Processing</span></a></li></ul></li><li><a href="#risk-management-integration"><span>Risk <wbr/>Management <wbr/>Integration</span></a></li><li><ul><li><a href="#risk-profile-assignment"><span>Risk <wbr/>Profile <wbr/>Assignment</span></a></li><li><a href="#risk-check-flow"><span>Risk <wbr/>Check <wbr/>Flow</span></a></li></ul></li><li><a href="#signal-validation-rules"><span>Signal <wbr/>Validation <wbr/>Rules</span></a></li><li><ul><li><a href="#built-in-validation-validate_signal_fn"><span>Built-<wbr/>in <wbr/>Validation (VALIDATE_<wbr/>SIGNAL_<wbr/>FN)</span></a></li><li><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a></li><li><a href="#validation-error-examples"><span>Validation <wbr/>Error <wbr/>Examples</span></a></li></ul></li><li><a href="#lifecycle-callbacks-and-events"><span>Lifecycle <wbr/>Callbacks and <wbr/>Events</span></a></li><li><ul><li><a href="#istrategycallbacks-interface"><span>IStrategy<wbr/>Callbacks <wbr/>Interface</span></a></li><li><a href="#event-emission-flow"><span>Event <wbr/>Emission <wbr/>Flow</span></a></li><li><a href="#callback-usage-example"><span>Callback <wbr/>Usage <wbr/>Example</span></a></li></ul></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li><li><ul><li><a href="#strategyconnectionservice"><span>Strategy<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#clientstrategy-internal-state"><span>Client<wbr/>Strategy <wbr/>Internal <wbr/>State</span></a></li><li><a href="#persistence-and-recovery"><span>Persistence and <wbr/>Recovery</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
