@@ -1,0 +1,405 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/18_event-system-architecture | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_18_event-system-architecture.html">design/18_event-system-architecture</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="event-system-architecture" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Event System Architecture<a href="#event-system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document describes the event-driven architecture of Backtest Kit, including the 13+ event emitters, their purposes, event flow patterns, markdown service consumers, public API listeners, and memory management strategies. The event system enables real-time monitoring, reporting, and integration with external systems without coupling producers to consumers.</p>
+<p>For information about how strategies generate events, see <a href="design_08_core-concepts.html">3.1 - Signals &amp; Signal Lifecycle</a>. For information about execution modes that produce events, see <a href="design_20_execution-modes.html">5 - Execution Modes</a>. For information about report generation from accumulated events, see <a href="design_40_reporting-monitoring.html">9 - Reporting &amp; Monitoring</a>.</p>
+<hr>
+<a id="event-emitter-registry" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Emitter Registry<a href="#event-emitter-registry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides 13 distinct <code>Subject</code> emitters organized by functional area. All emitters are defined in <code>src/config/emitters.ts:1-133</code> using the <code>functools-kit</code> Subject pattern.</p>
+<a id="signal-event-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Event Emitters<a href="#signal-event-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Emission Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>signalEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>Global signal events (all modes)</td>
+<td>ClientStrategy.tick()</td>
+</tr>
+<tr>
+<td><code>signalBacktestEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>Backtest-only signals</td>
+<td>BacktestLogicPrivateService</td>
+</tr>
+<tr>
+<td><code>signalLiveEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>Live-only signals</td>
+<td>LiveLogicPrivateService</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Three-Tier Signal Emission</strong>: The system emits each signal event to three subjects simultaneously. This enables consumers to selectively subscribe to all signals (<code>signalEmitter</code>), only backtest signals (<code>signalBacktestEmitter</code>), or only live signals (<code>signalLiveEmitter</code>) without filtering logic.</p>
+<hr>
+<a id="execution-state-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution State Emitters<a href="#execution-state-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Emission Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>doneBacktestSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Backtest completion</td>
+<td>BacktestLogicPublicService</td>
+</tr>
+<tr>
+<td><code>doneLiveSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Live execution stop</td>
+<td>LiveLogicPublicService</td>
+</tr>
+<tr>
+<td><code>doneWalkerSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Walker completion</td>
+<td>WalkerLogicPublicService</td>
+</tr>
+<tr>
+<td><code>progressBacktestEmitter</code></td>
+<td><code>Subject&lt;ProgressBacktestContract&gt;</code></td>
+<td>Backtest progress %</td>
+<td>BacktestLogicPrivateService</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Completion Events</strong>: Each execution mode has its own completion subject that emits a <code>DoneContract</code> containing context about what finished (symbol, strategyName, exchangeName, backtest flag).</p>
+<hr>
+<a id="walker-event-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Event Emitters<a href="#walker-event-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Emission Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walkerEmitter</code></td>
+<td><code>Subject&lt;WalkerContract&gt;</code></td>
+<td>Strategy comparison progress</td>
+<td>WalkerLogicPrivateService</td>
+</tr>
+<tr>
+<td><code>walkerCompleteSubject</code></td>
+<td><code>Subject&lt;WalkerCompleteContract&gt;</code></td>
+<td>Walker final results</td>
+<td>WalkerLogicPrivateService</td>
+</tr>
+<tr>
+<td><code>walkerStopSubject</code></td>
+<td><code>Subject&lt;WalkerStopContract&gt;</code></td>
+<td>Walker cancellation</td>
+<td>WalkerLogicPublicService.stop()</td>
+</tr>
+<tr>
+<td><code>progressWalkerEmitter</code></td>
+<td><code>Subject&lt;ProgressWalkerContract&gt;</code></td>
+<td>Walker progress events</td>
+<td>WalkerLogicPrivateService</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Walker Progress</strong>: <code>walkerEmitter</code> emits after each strategy completes, providing incremental results. <code>walkerCompleteSubject</code> emits once with final aggregated results for all strategies.</p>
+<hr>
+<a id="risk--partial-event-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk &amp; Partial Event Emitters<a href="#risk--partial-event-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Emission Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>riskSubject</code></td>
+<td><code>Subject&lt;RiskContract&gt;</code></td>
+<td>Risk validation rejections</td>
+<td>ClientRisk.checkSignal()</td>
+</tr>
+<tr>
+<td><code>partialProfitSubject</code></td>
+<td><code>Subject&lt;PartialProfitContract&gt;</code></td>
+<td>Profit level milestones (10%, 20%...)</td>
+<td>ClientPartial.profit()</td>
+</tr>
+<tr>
+<td><code>partialLossSubject</code></td>
+<td><code>Subject&lt;PartialLossContract&gt;</code></td>
+<td>Loss level milestones (10%, 20%...)</td>
+<td>ClientPartial.loss()</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rejection-Only Emission</strong>: <code>riskSubject</code> emits ONLY when signals fail validation, preventing spam from allowed signals.</p>
+<hr>
+<a id="error--performance-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error &amp; Performance Emitters<a href="#error--performance-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Emission Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>errorEmitter</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Recoverable errors</td>
+<td>Background execution error handlers</td>
+</tr>
+<tr>
+<td><code>exitEmitter</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Fatal errors requiring termination</td>
+<td>Walker/Optimizer critical failures</td>
+</tr>
+<tr>
+<td><code>performanceEmitter</code></td>
+<td><code>Subject&lt;PerformanceContract&gt;</code></td>
+<td>Execution timing metrics</td>
+<td>PerformanceCoreService</td>
+</tr>
+<tr>
+<td><code>validationSubject</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Risk validation errors</td>
+<td>ClientRisk validation failures</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Error Severity Distinction</strong>: <code>errorEmitter</code> allows execution to continue (e.g., single tick failure in live mode), while <code>exitEmitter</code> signals unrecoverable errors that should terminate the process.</p>
+<hr>
+<a id="event-flow-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Flow Architecture<a href="#event-flow-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/18_event-system-architecture_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Flow Characteristics</strong>:</p>
+<ol>
+<li><strong>Producer Decoupling</strong>: Event producers never reference consumers directly. They only call <code>.next()</code> on subjects.</li>
+<li><strong>Selective Subscription</strong>: Consumers choose which emitters to subscribe to based on their needs.</li>
+<li><strong>Automatic Initialization</strong>: Markdown services use <code>singleshot(async () =&gt; emitter.subscribe(this.tick))</code> pattern for lazy subscription.</li>
+</ol>
+<hr>
+<a id="markdown-service-subscription-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Markdown Service Subscription Pattern<a href="#markdown-service-subscription-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All markdown services follow a consistent subscription pattern using <code>memoize</code>, <code>singleshot</code>, and <code>ReportStorage</code> classes.</p>
+<p><img src="../media/18_event-system-architecture_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Pattern Implementation</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Emitter</th>
+<th>Storage Key</th>
+<th>Event Type</th>
+<th>MAX_EVENTS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestMarkdownService</code></td>
+<td><code>signalBacktestEmitter</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>Closed signals only</td>
+<td>250</td>
+</tr>
+<tr>
+<td><code>LiveMarkdownService</code></td>
+<td><code>signalLiveEmitter</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>All tick results</td>
+<td>250</td>
+</tr>
+<tr>
+<td><code>WalkerMarkdownService</code></td>
+<td><code>walkerEmitter</code></td>
+<td><code>${walkerName}</code></td>
+<td>Strategy results</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>ScheduleMarkdownService</code></td>
+<td><code>signalEmitter</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>Scheduled/cancelled</td>
+<td>250</td>
+</tr>
+<tr>
+<td><code>HeatMarkdownService</code></td>
+<td><code>signalEmitter</code></td>
+<td><code>${strategyName}</code></td>
+<td>Closed signals by symbol</td>
+<td>250 per symbol</td>
+</tr>
+<tr>
+<td><code>PerformanceMarkdownService</code></td>
+<td><code>performanceEmitter</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>Performance metrics</td>
+<td>10000</td>
+</tr>
+<tr>
+<td><code>PartialMarkdownService</code></td>
+<td><code>partialProfit/LossSubject</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>Partial level events</td>
+<td>250</td>
+</tr>
+<tr>
+<td><code>RiskMarkdownService</code></td>
+<td><code>riskSubject</code></td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>Rejection events</td>
+<td>250</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="reportstorage-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ReportStorage Pattern<a href="#reportstorage-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each markdown service contains an inner <code>ReportStorage</code> class that encapsulates event accumulation and report generation logic.</p>
+<p><img src="../media/18_event-system-architecture_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Responsibilities</strong>:</p>
+<ol>
+<li><strong>Event Accumulation</strong>: Maintains bounded arrays with MAX_EVENTS limit via <code>unshift()</code> + <code>pop()</code> pattern</li>
+<li><strong>Statistics Calculation</strong>: Implements metrics (Sharpe ratio, win rate, PNL) with safe math checks</li>
+<li><strong>Report Generation</strong>: Formats markdown tables using configurable <code>ColumnModel&lt;T&gt;[]</code> arrays</li>
+<li><strong>File Persistence</strong>: Writes reports to <code>./dump/{mode}/</code> directories</li>
+</ol>
+<p><strong>Idle Event Optimization</strong>: <code>LiveReportStorage</code> replaces the last idle event instead of accumulating all idle ticks, preventing memory bloat during long idle periods <code>src/lib/services/markdown/LiveMarkdownService.ts:88-115</code>.</p>
+<hr>
+<a id="public-api-listener-functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Listener Functions<a href="#public-api-listener-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>src/function/event.ts</code> module provides 20+ user-facing listener functions that wrap emitters with <code>queued()</code> processing.</p>
+<a id="queued-processing-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Queued Processing Pattern<a href="#queued-processing-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/18_event-system-architecture_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Why Queued Processing?</strong>: Without <code>queued()</code>, async callbacks can execute concurrently, causing race conditions in database writes, file operations, or shared state mutations. The <code>queued()</code> wrapper from <code>functools-kit</code> ensures callbacks execute sequentially.</p>
+<hr>
+<a id="listener-function-signatures" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Listener Function Signatures<a href="#listener-function-signatures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Basic Listeners</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Subscribe to all signals (backtest + live)</span><br/><span class="hl-0">listenSignal</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Subscribe to backtest signals only</span><br/><span class="hl-0">listenSignalBacktest</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Subscribe to live signals only</span><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Once Listeners with Filtering</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Listen once with predicate filter</span><br/><span class="hl-0">listenSignalOnce</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">filterFn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">boolean</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Wait for specific done event</span><br/><span class="hl-0">listenDoneBacktestOnce</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">filterFn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">DoneContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">boolean</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">DoneContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Specialized Listeners</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Risk rejection events</span><br/><span class="hl-0">listenRisk</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">RiskContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Partial profit/loss milestones</span><br/><span class="hl-0">listenPartialProfit</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">PartialProfitContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><span class="hl-0">listenPartialLoss</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">PartialLossContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Performance metrics</span><br/><span class="hl-0">listenPerformance</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">PerformanceContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><br/><span class="hl-5">// Walker progress</span><br/><span class="hl-0">listenWalker</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">WalkerContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><br/><span class="hl-0">listenWalkerComplete</span><span class="hl-1">(</span><span class="hl-4">fn</span><span class="hl-1">: (</span><span class="hl-4">contract</span><span class="hl-1">: </span><span class="hl-13">WalkerCompleteContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All listener functions return an unsubscribe function that can be called to stop listening.</p>
+<hr>
+<a id="event-contracts" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Contracts<a href="#event-contracts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All events use type-safe contracts defined in <code>src/contract/</code> directory. Contracts ensure consumers receive properly structured data.</p>
+<a id="signal-event-contracts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Event Contracts<a href="#signal-event-contracts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>IStrategyTickResult</strong> (Discriminated Union):</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1"> = </span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultIdle</span><span class="hl-1">      </span><span class="hl-5">// action: &quot;idle&quot;</span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultScheduled</span><span class="hl-1"> </span><span class="hl-5">// action: &quot;scheduled&quot;</span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultOpened</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;opened&quot;</span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultActive</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;active&quot;</span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1">    </span><span class="hl-5">// action: &quot;closed&quot;</span><br/><span class="hl-1">  | </span><span class="hl-13">IStrategyTickResultCancelled</span><span class="hl-1"> </span><span class="hl-5">// action: &quot;cancelled&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each variant contains:</p>
+<ul>
+<li><code>action</code>: Discriminator field for type narrowing</li>
+<li><code>signal</code>: Signal data (or null for idle)</li>
+<li><code>currentPrice</code>: Current VWAP price</li>
+<li><code>strategyName</code>, <code>exchangeName</code>, <code>symbol</code>: Context information</li>
+</ul>
+<hr>
+<a id="completion-event-contracts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Completion Event Contracts<a href="#completion-event-contracts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>DoneContract</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">DoneContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">;          </span><span class="hl-5">// Execution mode</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;             </span><span class="hl-5">// Trading pair</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">; </span><span class="hl-5">// Strategy identifier</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">; </span><span class="hl-5">// Exchange identifier</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Emitted by <code>doneBacktestSubject</code>, <code>doneLiveSubject</code>, <code>doneWalkerSubject</code> to signal completion of background execution.</p>
+<hr>
+<a id="progress-event-contracts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Event Contracts<a href="#progress-event-contracts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>ProgressBacktestContract</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ProgressBacktestContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">FrameName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentIndex</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;    </span><span class="hl-5">// Current timeframe index</span><br/><span class="hl-1">  </span><span class="hl-4">totalFrames</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;     </span><span class="hl-5">// Total timeframes</span><br/><span class="hl-1">  </span><span class="hl-4">percentComplete</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">; </span><span class="hl-5">// 0-100</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>WalkerContract</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">WalkerContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-13">WalkerName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;      </span><span class="hl-5">// Current strategy</span><br/><span class="hl-1">  </span><span class="hl-4">currentStrategy</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;         </span><span class="hl-5">// Index of current</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;         </span><span class="hl-5">// Total to test</span><br/><span class="hl-1">  </span><span class="hl-4">stats</span><span class="hl-1">: </span><span class="hl-13">BacktestStatisticsModel</span><span class="hl-1">;  </span><span class="hl-5">// Current results</span><br/><span class="hl-1">  </span><span class="hl-4">metricValue</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;      </span><span class="hl-5">// Current metric</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;      </span><span class="hl-5">// Best so far</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;       </span><span class="hl-5">// Best value so far</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="risk--partial-event-contracts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk &amp; Partial Event Contracts<a href="#risk--partial-event-contracts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>RiskContract</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">RiskContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">pendingSignal</span><span class="hl-1">: </span><span class="hl-13">ISignalDto</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">activePositionCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">comment</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;          </span><span class="hl-5">// Rejection reason</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;        </span><span class="hl-5">// Rejection time</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>PartialProfitContract / PartialLossContract</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">PartialProfitContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">level</span><span class="hl-1">: </span><span class="hl-13">PartialLevel</span><span class="hl-1">;      </span><span class="hl-5">// 10 | 20 | 30 | ... | 100</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="memory-management--bounded-queues" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memory Management &amp; Bounded Queues<a href="#memory-management--bounded-queues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All markdown services implement bounded event storage to prevent memory leaks during long-running executions.</p>
+<a id="max_events-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MAX_EVENTS Configuration<a href="#max_events-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/18_event-system-architecture_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Trim Strategy</strong>:</p>
+<ol>
+<li>New events inserted at array start via <code>unshift()</code></li>
+<li>Check if length exceeds MAX_EVENTS</li>
+<li>Remove oldest event via <code>pop()</code> if over limit</li>
+<li>Result: Most recent N events always retained</li>
+</ol>
+<p><strong>Idle Event Deduplication</strong>: <code>LiveMarkdownService</code> implements additional optimization by replacing consecutive idle events instead of accumulating them <code>src/lib/services/markdown/LiveMarkdownService.ts:99-105</code>.</p>
+<hr>
+<a id="integration-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration Examples<a href="#integration-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="example-1-real-time-signal-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 1: Real-Time Signal Monitoring<a href="#example-1-real-time-signal-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenSignalLive</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;opened&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal opened: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-7">}</span><span class="hl-2"> at </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Send Telegram notification</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal closed: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">closeReason</span><span class="hl-7">}</span><span class="hl-2">, PNL: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Log to database</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: stop listening</span><br/><span class="hl-0">unsubscribe</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="example-2-waiting-for-specific-event" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 2: Waiting for Specific Event<a href="#example-2-waiting-for-specific-event" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenSignalOnce</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Wait for first take profit on BTCUSDT</span><br/><span class="hl-0">listenSignalOnce</span><span class="hl-1">(</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><br/><span class="hl-1">    </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1"> &amp;&amp; </span><br/><span class="hl-1">    </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1"> === </span><span class="hl-2">&#39;take_profit&#39;</span><span class="hl-1"> &amp;&amp; </span><br/><span class="hl-1">    </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;First TP hit!&#39;</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="example-3-risk-rejection-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example 3: Risk Rejection Monitoring<a href="#example-3-risk-rejection-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenRisk</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">listenRisk</span><span class="hl-1">((</span><span class="hl-4">rejection</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`Risk rejection for </span><span class="hl-7">${</span><span class="hl-4">rejection</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`  Strategy: </span><span class="hl-7">${</span><span class="hl-4">rejection</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`  Reason: </span><span class="hl-7">${</span><span class="hl-4">rejection</span><span class="hl-9">.</span><span class="hl-4">comment</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`  Active positions: </span><span class="hl-7">${</span><span class="hl-4">rejection</span><span class="hl-9">.</span><span class="hl-4">activePositionCount</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="memoized-storage-instances" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memoized Storage Instances<a href="#memoized-storage-instances" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Markdown services use <code>memoize</code> from <code>functools-kit</code> to create storage instances keyed by symbol and strategy name.</p>
+<p><img src="../media/18_event-system-architecture_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Isolation Benefits</strong>:</p>
+<ul>
+<li>Each symbol-strategy pair gets isolated storage</li>
+<li>Cross-symbol contamination impossible</li>
+<li><code>BTCUSDT:my-strategy</code> and <code>ETHUSDT:my-strategy</code> accumulate separately</li>
+<li><code>BTCUSDT:strategy-a</code> and <code>BTCUSDT:strategy-b</code> accumulate separately</li>
+</ul>
+<hr>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="event-emission-cost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emission Cost<a href="#event-emission-cost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Low Overhead</strong>: Each <code>Subject.next()</code> call iterates through subscribers and invokes callbacks. With typical subscriber counts (1-3 markdown services + 0-2 user listeners), overhead is negligible.</p>
+<p><strong>Async Generator Streaming</strong>: Events do not accumulate in framework memory. They flow through emitters to consumers immediately, maintaining constant memory usage.</p>
+<a id="bounded-queue-benefits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Bounded Queue Benefits<a href="#bounded-queue-benefits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Memory Ceiling</strong>: MAX_EVENTS limits ensure memory usage plateaus after initial ramp-up:</p>
+<ul>
+<li>250 events × 8 services × 200 bytes/event ≈ 400KB per symbol-strategy pair</li>
+<li>10,000 performance events × 150 bytes/event ≈ 1.5MB per symbol-strategy pair</li>
+</ul>
+<p><strong>Circular Buffer Pattern</strong>: <code>unshift()</code> + <code>pop()</code> implements a circular buffer that discards old data automatically, preventing unbounded growth during long-running live trading.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The event system provides:</p>
+<ol>
+<li><strong>13+ Emitters</strong>: Covering signals, progress, completion, risk, partial, performance, and errors</li>
+<li><strong>Three-Tier Signal Emission</strong>: Global, backtest-only, and live-only subscriptions</li>
+<li><strong>Markdown Service Consumers</strong>: 8 services that automatically subscribe, accumulate, and generate reports</li>
+<li><strong>Queued Processing</strong>: Sequential async callback execution prevents race conditions</li>
+<li><strong>Type-Safe Contracts</strong>: Discriminated unions and explicit interfaces for all events</li>
+<li><strong>Bounded Queues</strong>: MAX_EVENTS limits prevent memory leaks</li>
+<li><strong>Memoized Storage</strong>: Isolated accumulation per symbol-strategy pair</li>
+</ol>
+<p>The architecture decouples event producers from consumers, enabling flexible monitoring, reporting, and integration without modifying core execution logic.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#event-system-architecture"><span>Event <wbr/>System <wbr/>Architecture</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#event-emitter-registry"><span>Event <wbr/>Emitter <wbr/>Registry</span></a></li><li><ul><li><a href="#signal-event-emitters"><span>Signal <wbr/>Event <wbr/>Emitters</span></a></li><li><a href="#execution-state-emitters"><span>Execution <wbr/>State <wbr/>Emitters</span></a></li><li><a href="#walker-event-emitters"><span>Walker <wbr/>Event <wbr/>Emitters</span></a></li><li><a href="#risk--partial-event-emitters"><span>Risk &amp; <wbr/>Partial <wbr/>Event <wbr/>Emitters</span></a></li><li><a href="#error--performance-emitters"><span>Error &amp; <wbr/>Performance <wbr/>Emitters</span></a></li></ul></li><li><a href="#event-flow-architecture"><span>Event <wbr/>Flow <wbr/>Architecture</span></a></li><li><a href="#markdown-service-subscription-pattern"><span>Markdown <wbr/>Service <wbr/>Subscription <wbr/>Pattern</span></a></li><li><a href="#reportstorage-pattern"><span>Report<wbr/>Storage <wbr/>Pattern</span></a></li><li><a href="#public-api-listener-functions"><span>Public API <wbr/>Listener <wbr/>Functions</span></a></li><li><ul><li><a href="#queued-processing-pattern"><span>Queued <wbr/>Processing <wbr/>Pattern</span></a></li><li><a href="#listener-function-signatures"><span>Listener <wbr/>Function <wbr/>Signatures</span></a></li></ul></li><li><a href="#event-contracts"><span>Event <wbr/>Contracts</span></a></li><li><ul><li><a href="#signal-event-contracts"><span>Signal <wbr/>Event <wbr/>Contracts</span></a></li><li><a href="#completion-event-contracts"><span>Completion <wbr/>Event <wbr/>Contracts</span></a></li><li><a href="#progress-event-contracts"><span>Progress <wbr/>Event <wbr/>Contracts</span></a></li><li><a href="#risk--partial-event-contracts"><span>Risk &amp; <wbr/>Partial <wbr/>Event <wbr/>Contracts</span></a></li></ul></li><li><a href="#memory-management--bounded-queues"><span>Memory <wbr/>Management &amp; <wbr/>Bounded <wbr/>Queues</span></a></li><li><ul><li><a href="#max_events-configuration"><span>MAX_<wbr/>EVENTS <wbr/>Configuration</span></a></li></ul></li><li><a href="#integration-examples"><span>Integration <wbr/>Examples</span></a></li><li><ul><li><a href="#example-1-real-time-signal-monitoring"><span>Example 1: <wbr/>Real-<wbr/>Time <wbr/>Signal <wbr/>Monitoring</span></a></li><li><a href="#example-2-waiting-for-specific-event"><span>Example 2: <wbr/>Waiting for <wbr/>Specific <wbr/>Event</span></a></li><li><a href="#example-3-risk-rejection-monitoring"><span>Example 3: <wbr/>Risk <wbr/>Rejection <wbr/>Monitoring</span></a></li></ul></li><li><a href="#memoized-storage-instances"><span>Memoized <wbr/>Storage <wbr/>Instances</span></a></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#event-emission-cost"><span>Event <wbr/>Emission <wbr/>Cost</span></a></li><li><a href="#bounded-queue-benefits"><span>Bounded <wbr/>Queue <wbr/>Benefits</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

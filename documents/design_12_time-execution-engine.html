@@ -1,0 +1,276 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/12_time-execution-engine | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_12_time-execution-engine.html">design/12_time-execution-engine</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="time-execution-engine" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Time Execution Engine<a href="#time-execution-engine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document explains the Time Execution Engine, the core architectural pattern that powers Backtest Kit. The Time Execution Engine treats market data processing as an <strong>async stream of time</strong>, where strategies are evaluated step-by-step with strict temporal context. This architecture makes look-ahead bias architecturally impossible by controlling what data is visible at each point in time.</p>
+<p>For details about how strategies generate signals within this time stream, see <a href="design_08_core-concepts.html">Strategies</a>. For information about execution modes (Backtest, Live, Walker), see <a href="design_20_execution-modes.html">Execution Modes</a>.</p>
+<hr>
+<a id="core-concept-time-as-ambient-context" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Concept: Time as Ambient Context<a href="#core-concept-time-as-ambient-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Time Execution Engine operates on a fundamental principle: <strong>time is propagated as ambient context throughout the entire call stack</strong>. When your strategy's <code>getSignal()</code> function executes, it doesn't receive the current timestamp as a parameter. Instead, the timestamp exists as ambient context that all data access functions automatically respect.</p>
+<p>This is implemented using Node.js <code>AsyncLocalStorage</code> via the <code>di-scoped</code> library, which provides two context services:</p>
+<table>
+<thead>
+<tr>
+<th>Context Service</th>
+<th>Stores</th>
+<th>Lifecycle</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExecutionContextService</code></td>
+<td><code>symbol</code>, <code>when</code>, <code>backtest</code></td>
+<td>Per tick</td>
+<td>Controls temporal data visibility</td>
+</tr>
+<tr>
+<td><code>MethodContextService</code></td>
+<td><code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code></td>
+<td>Per execution</td>
+<td>Routes to correct schema configuration</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>when</code> field in <code>ExecutionContextService</code> is the key to the entire time execution model. Every data access operation reads this value to determine &quot;what time is it right now?&quot; and returns only data up to that point.</p>
+<hr>
+<a id="execution-context-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Context Architecture<a href="#execution-context-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/12_time-execution-engine_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Execution Context Flow</strong></p>
+<p>The diagram shows how temporal context flows from orchestration through strategy execution to data access. The dashed lines represent ambient context propagation via <code>AsyncLocalStorage</code>, while solid lines represent direct function calls.</p>
+<hr>
+<a id="time-iteration-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Time Iteration Patterns<a href="#time-iteration-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-mode-discrete-time-steps" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode: Discrete Time Steps<a href="#backtest-mode-discrete-time-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In backtest mode, time moves forward in discrete steps defined by the frame interval. The <code>BacktestLogicPrivateService</code> generates a sequence of timestamps and processes each one sequentially:</p>
+<p><img src="../media/12_time-execution-engine_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Backtest Time Flow</strong></p>
+<p>The backtest engine iterates through pre-generated timeframes, setting the execution context for each tick. Strategies see a deterministic progression of time.</p>
+<p><strong>Key implementation characteristics:</strong></p>
+<ul>
+<li>Time is <strong>deterministic</strong> - always processes the same timestamps in the same order</li>
+<li>Time moves at <strong>frame interval</strong> - typically 1 minute, 5 minutes, etc.</li>
+<li>Strategies can <strong>skip timeframes</strong> after signal opens using fast backtest optimization</li>
+<li>The <code>when</code> value is always <strong>in the past</strong> relative to real-world time</li>
+</ul>
+<hr>
+<a id="live-mode-continuous-time-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode: Continuous Time Flow<a href="#live-mode-continuous-time-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode, time moves continuously with the real-world clock. The <code>LiveLogicPrivateService</code> runs an infinite loop that sleeps between ticks:</p>
+<p><img src="../media/12_time-execution-engine_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Live Time Flow</strong></p>
+<p>The live engine continuously polls at regular intervals, setting the execution context to the current real-world time for each tick.</p>
+<p><strong>Key implementation characteristics:</strong></p>
+<ul>
+<li>Time is <strong>non-deterministic</strong> - follows real-world clock</li>
+<li>Time moves at <strong>~1 minute intervals</strong> - <code>TICK_TTL = 60_000 + 1</code> milliseconds</li>
+<li>Strategies must handle <strong>graceful shutdown</strong> - waits for signals to close</li>
+<li>The <code>when</code> value is always <strong>now</strong> relative to real-world time</li>
+<li>Implements <strong>crash recovery</strong> via persistence between ticks</li>
+</ul>
+<hr>
+<a id="temporal-data-access-getcandles" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Temporal Data Access: getCandles()<a href="#temporal-data-access-getcandles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>getCandles()</code> helper function is the primary interface for strategies to access historical market data. It automatically respects the temporal context:</p>
+<pre><code class="typescript"><span class="hl-5">// User code - no timestamp parameter needed</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Internally, this maps to:</p>
+<p><img src="../media/12_time-execution-engine_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Temporal Data Access Flow</strong></p>
+<p>The temporal boundary is enforced at the <code>ClientExchange</code> level, which reads <code>when</code> from context and passes it as the <code>since</code> parameter to the exchange schema.</p>
+<a id="multi-timeframe-synchronization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Timeframe Synchronization<a href="#multi-timeframe-synchronization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When strategies request multiple timeframes, all are automatically synchronized to the same temporal context:</p>
+<pre><code class="typescript"><span class="hl-5">// All candles respect the SAME &quot;when&quot; timestamp</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1h</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles15m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">48</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles5m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">60</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">60</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>In backtest mode, if <code>when = &quot;2025-01-15 14:30:00&quot;</code>:</p>
+<ul>
+<li><code>candles1h</code> contains data up to <code>2025-01-15 14:00:00</code></li>
+<li><code>candles15m</code> contains data up to <code>2025-01-15 14:15:00</code></li>
+<li><code>candles5m</code> contains data up to <code>2025-01-15 14:25:00</code></li>
+<li><code>candles1m</code> contains data up to <code>2025-01-15 14:29:00</code></li>
+</ul>
+<p>Each timeframe respects the <strong>same temporal boundary</strong> but rounds down to its interval.</p>
+<hr>
+<a id="look-ahead-bias-prevention" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Look-Ahead Bias Prevention<a href="#look-ahead-bias-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Time Execution Engine makes look-ahead bias <strong>architecturally impossible</strong> through three mechanisms:</p>
+<a id="1-temporal-context-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Temporal Context Isolation<a href="#1-temporal-context-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>when</code> timestamp is stored in <code>AsyncLocalStorage</code>, making it impossible for user code to access future data:</p>
+<p><img src="../media/12_time-execution-engine_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Temporal Isolation Architecture</strong></p>
+<p>User code cannot bypass the temporal boundary because it has no direct access to the current timestamp or future data.</p>
+<a id="2-schema-level-enforcement" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Schema-Level Enforcement<a href="#2-schema-level-enforcement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IExchangeSchema.getCandles()</code> contract requires implementations to respect the <code>since</code> parameter:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td>string</td>
+<td>Trading pair identifier</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td>SignalInterval</td>
+<td>Candle timeframe</td>
+</tr>
+<tr>
+<td><code>since</code></td>
+<td>Date</td>
+<td><strong>Temporal boundary</strong> - only return data before this</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td>number</td>
+<td>Maximum candles to return</td>
+</tr>
+</tbody>
+</table>
+<p>Implementations must ensure <code>candle.timestamp &lt;= since.getTime()</code> for all returned candles.</p>
+<a id="3-same-code-same-guarantees" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Same Code, Same Guarantees<a href="#3-same-code-same-guarantees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The temporal context mechanism works identically in backtest and live modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th><code>when</code> Value</th>
+<th>Data Returned</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td>Historical timestamp from frame</td>
+<td>Historical data up to that timestamp</td>
+</tr>
+<tr>
+<td>Live</td>
+<td><code>new Date()</code></td>
+<td>Historical data up to current time</td>
+</tr>
+</tbody>
+</table>
+<p>This means strategies tested in backtest mode will behave identically in live mode, with the same temporal guarantees.</p>
+<hr>
+<a id="implementation-components" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Components<a href="#implementation-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="core-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Services<a href="#core-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following services implement the Time Execution Engine:</p>
+<p><img src="../media/12_time-execution-engine_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Service Component Architecture</strong></p>
+<p>The time execution engine is implemented through a layered service architecture with clear separation of concerns.</p>
+<a id="key-service-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Service Responsibilities<a href="#key-service-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Responsibility</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExecutionContextService</code></td>
+<td>Stores and propagates <code>when</code> timestamp via <code>AsyncLocalStorage</code></td>
+<td>Context layer</td>
+</tr>
+<tr>
+<td><code>MethodContextService</code></td>
+<td>Stores and propagates schema names via <code>AsyncLocalStorage</code></td>
+<td>Context layer</td>
+</tr>
+<tr>
+<td><code>BacktestLogicPrivateService</code></td>
+<td>Generates timeframes and iterates through them</td>
+<td>Orchestration layer</td>
+</tr>
+<tr>
+<td><code>LiveLogicPrivateService</code></td>
+<td>Runs infinite loop with real-time timestamps</td>
+<td>Orchestration layer</td>
+</tr>
+<tr>
+<td><code>StrategyCoreService</code></td>
+<td>Orchestrates strategy execution within temporal context</td>
+<td>Core layer</td>
+</tr>
+<tr>
+<td><code>ClientStrategy</code></td>
+<td>Executes user's <code>getSignal()</code> function with ambient context</td>
+<td>Client layer</td>
+</tr>
+<tr>
+<td><code>ClientExchange</code></td>
+<td>Fetches candles respecting temporal boundary from context</td>
+<td>Client layer</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="async-generator-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Async Generator Pattern<a href="#async-generator-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Time Execution Engine uses async generators to stream time progression as events:</p>
+<a id="backtest-generator-finite" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Generator (Finite)<a href="#backtest-generator-finite" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-7">function*</span><span class="hl-1"> </span><span class="hl-0">backtestGenerator</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">frames</span><span class="hl-1"> = </span><span class="hl-0">getTimeFrames</span><span class="hl-1">(</span><span class="hl-4">frameName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">frames</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Set temporal context</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">ExecutionContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(</span><br/><span class="hl-1">      () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">StrategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">),</span><br/><span class="hl-1">      { </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-4">backtest:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> }</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Stream result</span><br/><span class="hl-1">    </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Generator completes when frames exhausted</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-generator-infinite" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Generator (Infinite)<a href="#live-generator-infinite" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-7">function*</span><span class="hl-1"> </span><span class="hl-0">liveGenerator</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-3">while</span><span class="hl-1"> (!</span><span class="hl-4">stopped</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Set temporal context to NOW</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">ExecutionContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(</span><br/><span class="hl-1">      () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">StrategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">),</span><br/><span class="hl-1">      { </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-4">backtest:</span><span class="hl-1"> </span><span class="hl-7">false</span><span class="hl-1"> }</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Stream result</span><br/><span class="hl-1">    </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Wait for next tick</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Check for graceful shutdown</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">stopped</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">break</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="generator-consumption" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generator Consumption<a href="#generator-consumption" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Users can consume the time stream in two ways:</p>
+<p><strong>Pull-based (Iterator):</strong></p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">event</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, </span><span class="hl-4">config</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Process each time step</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Push-based (Events):</strong></p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, </span><span class="hl-4">config</span><span class="hl-1">);</span><br/><span class="hl-0">listenSignalBacktest</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// React to each time step</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Both consumption patterns receive the same time-ordered stream of events.</p>
+<hr>
+<a id="temporal-guarantees" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Temporal Guarantees<a href="#temporal-guarantees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Time Execution Engine provides the following architectural guarantees:</p>
+<a id="1-sequential-time-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Sequential Time Processing<a href="#1-sequential-time-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Time always moves forward. In backtest mode, timestamps are strictly increasing. In live mode, each tick uses <code>new Date()</code> which is monotonically increasing.</p>
+<a id="2-deterministic-backtest-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Deterministic Backtest Execution<a href="#2-deterministic-backtest-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Given the same:</p>
+<ul>
+<li>Strategy code</li>
+<li>Exchange data</li>
+<li>Frame configuration</li>
+<li>Random seed (if used)</li>
+</ul>
+<p>A backtest will always produce the same results when run multiple times.</p>
+<a id="3-live-backtest-equivalence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Live-Backtest Equivalence<a href="#3-live-backtest-equivalence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A strategy tested in backtest mode will exhibit the same logical behavior in live mode because:</p>
+<ul>
+<li>The same <code>ClientStrategy</code> code executes</li>
+<li>The same temporal context mechanism applies</li>
+<li>The same data access patterns work</li>
+<li>Only the <code>backtest</code> flag differs</li>
+</ul>
+<a id="4-no-future-data-leakage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. No Future Data Leakage<a href="#4-no-future-data-leakage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>It is architecturally impossible to access data from beyond the current <code>when</code> timestamp because:</p>
+<ul>
+<li>User code has no direct access to timestamps</li>
+<li>All data access goes through context-aware helpers</li>
+<li>The <code>IExchangeSchema</code> contract enforces the temporal boundary</li>
+<li>AsyncLocalStorage prevents context bypass</li>
+</ul>
+<a id="5-multi-timeframe-consistency" class="tsd-anchor"></a><h3 class="tsd-anchor-link">5. Multi-Timeframe Consistency<a href="#5-multi-timeframe-consistency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When requesting multiple timeframes in the same tick, all are synchronized to the same temporal boundary, preventing data misalignment between timeframes.</p>
+<hr>
+<a id="usage-example" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Example<a href="#usage-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This example demonstrates how the Time Execution Engine works from a user's perspective:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;temporal-demo&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;5m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// No timestamp parameter - context is ambient</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// All these calls respect the SAME temporal boundary</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1h</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;1h&#39;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles5m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;5m&#39;</span><span class="hl-1">, </span><span class="hl-6">60</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate indicators using synchronized data</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">sma1h</span><span class="hl-1"> = </span><span class="hl-0">calculateSMA</span><span class="hl-1">(</span><span class="hl-4">candles1h</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">rsi5m</span><span class="hl-1"> = </span><span class="hl-0">calculateRSI</span><span class="hl-1">(</span><span class="hl-4">candles5m</span><span class="hl-1">, </span><span class="hl-6">14</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Generate signal based on current market state</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">crossover</span><span class="hl-1">(</span><span class="hl-4">rsi5m</span><span class="hl-1">, </span><span class="hl-6">70</span><span class="hl-1">) &amp;&amp; </span><span class="hl-4">sma1h</span><span class="hl-1">.</span><span class="hl-4">trend</span><span class="hl-1"> === </span><span class="hl-2">&#39;up&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-0">uuid</span><span class="hl-1">(),</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&#39;long&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-4">candles5m</span><span class="hl-1">[</span><span class="hl-4">candles5m</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-4">candles5m</span><span class="hl-1">[</span><span class="hl-4">candles5m</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1"> * </span><span class="hl-6">1.02</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-4">candles5m</span><span class="hl-1">[</span><span class="hl-4">candles5m</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1"> * </span><span class="hl-6">0.99</span><span class="hl-1">,</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">;</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>In backtest mode, <code>getCandles()</code> returns historical data up to the current frame timestamp. In live mode, it returns historical data up to <code>new Date()</code>. The same code works in both modes with identical temporal guarantees.</p>
+<hr>
+<a id="related-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Architecture<a href="#related-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Time Execution Engine interacts with other architectural components:</p>
+<ul>
+<li><strong>Execution Contexts</strong> (<a href="design_08_core-concepts.html">#3.3</a>) - Detailed explanation of context propagation mechanisms</li>
+<li><strong>Execution Modes</strong> (<a href="design_20_execution-modes.html">#5</a>) - How time flows differently in Backtest/Live/Walker modes</li>
+<li><strong>VWAP Pricing</strong> (<a href="design_08_core-concepts.html">#3.5</a>) - How realistic pricing integrates with temporal context</li>
+<li><strong>Signal Lifecycle</strong> (<a href="design_08_core-concepts.html">#3.1</a>) - How signals evolve through time-bound state transitions</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#time-execution-engine"><span>Time <wbr/>Execution <wbr/>Engine</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#core-concept-time-as-ambient-context"><span>Core <wbr/>Concept: <wbr/>Time as <wbr/>Ambient <wbr/>Context</span></a></li><li><a href="#execution-context-architecture"><span>Execution <wbr/>Context <wbr/>Architecture</span></a></li><li><a href="#time-iteration-patterns"><span>Time <wbr/>Iteration <wbr/>Patterns</span></a></li><li><ul><li><a href="#backtest-mode-discrete-time-steps"><span>Backtest <wbr/>Mode: <wbr/>Discrete <wbr/>Time <wbr/>Steps</span></a></li><li><a href="#live-mode-continuous-time-flow"><span>Live <wbr/>Mode: <wbr/>Continuous <wbr/>Time <wbr/>Flow</span></a></li></ul></li><li><a href="#temporal-data-access-getcandles"><span>Temporal <wbr/>Data <wbr/>Access: get<wbr/>Candles()</span></a></li><li><ul><li><a href="#multi-timeframe-synchronization"><span>Multi-<wbr/>Timeframe <wbr/>Synchronization</span></a></li></ul></li><li><a href="#look-ahead-bias-prevention"><span>Look-<wbr/>Ahead <wbr/>Bias <wbr/>Prevention</span></a></li><li><ul><li><a href="#1-temporal-context-isolation"><span>1. <wbr/>Temporal <wbr/>Context <wbr/>Isolation</span></a></li><li><a href="#2-schema-level-enforcement"><span>2. <wbr/>Schema-<wbr/>Level <wbr/>Enforcement</span></a></li><li><a href="#3-same-code-same-guarantees"><span>3. <wbr/>Same <wbr/>Code, <wbr/>Same <wbr/>Guarantees</span></a></li></ul></li><li><a href="#implementation-components"><span>Implementation <wbr/>Components</span></a></li><li><ul><li><a href="#core-services"><span>Core <wbr/>Services</span></a></li><li><a href="#key-service-responsibilities"><span>Key <wbr/>Service <wbr/>Responsibilities</span></a></li></ul></li><li><a href="#async-generator-pattern"><span>Async <wbr/>Generator <wbr/>Pattern</span></a></li><li><ul><li><a href="#backtest-generator-finite"><span>Backtest <wbr/>Generator (<wbr/>Finite)</span></a></li><li><a href="#live-generator-infinite"><span>Live <wbr/>Generator (<wbr/>Infinite)</span></a></li><li><a href="#generator-consumption"><span>Generator <wbr/>Consumption</span></a></li></ul></li><li><a href="#temporal-guarantees"><span>Temporal <wbr/>Guarantees</span></a></li><li><ul><li><a href="#1-sequential-time-processing"><span>1. <wbr/>Sequential <wbr/>Time <wbr/>Processing</span></a></li><li><a href="#2-deterministic-backtest-execution"><span>2. <wbr/>Deterministic <wbr/>Backtest <wbr/>Execution</span></a></li><li><a href="#3-live-backtest-equivalence"><span>3. <wbr/>Live-<wbr/>Backtest <wbr/>Equivalence</span></a></li><li><a href="#4-no-future-data-leakage"><span>4. <wbr/>No <wbr/>Future <wbr/>Data <wbr/>Leakage</span></a></li><li><a href="#5-multi-timeframe-consistency"><span>5. <wbr/>Multi-<wbr/>Timeframe <wbr/>Consistency</span></a></li></ul></li><li><a href="#usage-example"><span>Usage <wbr/>Example</span></a></li><li><a href="#related-architecture"><span>Related <wbr/>Architecture</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

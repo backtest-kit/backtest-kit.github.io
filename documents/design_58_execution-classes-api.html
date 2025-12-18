@@ -1,0 +1,583 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/58_execution-classes-api | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_58_execution-classes-api.html">design/58_execution-classes-api</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="execution-classes-api" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Execution Classes API<a href="#execution-classes-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the public execution classes that orchestrate backtest, live trading, and strategy comparison operations. These are the primary entry points for running trading strategies after configuration via global functions (see <a href="design_56_api-reference.html">Global Functions</a>).</p>
+<p>For specialized reporting and monitoring classes (Performance, Heat, Risk, Schedule, Partial), see <a href="design_56_api-reference.html">Reporting Classes API</a>.</p>
+<hr>
+<a id="architecture-instance-utils-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture: Instance-Utils Pattern<a href="#architecture-instance-utils-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses a dual-class pattern for each execution mode. Every execution class consists of:</p>
+<ol>
+<li><strong>Instance class</strong> (<code>BacktestInstance</code>, <code>LiveInstance</code>, <code>WalkerInstance</code>) - Manages execution for a specific symbol-strategy pair with isolated state</li>
+<li><strong>Utils class</strong> (<code>BacktestUtils</code>, <code>LiveUtils</code>, <code>WalkerUtils</code>) - Singleton wrapper providing validation, instance memoization, and convenient API surface</li>
+<li><strong>Exported singleton</strong> (<code>Backtest</code>, <code>Live</code>, <code>Walker</code>) - Single instance of Utils class for application-wide use</li>
+</ol>
+<p><img src="../media/58_execution-classes-api_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Instance Memoization</strong></p>
+<p>Each Utils class maintains a memoized factory that caches Instance objects by key:</p>
+<ul>
+<li><strong>Backtest/Live</strong>: Key is <code>&quot;${symbol}:${strategyName}&quot;</code> (e.g., <code>&quot;BTCUSDT:my-strategy&quot;</code>)</li>
+<li><strong>Walker</strong>: Key is <code>&quot;${symbol}:${walkerName}&quot;</code> (e.g., <code>&quot;BTCUSDT:my-walker&quot;</code>)</li>
+</ul>
+<p>This ensures that multiple calls to <code>run()</code> or <code>background()</code> for the same symbol-strategy pair reuse the same Instance object, preserving execution state across calls.</p>
+<hr>
+<a id="common-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Patterns<a href="#common-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All execution classes share these common patterns:</p>
+<a id="method-signatures" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Signatures<a href="#method-signatures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run(symbol, context)</code></td>
+<td><code>AsyncGenerator</code></td>
+<td>Executes and yields results incrementally</td>
+</tr>
+<tr>
+<td><code>background(symbol, context)</code></td>
+<td><code>() =&gt; void</code></td>
+<td>Executes without yielding, returns cancellation function</td>
+</tr>
+<tr>
+<td><code>stop(symbol, identifier)</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Stops strategy from opening new signals</td>
+</tr>
+<tr>
+<td><code>getData(symbol, identifier)</code></td>
+<td><code>Promise&lt;Statistics&gt;</code></td>
+<td>Retrieves aggregated statistics</td>
+</tr>
+<tr>
+<td><code>getReport(symbol, identifier, columns?)</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generates markdown report</td>
+</tr>
+<tr>
+<td><code>dump(symbol, identifier, path?, columns?)</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Saves report to disk</td>
+</tr>
+<tr>
+<td><code>list()</code></td>
+<td><code>Promise&lt;StatusObject[]&gt;</code></td>
+<td>Lists all active instances</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Context Variations:</strong></p>
+<ul>
+<li><strong>Backtest</strong>: <code>{ strategyName, exchangeName, frameName }</code></li>
+<li><strong>Live</strong>: <code>{ strategyName, exchangeName }</code></li>
+<li><strong>Walker</strong>: <code>{ walkerName }</code> (exchange/frame pulled from walker schema)</li>
+</ul>
+<a id="state-management" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Management<a href="#state-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_1.svg" alt="Mermaid Diagram"></p>
+<p>Each Instance maintains:</p>
+<ul>
+<li><code>id</code>: Randomly generated string for tracking</li>
+<li><code>_isStopped</code>: Manual stop flag preventing new signals</li>
+<li><code>_isDone</code>: Completion flag indicating execution finished</li>
+<li><code>task</code>: Singlerun-wrapped function ensuring single concurrent execution</li>
+</ul>
+<a id="task-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Task Execution Flow<a href="#task-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_2.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="backtest-class" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest Class<a href="#backtest-class" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Backtest</code> class provides historical simulation with deterministic time progression.</p>
+<a id="core-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Methods<a href="#core-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="run" class="tsd-anchor"></a><h4 class="tsd-anchor-link">run()<a href="#run" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Executes backtest and yields closed signals as they occur.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal closed: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Iterates through timeframes defined by <code>frameName</code></li>
+<li>Yields only <code>IStrategyTickResultClosed</code> results (action: &quot;closed&quot;)</li>
+<li>Uses fast-backtest optimization to skip frames while signal is active</li>
+<li>Stops when frame iteration completes or <code>stop()</code> is called</li>
+</ul>
+<a id="background" class="tsd-anchor"></a><h4 class="tsd-anchor-link">background()<a href="#background" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Runs backtest silently, consuming all results internally. Useful for side-effect-only execution (callbacks, logging).</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span><span class="hl-1">  </span><span class="hl-5">// Returns cancellation function</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">cancel</span><span class="hl-1"> = </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: cancel execution gracefully</span><br/><span class="hl-0">cancel</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Spawns async task via <code>task(symbol, context)</code></li>
+<li>Returns cancellation closure immediately</li>
+<li>Cancellation checks for pending signal before emitting done event</li>
+<li>Errors are caught and emitted to <code>exitEmitter</code></li>
+</ul>
+<a id="stop" class="tsd-anchor"></a><h4 class="tsd-anchor-link">stop()<a href="#stop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Prevents strategy from opening new signals. Active signal (if any) completes normally.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Calls <code>strategyCoreService.stop({ symbol, strategyName }, true)</code></li>
+<li>Sets internal flag in <code>ClientStrategy</code> instance</li>
+<li>Does NOT force-close active signals</li>
+<li>Backtest loop checks <code>_isStopped</code> after each frame and exits at next idle state</li>
+</ul>
+<a id="getdata" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getData()<a href="#getdata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Retrieves aggregated statistics from all closed signals.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">BacktestStatisticsModel</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Returns:</strong></p>
+<ul>
+<li><code>sharpeRatio</code>: Risk-adjusted return metric</li>
+<li><code>winRate</code>: Percentage of profitable trades</li>
+<li><code>totalPnl</code>: Cumulative profit/loss percentage</li>
+<li><code>maxDrawdown</code>: Largest peak-to-trough decline</li>
+<li><code>totalTrades</code>: Number of closed signals</li>
+<li>Additional metrics (avg trade duration, profit factor, etc.)</li>
+</ul>
+<a id="getreport" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getReport()<a href="#getreport" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Generates markdown report with signal table and statistics summary.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">?: </span><span class="hl-4">Columns</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Columns Parameter:</strong>
+Optional array of <code>ColumnModel</code> objects to customize report columns. Each column specifies:</p>
+<ul>
+<li><code>key</code>: Unique column identifier</li>
+<li><code>label</code>: Column header text</li>
+<li><code>format</code>: Function to format cell value from signal data</li>
+<li><code>isVisible</code>: Function returning boolean for conditional visibility</li>
+</ul>
+<p><strong>Default Columns:</strong> Signal ID, Symbol, Position, Open Price, Take Profit, Stop Loss, Close Price, PNL %, Close Reason, Open Time, Close Time, Duration, Note</p>
+<a id="dump" class="tsd-anchor"></a><h4 class="tsd-anchor-link">dump()<a href="#dump" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Saves markdown report to file.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1">?: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">?: </span><span class="hl-4">Columns</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Default Path:</strong> <code>./dump/backtest/{strategyName}.md</code></p>
+<a id="list" class="tsd-anchor"></a><h4 class="tsd-anchor-link">list()<a href="#list" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Lists all active backtest instances with their status.</p>
+<pre><code class="typescript"><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">list</span><span class="hl-1">(): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-0">Array</span><span class="hl-1">&lt;{</span><br/><span class="hl-1">  </span><span class="hl-4">id</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">status</span><span class="hl-1">: </span><span class="hl-2">&quot;idle&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;running&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;done&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">}&gt;&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">instances</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">list</span><span class="hl-1">();</span><br/><span class="hl-4">instances</span><span class="hl-1">.</span><span class="hl-0">forEach</span><span class="hl-1">(</span><span class="hl-4">inst</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">inst</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">inst</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2"> - </span><span class="hl-7">${</span><span class="hl-4">inst</span><span class="hl-9">.</span><span class="hl-4">status</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="backtest-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Execution Flow<a href="#backtest-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_3.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="live-class" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live Class<a href="#live-class" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Live</code> class provides real-time trading execution with crash recovery support.</p>
+<a id="core-methods-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Methods<a href="#core-methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="run-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">run()<a href="#run-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Executes live trading with infinite loop, yielding opened and closed signals.</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyTickResultOpened</span><span class="hl-1"> | </span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal opened: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">position</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal closed: PNL </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Infinite async generator (never completes naturally)</li>
+<li>Polls every <code>TICK_TTL</code> (1 minute + 1ms) with <code>Date.now()</code></li>
+<li>Yields both opened and closed signals</li>
+<li>Persists opened signals to disk for crash recovery</li>
+<li>Restores persisted signal on startup</li>
+</ul>
+<a id="background-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">background()<a href="#background-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Runs live trading silently in background. Returns cancellation function.</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">cancel</span><span class="hl-1"> = </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Graceful shutdown after receiving SIGINT</span><br/><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">on</span><span class="hl-1">(</span><span class="hl-2">&quot;SIGINT&quot;</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">cancel</span><span class="hl-1">();</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Returns cancellation closure immediately</li>
+<li>Live loop continues until <code>stop()</code> called or process crashes</li>
+<li>Cancellation waits for active signal to close before emitting done event</li>
+<li>Crash recovery: persisted signals restored on next startup</li>
+</ul>
+<a id="stop-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">stop()<a href="#stop-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Initiates graceful shutdown. Waits for active signal to close before completing.</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-5">// Active signal will continue monitoring until TP/SL/time_expired</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Sets <code>_isStopped = true</code> flag</li>
+<li>Prevents new signals from opening</li>
+<li>Active signal continues monitoring until natural closure</li>
+<li>Loop exits after signal closes (checked in <code>INSTANCE_TASK_FN</code>)</li>
+</ul>
+<a id="getdata-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getData()<a href="#getdata-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Retrieves live trading statistics including all event types (opened, closed, scheduled, cancelled).</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">LiveStatisticsModel</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Returns:</strong>
+Statistics covering all signal lifecycle events, not just closed signals like backtest.</p>
+<a id="getreport-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getReport()<a href="#getreport-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Generates markdown report with all live trading events.</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">?: </span><span class="hl-4">Columns</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Report Differences from Backtest:</strong></p>
+<ul>
+<li>Includes &quot;opened&quot; events (signals currently active)</li>
+<li>Includes &quot;scheduled&quot; events (waiting for activation)</li>
+<li>Includes &quot;cancelled&quot; events (scheduled signals that never activated)</li>
+<li>Real-time data with current timestamps</li>
+</ul>
+<a id="dump-1" class="tsd-anchor"></a><h4 class="tsd-anchor-link">dump()<a href="#dump-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Saves live trading report to file.</p>
+<pre><code class="typescript"><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1">?: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">?: </span><span class="hl-4">Columns</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Default Path:</strong> <code>./dump/live/{strategyName}.md</code></p>
+<a id="live-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Execution Flow<a href="#live-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_4.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="walker-class" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Class<a href="#walker-class" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Walker</code> class orchestrates sequential backtests across multiple strategies for comparison.</p>
+<a id="core-methods-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Methods<a href="#core-methods-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="run-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">run()<a href="#run-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Runs all strategies defined in walker schema and yields progress after each strategy completes.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">WalkerContract</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>WalkerContract Structure:</strong></p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">strategiesTested</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">totalStrategies</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">currentStrategy</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">bestStrategy</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">bestMetric</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">metric</span><span class="hl-1">: </span><span class="hl-4">WalkerMetric</span><span class="hl-1">;  </span><span class="hl-5">// &quot;sharpeRatio&quot; | &quot;winRate&quot; | &quot;totalPnl&quot; | etc.</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">progress</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-walker&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Testing </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">currentStrategy</span><span class="hl-7">}</span><span class="hl-2"> (</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategiesTested</span><span class="hl-7">}</span><span class="hl-2">/</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">totalStrategies</span><span class="hl-7">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Best so far: </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-7">}</span><span class="hl-2"> with </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">metric</span><span class="hl-7">}</span><span class="hl-2">=</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestMetric</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Pulls <code>strategies</code>, <code>exchangeName</code>, <code>frameName</code>, <code>metric</code> from walker schema</li>
+<li>Validates all strategy schemas before starting</li>
+<li>Executes <code>Backtest.run()</code> for each strategy sequentially</li>
+<li>Collects statistics from <code>BacktestMarkdownService</code> after each strategy</li>
+<li>Compares strategies using specified metric (default: <code>sharpeRatio</code>)</li>
+<li>Yields progress event after each strategy completes</li>
+</ul>
+<a id="background-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">background()<a href="#background-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Runs walker comparison silently. Returns cancellation function.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">cancel</span><span class="hl-1"> = </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-walker&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Cancel all strategies</span><br/><span class="hl-0">cancel</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Executes all strategy backtests in background</li>
+<li>Cancellation sends stop signal to all strategies via <code>walkerStopSubject</code></li>
+<li>Prevents interference when multiple walkers run on same symbol simultaneously</li>
+</ul>
+<a id="stop-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">stop()<a href="#stop-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Stops all strategies in walker from generating new signals.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ul>
+<li>Iterates through all strategies in walker schema</li>
+<li>Sends stop signal via <code>walkerStopSubject</code> (interrupts current running strategy)</li>
+<li>Calls <code>strategyCoreService.stop()</code> for each strategy</li>
+<li>Supports multiple concurrent walkers on same symbol (filtered by <code>walkerName</code>)</li>
+</ul>
+<a id="getdata-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getData()<a href="#getdata-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Retrieves walker comparison results with ranked strategies.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">string</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">WalkerStatisticsModel</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Returns:</strong></p>
+<ul>
+<li><code>strategies</code>: Array of strategy results with metrics</li>
+<li><code>bestStrategy</code>: Name of winning strategy</li>
+<li><code>bestMetric</code>: Winning metric value</li>
+<li><code>metric</code>: Metric used for comparison</li>
+<li>Per-strategy statistics (Sharpe ratio, win rate, total PNL, etc.)</li>
+</ul>
+<a id="getreport-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getReport()<a href="#getreport-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Generates markdown report with strategy comparison table.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyColumns</span><span class="hl-1">?: </span><span class="hl-4">StrategyColumn</span><span class="hl-1">[],</span><br/><span class="hl-1">  </span><span class="hl-4">pnlColumns</span><span class="hl-1">?: </span><span class="hl-4">PnlColumn</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Custom Columns:</strong></p>
+<ul>
+<li><code>strategyColumns</code>: Customize strategy metadata columns</li>
+<li><code>pnlColumns</code>: Customize PNL/metrics columns</li>
+</ul>
+<p><strong>Default Report Structure:</strong></p>
+<ol>
+<li>Walker metadata (symbol, metric, date range)</li>
+<li>Strategy comparison table sorted by metric</li>
+<li>Winner highlighted</li>
+<li>Per-strategy PNL breakdown tables</li>
+</ol>
+<a id="dump-2" class="tsd-anchor"></a><h4 class="tsd-anchor-link">dump()<a href="#dump-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Saves walker comparison report to file.</p>
+<pre><code class="typescript"><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1">?: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyColumns</span><span class="hl-1">?: </span><span class="hl-4">StrategyColumn</span><span class="hl-1">[],</span><br/><span class="hl-1">  </span><span class="hl-4">pnlColumns</span><span class="hl-1">?: </span><span class="hl-4">PnlColumn</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Default Path:</strong> <code>./dump/walker/{walkerName}.md</code></p>
+<a id="walker-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Execution Flow<a href="#walker-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_5.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="method-signature-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Method Signature Reference<a href="#method-signature-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-class-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Class<a href="#backtest-class-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td><code>symbol: string</code><br/><code>context: { strategyName, exchangeName, frameName }</code></td>
+<td><code>AsyncGenerator&lt;IStrategyTickResultClosed&gt;</code></td>
+<td>Execute backtest, yield closed signals</td>
+</tr>
+<tr>
+<td><code>background</code></td>
+<td><code>symbol: string</code><br/><code>context: { strategyName, exchangeName, frameName }</code></td>
+<td><code>() =&gt; void</code></td>
+<td>Execute backtest silently, return cancel function</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Stop strategy from opening new signals</td>
+</tr>
+<tr>
+<td><code>getData</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code></td>
+<td><code>Promise&lt;BacktestStatisticsModel&gt;</code></td>
+<td>Get aggregated statistics</td>
+</tr>
+<tr>
+<td><code>getReport</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code><br/><code>columns?: Columns[]</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generate markdown report</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code><br/><code>path?: string</code><br/><code>columns?: Columns[]</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Save report to disk</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>None</td>
+<td><code>Promise&lt;Array&lt;StatusObject&gt;&gt;</code></td>
+<td>List all backtest instances</td>
+</tr>
+</tbody>
+</table>
+<a id="live-class-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Class<a href="#live-class-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td><code>symbol: string</code><br/><code>context: { strategyName, exchangeName }</code></td>
+<td><code>AsyncGenerator&lt;IStrategyTickResultOpened | IStrategyTickResultClosed&gt;</code></td>
+<td>Execute live trading, yield all signals</td>
+</tr>
+<tr>
+<td><code>background</code></td>
+<td><code>symbol: string</code><br/><code>context: { strategyName, exchangeName }</code></td>
+<td><code>() =&gt; void</code></td>
+<td>Execute live trading silently</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Initiate graceful shutdown</td>
+</tr>
+<tr>
+<td><code>getData</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code></td>
+<td><code>Promise&lt;LiveStatisticsModel&gt;</code></td>
+<td>Get live trading statistics</td>
+</tr>
+<tr>
+<td><code>getReport</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code><br/><code>columns?: Columns[]</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generate live trading report</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>symbol: string</code><br/><code>strategyName: string</code><br/><code>path?: string</code><br/><code>columns?: Columns[]</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Save report to disk</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>None</td>
+<td><code>Promise&lt;Array&lt;StatusObject&gt;&gt;</code></td>
+<td>List all live instances</td>
+</tr>
+</tbody>
+</table>
+<a id="walker-class-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Class<a href="#walker-class-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>run</code></td>
+<td><code>symbol: string</code><br/><code>context: { walkerName }</code></td>
+<td><code>AsyncGenerator&lt;WalkerContract&gt;</code></td>
+<td>Execute strategy comparison, yield progress</td>
+</tr>
+<tr>
+<td><code>background</code></td>
+<td><code>symbol: string</code><br/><code>context: { walkerName }</code></td>
+<td><code>() =&gt; void</code></td>
+<td>Execute comparison silently</td>
+</tr>
+<tr>
+<td><code>stop</code></td>
+<td><code>symbol: string</code><br/><code>walkerName: string</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Stop all walker strategies</td>
+</tr>
+<tr>
+<td><code>getData</code></td>
+<td><code>symbol: string</code><br/><code>walkerName: string</code></td>
+<td><code>Promise&lt;WalkerStatisticsModel&gt;</code></td>
+<td>Get comparison results</td>
+</tr>
+<tr>
+<td><code>getReport</code></td>
+<td><code>symbol: string</code><br/><code>walkerName: string</code><br/><code>strategyColumns?: StrategyColumn[]</code><br/><code>pnlColumns?: PnlColumn[]</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td>Generate comparison report</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>symbol: string</code><br/><code>walkerName: string</code><br/><code>path?: string</code><br/><code>strategyColumns?: StrategyColumn[]</code><br/><code>pnlColumns?: PnlColumn[]</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Save report to disk</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>None</td>
+<td><code>Promise&lt;Array&lt;StatusObject&gt;&gt;</code></td>
+<td>List all walker instances</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="instance-state-management" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Instance State Management<a href="#instance-state-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="state-flags" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Flags<a href="#state-flags" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each Instance class maintains three state indicators:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>Randomly generated identifier for tracking</td>
+</tr>
+<tr>
+<td><code>_isStopped</code></td>
+<td><code>boolean</code></td>
+<td>Manual stop flag preventing new signals</td>
+</tr>
+<tr>
+<td><code>_isDone</code></td>
+<td><code>boolean</code></td>
+<td>Completion flag indicating execution finished</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Lifecycle:</strong></p>
+<p><img src="../media/58_execution-classes-api_6.svg" alt="Mermaid Diagram"></p>
+<a id="task-singlerun-wrapper" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Task Singlerun Wrapper<a href="#task-singlerun-wrapper" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All Instance classes wrap their execution logic in <code>singlerun()</code> from <code>functools-kit</code>:</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">task</span><span class="hl-1"> = </span><span class="hl-0">singlerun</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Execution logic</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">INSTANCE_TASK_FN</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">, </span><span class="hl-7">this</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Purpose:</strong></p>
+<ul>
+<li>Prevents concurrent execution of same instance</li>
+<li>Returns existing promise if task already running</li>
+<li>Provides status via <code>task.getStatus()</code>: <code>&quot;idle&quot; | &quot;running&quot; | &quot;done&quot;</code></li>
+</ul>
+<a id="getstatus-method" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getStatus() Method<a href="#getstatus-method" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Returns current execution status for monitoring:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">status</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">instance</span><span class="hl-1">.</span><span class="hl-0">getStatus</span><span class="hl-1">();</span><br/><span class="hl-5">// {</span><br/><span class="hl-5">//   id: &quot;abc123&quot;,</span><br/><span class="hl-5">//   symbol: &quot;BTCUSDT&quot;,</span><br/><span class="hl-5">//   strategyName: &quot;my-strategy&quot;,</span><br/><span class="hl-5">//   status: &quot;running&quot;</span><br/><span class="hl-5">// }</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Status Values:</strong></p>
+<ul>
+<li><code>&quot;idle&quot;</code>: Instance created but not started</li>
+<li><code>&quot;running&quot;</code>: Execution in progress</li>
+<li><code>&quot;done&quot;</code>: Execution completed</li>
+</ul>
+<hr>
+<a id="validation--error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation &amp; Error Handling<a href="#validation--error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="schema-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Validation<a href="#schema-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All execution methods validate required schemas before execution:</p>
+<p><img src="../media/58_execution-classes-api_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Validation Failures:</strong>
+If any schema is not registered, validation throws error with helpful message indicating which schema is missing and which method was called.</p>
+<a id="error-emission" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Emission<a href="#error-emission" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/58_execution-classes-api_8.svg" alt="Mermaid Diagram"></p>
+<p><strong>Error Handling Strategy:</strong></p>
+<ul>
+<li>Background tasks catch all errors and emit to <code>exitEmitter</code></li>
+<li><code>run()</code> method errors propagate to caller (no catch)</li>
+<li>Users can subscribe to errors via <code>listenError()</code> and <code>listenExit()</code></li>
+<li>Distinguishes between recoverable errors (<code>errorEmitter</code>) and fatal errors (<code>exitEmitter</code>)</li>
+</ul>
+<hr>
+<a id="integration-with-service-layer" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Service Layer<a href="#integration-with-service-layer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Execution classes coordinate multiple service layers:</p>
+<p><img src="../media/58_execution-classes-api_9.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Integration Points:</strong></p>
+<ol>
+<li><strong>Validation</strong>: All schemas validated before execution</li>
+<li><strong>Schema Retrieval</strong>: Pull configuration from schema services</li>
+<li><strong>Command Execution</strong>: Delegate to command services for async generator logic</li>
+<li><strong>Reporting</strong>: Markdown services collect events and generate reports</li>
+<li><strong>State Management</strong>: Core services manage strategy/risk state</li>
+<li><strong>Cleanup</strong>: Clear services before each new execution</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#execution-classes-api"><span>Execution <wbr/>Classes API</span></a><ul><li><a href="#architecture-instance-utils-pattern"><span>Architecture: <wbr/>Instance-<wbr/>Utils <wbr/>Pattern</span></a></li><li><a href="#common-patterns"><span>Common <wbr/>Patterns</span></a></li><li><ul><li><a href="#method-signatures"><span>Method <wbr/>Signatures</span></a></li><li><a href="#state-management"><span>State <wbr/>Management</span></a></li><li><a href="#task-execution-flow"><span>Task <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#backtest-class"><span>Backtest <wbr/>Class</span></a></li><li><ul><li><a href="#core-methods"><span>Core <wbr/>Methods</span></a></li><li><ul><li><a href="#run"><span>run()</span></a></li><li><a href="#background"><span>background()</span></a></li><li><a href="#stop"><span>stop()</span></a></li><li><a href="#getdata"><span>get<wbr/>Data()</span></a></li><li><a href="#getreport"><span>get<wbr/>Report()</span></a></li><li><a href="#dump"><span>dump()</span></a></li><li><a href="#list"><span>list()</span></a></li></ul></li><li><a href="#backtest-execution-flow"><span>Backtest <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#live-class"><span>Live <wbr/>Class</span></a></li><li><ul><li><a href="#core-methods-1"><span>Core <wbr/>Methods</span></a></li><li><ul><li><a href="#run-1"><span>run()</span></a></li><li><a href="#background-1"><span>background()</span></a></li><li><a href="#stop-1"><span>stop()</span></a></li><li><a href="#getdata-1"><span>get<wbr/>Data()</span></a></li><li><a href="#getreport-1"><span>get<wbr/>Report()</span></a></li><li><a href="#dump-1"><span>dump()</span></a></li></ul></li><li><a href="#live-execution-flow"><span>Live <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#walker-class"><span>Walker <wbr/>Class</span></a></li><li><ul><li><a href="#core-methods-2"><span>Core <wbr/>Methods</span></a></li><li><ul><li><a href="#run-2"><span>run()</span></a></li><li><a href="#background-2"><span>background()</span></a></li><li><a href="#stop-2"><span>stop()</span></a></li><li><a href="#getdata-2"><span>get<wbr/>Data()</span></a></li><li><a href="#getreport-2"><span>get<wbr/>Report()</span></a></li><li><a href="#dump-2"><span>dump()</span></a></li></ul></li><li><a href="#walker-execution-flow"><span>Walker <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#method-signature-reference"><span>Method <wbr/>Signature <wbr/>Reference</span></a></li><li><ul><li><a href="#backtest-class-1"><span>Backtest <wbr/>Class</span></a></li><li><a href="#live-class-1"><span>Live <wbr/>Class</span></a></li><li><a href="#walker-class-1"><span>Walker <wbr/>Class</span></a></li></ul></li><li><a href="#instance-state-management"><span>Instance <wbr/>State <wbr/>Management</span></a></li><li><ul><li><a href="#state-flags"><span>State <wbr/>Flags</span></a></li><li><a href="#task-singlerun-wrapper"><span>Task <wbr/>Singlerun <wbr/>Wrapper</span></a></li><li><a href="#getstatus-method"><span>get<wbr/>Status() <wbr/>Method</span></a></li></ul></li><li><a href="#validation--error-handling"><span>Validation &amp; <wbr/>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#schema-validation"><span>Schema <wbr/>Validation</span></a></li><li><a href="#error-emission"><span>Error <wbr/>Emission</span></a></li></ul></li><li><a href="#integration-with-service-layer"><span>Integration with <wbr/>Service <wbr/>Layer</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

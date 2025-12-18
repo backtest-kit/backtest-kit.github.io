@@ -1,0 +1,336 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/55_logger-configuration | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_55_logger-configuration.html">design/55_logger-configuration</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="logger-configuration" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Logger Configuration<a href="#logger-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the logging system in Backtest Kit, covering the <code>ILogger</code> interface, the <code>setLogger</code> function, and how logging integrates with the framework's dependency injection system. For general configuration parameters, see <a href="design_52_configuration-reference.html">GLOBAL_CONFIG Parameters</a>.</p>
+<hr>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The logger configuration system provides centralized, structured logging throughout Backtest Kit. It allows developers to:</p>
+<ul>
+<li>Capture execution events from all framework components</li>
+<li>Route log output to custom destinations (files, monitoring services, databases)</li>
+<li>Filter logs by level (log, debug, info, warn)</li>
+<li>Maintain consistent log formatting across the codebase</li>
+</ul>
+<p>The logger is implemented as a singleton service (<code>LoggerService</code>) injected throughout the framework via the dependency injection container. All internal operations use this service, ensuring uniform logging behavior.</p>
+<hr>
+<a id="the-ilogger-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The ILogger Interface<a href="#the-ilogger-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>ILogger</code> interface defines four logging methods corresponding to standard log levels:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ILogger</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-1">: (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">[]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-1">: (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">[]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-1">: (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">[]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-1">: (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">[]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each method accepts variadic arguments, allowing flexible logging of primitives, objects, and error instances. The framework does not enforce a specific log format or structure—implementations can serialize arguments as needed.</p>
+<hr>
+<a id="setting-up-logging-with-setlogger" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Setting Up Logging with setLogger<a href="#setting-up-logging-with-setlogger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>setLogger</code> function configures the global logger instance. It accepts an <code>ILogger</code> implementation and replaces the default logger (typically a no-op or console logger).</p>
+<a id="basic-console-logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Console Logging<a href="#basic-console-logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">log:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">log</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">debug:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">debug</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">info:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">info</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">warn:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">warn</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This routes all framework logs to the console using native <code>console</code> methods.</p>
+<a id="custom-logger-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Logger Implementation<a href="#custom-logger-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">fs</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;fs&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">logStream</span><span class="hl-1"> = </span><span class="hl-4">fs</span><span class="hl-1">.</span><span class="hl-0">createWriteStream</span><span class="hl-1">(</span><span class="hl-2">&#39;./backtest.log&#39;</span><span class="hl-1">, { </span><span class="hl-4">flags:</span><span class="hl-1"> </span><span class="hl-2">&#39;a&#39;</span><span class="hl-1"> });</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logStream</span><span class="hl-1">.</span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-2">`[LOG] </span><span class="hl-7">${</span><span class="hl-8">JSON</span><span class="hl-9">.</span><span class="hl-0">stringify</span><span class="hl-9">(</span><span class="hl-4">args</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-12">\n</span><span class="hl-2">`</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logStream</span><span class="hl-1">.</span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-2">`[DEBUG] </span><span class="hl-7">${</span><span class="hl-8">JSON</span><span class="hl-9">.</span><span class="hl-0">stringify</span><span class="hl-9">(</span><span class="hl-4">args</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-12">\n</span><span class="hl-2">`</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logStream</span><span class="hl-1">.</span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-2">`[INFO] </span><span class="hl-7">${</span><span class="hl-8">JSON</span><span class="hl-9">.</span><span class="hl-0">stringify</span><span class="hl-9">(</span><span class="hl-4">args</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-12">\n</span><span class="hl-2">`</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logStream</span><span class="hl-1">.</span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-2">`[WARN] </span><span class="hl-7">${</span><span class="hl-8">JSON</span><span class="hl-9">.</span><span class="hl-0">stringify</span><span class="hl-9">(</span><span class="hl-4">args</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-12">\n</span><span class="hl-2">`</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This example writes structured JSON logs to a file with log level prefixes.</p>
+<a id="integration-with-third-party-loggers" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Integration with Third-Party Loggers<a href="#integration-with-third-party-loggers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;winston&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">logger</span><span class="hl-1"> = </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-0">createLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">level:</span><span class="hl-1"> </span><span class="hl-2">&#39;info&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">format:</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">format</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">(),</span><br/><span class="hl-1">  </span><span class="hl-4">transports:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">transports</span><span class="hl-1">.</span><span class="hl-0">File</span><span class="hl-1">({ </span><span class="hl-4">filename:</span><span class="hl-1"> </span><span class="hl-2">&#39;error.log&#39;</span><span class="hl-1">, </span><span class="hl-4">level:</span><span class="hl-1"> </span><span class="hl-2">&#39;warn&#39;</span><span class="hl-1"> }),</span><br/><span class="hl-1">    </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">transports</span><span class="hl-1">.</span><span class="hl-0">File</span><span class="hl-1">({ </span><span class="hl-4">filename:</span><span class="hl-1"> </span><span class="hl-2">&#39;combined.log&#39;</span><span class="hl-1"> }),</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;info&#39;</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">logger</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This routes framework logs to Winston, enabling features like log rotation, remote transports, and structured metadata.</p>
+<hr>
+<a id="loggerservice-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LoggerService Architecture<a href="#loggerservice-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="dependency-injection-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Injection Integration<a href="#dependency-injection-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The logger is registered in the DI container as <code>LoggerService</code> and accessed via the <code>TYPES.loggerService</code> symbol. This ensures a single logger instance is shared across all services.</p>
+<a id="logger-service-registration-diagram" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Logger Service Registration Diagram<a href="#logger-service-registration-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><img src="../media/55_logger-configuration_0.svg" alt="Mermaid Diagram"></p>
+<a id="logger-service-injection-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logger Service Injection Pattern<a href="#logger-service-injection-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All services access the logger through the <code>backtest</code> object exported from <code>src/lib/index.ts</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// Inside any service or function</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">METHOD_NAME</span><span class="hl-1">, { ...</span><span class="hl-4">context</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern ensures:</p>
+<ul>
+<li>Single source of truth for logger configuration</li>
+<li>Consistent access pattern across 11 service categories</li>
+<li>Easy mocking in tests</li>
+</ul>
+<hr>
+<a id="logging-usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Logging Usage Patterns<a href="#logging-usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="method-name-constants" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Name Constants<a href="#method-name-constants" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework defines string constants for each logged method, enabling log filtering and tracing:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;add.addStrategy&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ADD_EXCHANGE_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;add.addExchange&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">LIST_EXCHANGES_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;list.listExchanges&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These constants follow a <code>namespace.methodName</code> pattern, grouping related operations.</p>
+<a id="logging-in-configuration-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logging in Configuration Functions<a href="#logging-in-configuration-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="addstrategy-example" class="tsd-anchor"></a><h4 class="tsd-anchor-link">addStrategy Example<a href="#addstrategy-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">strategySchema</span><span class="hl-1">: </span><span class="hl-13">IStrategySchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Log Output Structure:</strong></p>
+<ul>
+<li><strong>Method Name:</strong> <code>&quot;add.addStrategy&quot;</code></li>
+<li><strong>Level:</strong> <code>info</code></li>
+<li><strong>Payload:</strong> Full <code>strategySchema</code> object with <code>strategyName</code>, <code>interval</code>, <code>getSignal</code>, callbacks, etc.</li>
+</ul>
+<a id="addexchange-example" class="tsd-anchor"></a><h4 class="tsd-anchor-link">addExchange Example<a href="#addexchange-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">addExchange</span><span class="hl-1">(</span><span class="hl-4">exchangeSchema</span><span class="hl-1">: </span><span class="hl-13">IExchangeSchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">ADD_EXCHANGE_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeValidationService</span><span class="hl-1">.</span><span class="hl-0">addExchange</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchema</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchema</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeSchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Log Output Structure:</strong></p>
+<ul>
+<li><strong>Method Name:</strong> <code>&quot;add.addExchange&quot;</code></li>
+<li><strong>Level:</strong> <code>info</code></li>
+<li><strong>Payload:</strong> Full <code>exchangeSchema</code> object with <code>exchangeName</code>, <code>getCandles</code>, <code>formatPrice</code>, callbacks, etc.</li>
+</ul>
+<a id="logging-in-list-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logging in List Functions<a href="#logging-in-list-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">listExchanges</span><span class="hl-1">(): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">IExchangeSchema</span><span class="hl-1">[]&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-8">LIST_EXCHANGES_METHOD_NAME</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeValidationService</span><span class="hl-1">.</span><span class="hl-0">list</span><span class="hl-1">();</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Log Output Structure:</strong></p>
+<ul>
+<li><strong>Method Name:</strong> <code>&quot;list.listExchanges&quot;</code></li>
+<li><strong>Level:</strong> <code>log</code></li>
+<li><strong>Payload:</strong> None (informational only)</li>
+</ul>
+<a id="log-level-usage-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Log Level Usage Patterns<a href="#log-level-usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Usage</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log</code></td>
+<td>General execution trace</td>
+<td><code>listExchanges()</code>, <code>listStrategies()</code></td>
+</tr>
+<tr>
+<td><code>debug</code></td>
+<td>Detailed internal state</td>
+<td>(Not observed in provided code)</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>Configuration changes</td>
+<td><code>addStrategy()</code>, <code>addExchange()</code>, <code>addFrame()</code></td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td>Non-fatal issues</td>
+<td>(Not observed in provided code)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="logging-flow-diagram" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Logging Flow Diagram<a href="#logging-flow-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="execution-path-from-user-code-to-logger-output" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Path from User Code to Logger Output<a href="#execution-path-from-user-code-to-logger-output" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/55_logger-configuration_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="logged-method-names-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Logged Method Names Reference<a href="#logged-method-names-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following table lists all method name constants defined in the configuration and list functions:</p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Function</th>
+<th>Level</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ADD_STRATEGY_METHOD_NAME</code></td>
+<td><code>&quot;add.addStrategy&quot;</code></td>
+<td><code>addStrategy()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:10, 53</code></td>
+</tr>
+<tr>
+<td><code>ADD_EXCHANGE_METHOD_NAME</code></td>
+<td><code>&quot;add.addExchange&quot;</code></td>
+<td><code>addExchange()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:11, 102</code></td>
+</tr>
+<tr>
+<td><code>ADD_FRAME_METHOD_NAME</code></td>
+<td><code>&quot;add.addFrame&quot;</code></td>
+<td><code>addFrame()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:12, 146</code></td>
+</tr>
+<tr>
+<td><code>ADD_WALKER_METHOD_NAME</code></td>
+<td><code>&quot;add.addWalker&quot;</code></td>
+<td><code>addWalker()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:13, 191</code></td>
+</tr>
+<tr>
+<td><code>ADD_SIZING_METHOD_NAME</code></td>
+<td><code>&quot;add.addSizing&quot;</code></td>
+<td><code>addSizing()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:14, 257</code></td>
+</tr>
+<tr>
+<td><code>ADD_RISK_METHOD_NAME</code></td>
+<td><code>&quot;add.addRisk&quot;</code></td>
+<td><code>addRisk()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:15, 332</code></td>
+</tr>
+<tr>
+<td><code>ADD_OPTIMIZER_METHOD_NAME</code></td>
+<td><code>&quot;add.addOptimizer&quot;</code></td>
+<td><code>addOptimizer()</code></td>
+<td>info</td>
+<td><code>src/function/add.ts:16, 433</code></td>
+</tr>
+<tr>
+<td><code>LIST_EXCHANGES_METHOD_NAME</code></td>
+<td><code>&quot;list.listExchanges&quot;</code></td>
+<td><code>listExchanges()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:10, 44</code></td>
+</tr>
+<tr>
+<td><code>LIST_STRATEGIES_METHOD_NAME</code></td>
+<td><code>&quot;list.listStrategies&quot;</code></td>
+<td><code>listStrategies()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:11, 79</code></td>
+</tr>
+<tr>
+<td><code>LIST_FRAMES_METHOD_NAME</code></td>
+<td><code>&quot;list.listFrames&quot;</code></td>
+<td><code>listFrames()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:12, 109</code></td>
+</tr>
+<tr>
+<td><code>LIST_WALKERS_METHOD_NAME</code></td>
+<td><code>&quot;list.listWalkers&quot;</code></td>
+<td><code>listWalkers()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:13, 140</code></td>
+</tr>
+<tr>
+<td><code>LIST_SIZINGS_METHOD_NAME</code></td>
+<td><code>&quot;list.listSizings&quot;</code></td>
+<td><code>listSizings()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:14, 180</code></td>
+</tr>
+<tr>
+<td><code>LIST_RISKS_METHOD_NAME</code></td>
+<td><code>&quot;list.listRisks&quot;</code></td>
+<td><code>listRisks()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:15, 217</code></td>
+</tr>
+<tr>
+<td><code>LIST_OPTIMIZERS_METHOD_NAME</code></td>
+<td><code>&quot;list.listOptimizers&quot;</code></td>
+<td><code>listOptimizers()</code></td>
+<td>log</td>
+<td><code>src/function/list.ts:16, 258</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="custom-logger-implementation-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Custom Logger Implementation Examples<a href="#custom-logger-implementation-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="silent-logger-production" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Silent Logger (Production)<a href="#silent-logger-production" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {},</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {},</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {},</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {},</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Disables all logging output. Useful for production environments where logging overhead is undesirable.</p>
+<a id="conditional-logger-debug-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Conditional Logger (Debug Mode)<a href="#conditional-logger-debug-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">DEBUG</span><span class="hl-1"> = </span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-4">env</span><span class="hl-1">.</span><span class="hl-8">DEBUG</span><span class="hl-1"> === </span><span class="hl-2">&#39;true&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-8">DEBUG</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;[LOG]&#39;</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-8">DEBUG</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(</span><span class="hl-2">&#39;[DEBUG]&#39;</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&#39;[INFO]&#39;</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&#39;[WARN]&#39;</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Only logs <code>debug</code> and <code>log</code> entries when <code>DEBUG=true</code> environment variable is set. Always logs <code>info</code> and <code>warn</code>.</p>
+<a id="structured-logger-with-timestamps" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Structured Logger with Timestamps<a href="#structured-logger-with-timestamps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">timestamp</span><span class="hl-1"> = () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">().</span><span class="hl-0">toISOString</span><span class="hl-1">();</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-0">timestamp</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] [LOG]`</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-0">timestamp</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] [DEBUG]`</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-0">timestamp</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] [INFO]`</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-0">timestamp</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] [WARN]`</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Prepends ISO 8601 timestamps to all log entries.</p>
+<a id="logger-with-remote-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logger with Remote Monitoring<a href="#logger-with-remote-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">axios</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;axios&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">sendToMonitoring</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">level</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">axios</span><span class="hl-1">.</span><span class="hl-0">post</span><span class="hl-1">(</span><span class="hl-2">&#39;https://monitoring.example.com/logs&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-4">level</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">timestamp:</span><span class="hl-1"> </span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">(),</span><br/><span class="hl-1">      </span><span class="hl-4">data</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">  } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">&#39;Failed to send log to monitoring:&#39;</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-0">sendToMonitoring</span><span class="hl-1">(</span><span class="hl-2">&#39;log&#39;</span><span class="hl-1">, </span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-0">sendToMonitoring</span><span class="hl-1">(</span><span class="hl-2">&#39;debug&#39;</span><span class="hl-1">, </span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-0">sendToMonitoring</span><span class="hl-1">(</span><span class="hl-2">&#39;info&#39;</span><span class="hl-1">, </span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(...</span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-0">sendToMonitoring</span><span class="hl-1">(</span><span class="hl-2">&#39;warn&#39;</span><span class="hl-1">, </span><span class="hl-4">args</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Dual-writes logs to console and a remote monitoring service.</p>
+<hr>
+<a id="logger-service-in-backtest-object" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Logger Service in Backtest Object<a href="#logger-service-in-backtest-object" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>backtest</code> object exported from <code>src/lib/index.ts</code> aggregates all services, including <code>loggerService</code>:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backtest</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">baseServices</span><span class="hl-1">,        </span><span class="hl-5">// Contains loggerService</span><br/><span class="hl-1">  ...</span><span class="hl-4">contextServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">connectionServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">coreServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">globalServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">commandServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPrivateServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPublicServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">markdownServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">validationServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">templateServices</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>baseServices</code> object contains the injected <code>LoggerService</code> instance:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This makes the logger accessible to all internal services via <code>backtest.loggerService</code>.</p>
+<hr>
+<a id="best-practices" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="when-to-use-each-log-level" class="tsd-anchor"></a><h3 class="tsd-anchor-link">When to Use Each Log Level<a href="#when-to-use-each-log-level" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Purpose</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log</code></td>
+<td>Trace function calls</td>
+<td>List operations, queries</td>
+</tr>
+<tr>
+<td><code>debug</code></td>
+<td>Internal state inspection</td>
+<td>Variable values, loop iterations</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>State changes</td>
+<td>Configuration registration, mode switches</td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td>Recoverable issues</td>
+<td>Validation warnings, retries</td>
+</tr>
+</tbody>
+</table>
+<a id="logging-sensitive-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logging Sensitive Data<a href="#logging-sensitive-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Avoid logging sensitive information in production:</p>
+<pre><code class="typescript"><span class="hl-5">// Bad: Logs API keys</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&#39;exchange.connect&#39;</span><span class="hl-1">, { </span><span class="hl-4">apiKey</span><span class="hl-1">, </span><span class="hl-4">apiSecret</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Good: Logs non-sensitive metadata</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&#39;exchange.connect&#39;</span><span class="hl-1">, { </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">userId</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="structured-logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Structured Logging<a href="#structured-logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Pass objects rather than concatenating strings:</p>
+<pre><code class="typescript"><span class="hl-5">// Bad: String concatenation</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">`Adding strategy: </span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Good: Structured object</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">METHOD_NAME</span><span class="hl-1">, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Structured logs are easier to parse, filter, and index in log aggregation systems.</p>
+<a id="performance-considerations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Logger calls are synchronous and block execution. For high-frequency operations:</p>
+<ol>
+<li>Use conditional logging (only log in debug mode)</li>
+<li>Implement async loggers that queue writes</li>
+<li>Disable logging entirely in production</li>
+</ol>
+<hr>
+<a id="integration-with-other-systems" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Systems<a href="#integration-with-other-systems" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="relationship-to-context-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Relationship to Context Services<a href="#relationship-to-context-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>While the logger does not appear to directly integrate with <code>ExecutionContextService</code> or <code>MethodContextService</code> in the provided code, custom logger implementations can access these services to enrich logs with contextual metadata (symbol, timestamp, strategy name).</p>
+<p>For more on context propagation, see <a href="design_08_core-concepts.html">Execution Contexts</a>.</p>
+<a id="relationship-to-event-system" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Relationship to Event System<a href="#relationship-to-event-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The logger operates independently of the event system (<code>signalEmitter</code>, <code>errorEmitter</code>, etc.). Events are designed for <strong>reactive</strong> data flow, while logging is for <strong>observability</strong>. Custom loggers can subscribe to event emitters to log signal lifecycle events.</p>
+<p>For more on events, see <a href="design_14_architecture-deep-dive.html">Event System Architecture</a>.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The logger configuration system in Backtest Kit provides:</p>
+<ol>
+<li><strong>Flexible Output:</strong> Route logs to console, files, or remote services via <code>setLogger()</code></li>
+<li><strong>Structured Logging:</strong> Pass objects with context rather than concatenated strings</li>
+<li><strong>Dependency Injection:</strong> Single logger instance shared across all services via <code>LoggerService</code></li>
+<li><strong>Method Name Tracing:</strong> Consistent <code>namespace.methodName</code> constants for filtering logs</li>
+<li><strong>Custom Implementations:</strong> Support for third-party loggers (Winston, Bunyan, etc.)</li>
+</ol>
+<p>The logger is foundational to debugging and monitoring Backtest Kit applications, enabling visibility into framework operations without modifying internal code.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#logger-configuration"><span>Logger <wbr/>Configuration</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#the-ilogger-interface"><span>The ILogger <wbr/>Interface</span></a></li><li><a href="#setting-up-logging-with-setlogger"><span>Setting <wbr/>Up <wbr/>Logging with set<wbr/>Logger</span></a></li><li><ul><li><a href="#basic-console-logging"><span>Basic <wbr/>Console <wbr/>Logging</span></a></li><li><a href="#custom-logger-implementation"><span>Custom <wbr/>Logger <wbr/>Implementation</span></a></li><li><a href="#integration-with-third-party-loggers"><span>Integration with <wbr/>Third-<wbr/>Party <wbr/>Loggers</span></a></li></ul></li><li><a href="#loggerservice-architecture"><span>Logger<wbr/>Service <wbr/>Architecture</span></a></li><li><ul><li><a href="#dependency-injection-integration"><span>Dependency <wbr/>Injection <wbr/>Integration</span></a></li><li><ul><li><a href="#logger-service-registration-diagram"><span>Logger <wbr/>Service <wbr/>Registration <wbr/>Diagram</span></a></li></ul></li><li><a href="#logger-service-injection-pattern"><span>Logger <wbr/>Service <wbr/>Injection <wbr/>Pattern</span></a></li></ul></li><li><a href="#logging-usage-patterns"><span>Logging <wbr/>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#method-name-constants"><span>Method <wbr/>Name <wbr/>Constants</span></a></li><li><a href="#logging-in-configuration-functions"><span>Logging in <wbr/>Configuration <wbr/>Functions</span></a></li><li><ul><li><a href="#addstrategy-example"><span>add<wbr/>Strategy <wbr/>Example</span></a></li><li><a href="#addexchange-example"><span>add<wbr/>Exchange <wbr/>Example</span></a></li></ul></li><li><a href="#logging-in-list-functions"><span>Logging in <wbr/>List <wbr/>Functions</span></a></li><li><a href="#log-level-usage-patterns"><span>Log <wbr/>Level <wbr/>Usage <wbr/>Patterns</span></a></li></ul></li><li><a href="#logging-flow-diagram"><span>Logging <wbr/>Flow <wbr/>Diagram</span></a></li><li><ul><li><a href="#execution-path-from-user-code-to-logger-output"><span>Execution <wbr/>Path from <wbr/>User <wbr/>Code to <wbr/>Logger <wbr/>Output</span></a></li></ul></li><li><a href="#logged-method-names-reference"><span>Logged <wbr/>Method <wbr/>Names <wbr/>Reference</span></a></li><li><a href="#custom-logger-implementation-examples"><span>Custom <wbr/>Logger <wbr/>Implementation <wbr/>Examples</span></a></li><li><ul><li><a href="#silent-logger-production"><span>Silent <wbr/>Logger (<wbr/>Production)</span></a></li><li><a href="#conditional-logger-debug-mode"><span>Conditional <wbr/>Logger (<wbr/>Debug <wbr/>Mode)</span></a></li><li><a href="#structured-logger-with-timestamps"><span>Structured <wbr/>Logger with <wbr/>Timestamps</span></a></li><li><a href="#logger-with-remote-monitoring"><span>Logger with <wbr/>Remote <wbr/>Monitoring</span></a></li></ul></li><li><a href="#logger-service-in-backtest-object"><span>Logger <wbr/>Service in <wbr/>Backtest <wbr/>Object</span></a></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#when-to-use-each-log-level"><span>When to <wbr/>Use <wbr/>Each <wbr/>Log <wbr/>Level</span></a></li><li><a href="#logging-sensitive-data"><span>Logging <wbr/>Sensitive <wbr/>Data</span></a></li><li><a href="#structured-logging"><span>Structured <wbr/>Logging</span></a></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li></ul></li><li><a href="#integration-with-other-systems"><span>Integration with <wbr/>Other <wbr/>Systems</span></a></li><li><ul><li><a href="#relationship-to-context-services"><span>Relationship to <wbr/>Context <wbr/>Services</span></a></li><li><a href="#relationship-to-event-system"><span>Relationship to <wbr/>Event <wbr/>System</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

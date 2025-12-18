@@ -1,0 +1,422 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/30_interval-throttling | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_30_interval-throttling.html">design/30_interval-throttling</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="interval-throttling" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Interval Throttling<a href="#interval-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document explains the signal generation throttling mechanism that controls how frequently strategies can call <code>getSignal</code>. Throttling prevents signal spam, reduces computational load, and aligns with realistic trading frequencies.</p>
+<p>For information about signal lifecycle and state transitions, see <a href="design_08_core-concepts.html">Signals &amp; Signal Lifecycle</a>. For details on strategy configuration, see <a href="design_25_strategy-development.html">Strategy Schema Definition</a>. For multi-timeframe analysis patterns, see <a href="design_25_strategy-development.html">Multi-Timeframe Analysis</a>.</p>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Interval throttling is a core mechanism that enforces minimum time between <code>getSignal</code> invocations. This document covers:</p>
+<ul>
+<li>Available <code>SignalInterval</code> types and their durations</li>
+<li>Implementation details in <code>ClientStrategy</code></li>
+<li>How throttling differs from signal queue processing</li>
+<li>Best practices for interval selection</li>
+<li>Performance implications and debugging strategies</li>
+</ul>
+<a id="signalinterval-types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">SignalInterval Types<a href="#signalinterval-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides six standard intervals for throttling signal generation:</p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Minutes</th>
+<th>Milliseconds</th>
+<th>Typical Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;1m&quot;</code></td>
+<td>1</td>
+<td>60,000</td>
+<td>High-frequency strategies, scalping</td>
+</tr>
+<tr>
+<td><code>&quot;3m&quot;</code></td>
+<td>3</td>
+<td>180,000</td>
+<td>Short-term momentum trading</td>
+</tr>
+<tr>
+<td><code>&quot;5m&quot;</code></td>
+<td>5</td>
+<td>300,000</td>
+<td>Intraday trading strategies</td>
+</tr>
+<tr>
+<td><code>&quot;15m&quot;</code></td>
+<td>15</td>
+<td>900,000</td>
+<td>Swing trading setups</td>
+</tr>
+<tr>
+<td><code>&quot;30m&quot;</code></td>
+<td>30</td>
+<td>1,800,000</td>
+<td>Position trading entries</td>
+</tr>
+<tr>
+<td><code>&quot;1h&quot;</code></td>
+<td>60</td>
+<td>3,600,000</td>
+<td>Long-term trend following</td>
+</tr>
+</tbody>
+</table>
+<p>These intervals are defined as a union type in the type system:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">SignalInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="throttling-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling Architecture<a href="#throttling-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="component-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Component Overview<a href="#component-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/30_interval-throttling_0.svg" alt="Mermaid Diagram"></p>
+<a id="state-management" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Management<a href="#state-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each <code>ClientStrategy</code> instance maintains a private timestamp field to track when <code>getSignal</code> was last invoked:</p>
+<pre><code class="typescript"><span class="hl-5">// Internal state (not exposed in interface)</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-10">_lastSignalTimestamp</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1"> = </span><span class="hl-7">null</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This timestamp is checked on every <code>tick()</code> call before invoking the user-defined <code>getSignal</code> function.</p>
+<a id="implementation-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="interval-conversion-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Interval Conversion Table<a href="#interval-conversion-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework maintains a constant mapping from string intervals to numeric minutes:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">INTERVAL_MINUTES</span><span class="hl-1">: </span><span class="hl-13">Record</span><span class="hl-1">&lt;</span><span class="hl-13">SignalInterval</span><span class="hl-1">, </span><span class="hl-13">number</span><span class="hl-1">&gt; = {</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">3</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">15</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">30</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-6">60</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This table is used to convert the user-specified interval into milliseconds for timestamp comparison.</p>
+<a id="throttling-logic-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Throttling Logic Flow<a href="#throttling-logic-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/30_interval-throttling_1.svg" alt="Mermaid Diagram"></p>
+<a id="actual-implementation-code" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Actual Implementation Code<a href="#actual-implementation-code" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The throttling check occurs in the <code>GET_SIGNAL_FN</code> function before calling the user's <code>getSignal</code>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">intervalMinutes</span><span class="hl-1"> = </span><span class="hl-8">INTERVAL_MINUTES</span><span class="hl-1">[</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">interval</span><span class="hl-1">];</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">intervalMs</span><span class="hl-1"> = </span><span class="hl-4">intervalMinutes</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><br/><span class="hl-1">  </span><span class="hl-5">// Check if enough time has passed since last getSignal</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><br/><span class="hl-1">    </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">    </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> &lt; </span><span class="hl-4">intervalMs</span><br/><span class="hl-1">  ) {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">; </span><span class="hl-5">// Throttled - skip this tick</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Behaviors</strong>:</p>
+<ol>
+<li>First call is never throttled (<code>_lastSignalTimestamp === null</code>)</li>
+<li>Timestamp is updated <strong>before</strong> calling <code>getSignal</code>, not after</li>
+<li>Throttled ticks return <code>null</code> immediately without executing strategy logic</li>
+<li>Error in <code>getSignal</code> doesn't prevent timestamp update (prevents retry storms)</li>
+</ol>
+<a id="throttling-vs-signal-queue" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Throttling vs Signal Queue<a href="#throttling-vs-signal-queue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Interval throttling and signal queue processing are distinct mechanisms with different purposes:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Interval Throttling</th>
+<th>Signal Queue Processing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Purpose</strong></td>
+<td>Control <code>getSignal</code> invocation frequency</td>
+<td>Ensure sequential signal execution</td>
+</tr>
+<tr>
+<td><strong>Scope</strong></td>
+<td>Controls when strategy logic runs</td>
+<td>Controls signal activation order</td>
+</tr>
+<tr>
+<td><strong>State</strong></td>
+<td><code>_lastSignalTimestamp</code></td>
+<td><code>_pendingSignal</code> / <code>_scheduledSignal</code></td>
+</tr>
+<tr>
+<td><strong>User Control</strong></td>
+<td>Configured via <code>interval</code> property</td>
+<td>Automatic (not configurable)</td>
+</tr>
+<tr>
+<td><strong>Applies To</strong></td>
+<td>Signal generation phase</td>
+<td>Signal execution phase</td>
+</tr>
+<tr>
+<td><strong>Bypass Possible</strong></td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<a id="example-scenario" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example Scenario<a href="#example-scenario" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/30_interval-throttling_2.svg" alt="Mermaid Diagram"></p>
+<p>Even with throttling allowing a new <code>getSignal</code> call, the new signal waits if a previous signal is still active. Both mechanisms work together to ensure controlled, sequential signal processing.</p>
+<a id="configuration-in-strategy-schema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration in Strategy Schema<a href="#configuration-in-strategy-schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="required-property" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Required Property<a href="#required-property" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>interval</code> is a required field in <code>IStrategySchema</code>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IStrategySchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">SignalInterval</span><span class="hl-1">; </span><span class="hl-5">// Required - no default value</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">ISignalDto</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other properties</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="basic-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Example<a href="#basic-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;momentum-5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-5">// getSignal called max once per 5 minutes</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Strategy logic using 5-minute candles</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">momentum</span><span class="hl-1"> = </span><span class="hl-0">calculateMomentum</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">momentum</span><span class="hl-1"> &gt; </span><span class="hl-8">THRESHOLD</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-6">0</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1"> * </span><span class="hl-6">1.02</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-6">0</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1"> * </span><span class="hl-6">0.98</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-6">60</span><span class="hl-1">,</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="choosing-the-right-interval" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Choosing the Right Interval<a href="#choosing-the-right-interval" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="decision-tree" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Decision Tree<a href="#decision-tree" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/30_interval-throttling_3.svg" alt="Mermaid Diagram"></p>
+<a id="selection-guidelines" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Selection Guidelines<a href="#selection-guidelines" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Strategy Type</th>
+<th>Recommended Interval</th>
+<th>Reasoning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Scalping</strong></td>
+<td><code>&quot;1m&quot;</code></td>
+<td>Requires immediate reaction to price movements</td>
+</tr>
+<tr>
+<td><strong>Short-term Momentum</strong></td>
+<td><code>&quot;3m&quot;</code> - <code>&quot;5m&quot;</code></td>
+<td>Balances responsiveness with noise filtering</td>
+</tr>
+<tr>
+<td><strong>Intraday Swing</strong></td>
+<td><code>&quot;5m&quot;</code> - <code>&quot;15m&quot;</code></td>
+<td>Reduces computational load, prevents over-trading</td>
+</tr>
+<tr>
+<td><strong>Daily Swing</strong></td>
+<td><code>&quot;15m&quot;</code> - <code>&quot;30m&quot;</code></td>
+<td>Longer-term confirmation, fewer signals</td>
+</tr>
+<tr>
+<td><strong>Position Trading</strong></td>
+<td><code>&quot;1h&quot;</code></td>
+<td>Infrequent entries, long holding periods</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule of Thumb</strong>: Match your throttling interval to your analysis timeframe. If you analyze 15-minute candles, use a <code>&quot;15m&quot;</code> interval.</p>
+<a id="common-anti-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Anti-Patterns<a href="#common-anti-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>❌ Anti-Pattern: Mismatched Intervals</strong></p>
+<pre><code class="typescript"><span class="hl-5">// BAD: Analyzing 15m candles but checking every 1m</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-5">// Too frequent!</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">50</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Same 15m candles fetched 15 times unnecessarily</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-0">analyzeCandles</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issues</strong>:</p>
+<ul>
+<li>Wastes API calls (same data fetched 15 times)</li>
+<li>Unnecessary CPU usage (same analysis repeated)</li>
+<li>No benefit (15m candles don't change every minute)</li>
+</ul>
+<p><strong>✅ Correct Pattern: Matched Intervals</strong></p>
+<pre><code class="typescript"><span class="hl-5">// GOOD: Match interval to analysis timeframe</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-5">// Matches candle interval</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">50</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Fresh candles fetched once per 15 minutes</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-0">analyzeCandles</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>❌ Anti-Pattern: Over-Throttling</strong></p>
+<pre><code class="typescript"><span class="hl-5">// BAD: 1h interval for scalping strategy</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-5">// Too slow!</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">10</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Scalping logic needs immediate reaction</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-0">findScalpEntry</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Issues</strong>:</p>
+<ul>
+<li>Misses short-term opportunities (checked once per hour)</li>
+<li>Doesn't match strategy's time horizon</li>
+<li>Likely to enter after optimal moment</li>
+</ul>
+<a id="performance-implications" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Implications<a href="#performance-implications" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="computational-cost-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Computational Cost Table<a href="#computational-cost-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The throttling interval directly controls the number of <code>getSignal</code> invocations:</p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Calls per Hour</th>
+<th>Calls per Day</th>
+<th>Calls per Week</th>
+<th>Relative Load</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;1m&quot;</code></td>
+<td>60</td>
+<td>1,440</td>
+<td>10,080</td>
+<td>100%</td>
+</tr>
+<tr>
+<td><code>&quot;3m&quot;</code></td>
+<td>20</td>
+<td>480</td>
+<td>3,360</td>
+<td>33%</td>
+</tr>
+<tr>
+<td><code>&quot;5m&quot;</code></td>
+<td>12</td>
+<td>288</td>
+<td>2,016</td>
+<td>20%</td>
+</tr>
+<tr>
+<td><code>&quot;15m&quot;</code></td>
+<td>4</td>
+<td>96</td>
+<td>672</td>
+<td>6.7%</td>
+</tr>
+<tr>
+<td><code>&quot;30m&quot;</code></td>
+<td>2</td>
+<td>48</td>
+<td>336</td>
+<td>3.3%</td>
+</tr>
+<tr>
+<td><code>&quot;1h&quot;</code></td>
+<td>1</td>
+<td>24</td>
+<td>168</td>
+<td>1.7%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Portfolio Analysis</strong>:</p>
+<ul>
+<li><strong>10 strategies with <code>&quot;5m&quot;</code> interval</strong>: 10 × 288 = 2,880 calls/day</li>
+<li><strong>Same portfolio with <code>&quot;15m&quot;</code></strong>: 10 × 96 = 960 calls/day (<strong>66% reduction</strong>)</li>
+<li><strong>Same portfolio with <code>&quot;1h&quot;</code></strong>: 10 × 24 = 240 calls/day (<strong>92% reduction</strong>)</li>
+</ul>
+<a id="backtest-performance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Performance<a href="#backtest-performance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In backtest mode, throttling still applies and significantly affects execution time:</p>
+<p><img src="../media/30_interval-throttling_4.svg" alt="Mermaid Diagram"></p>
+<p>For a 30-day backtest analyzing 20 symbols:</p>
+<ul>
+<li><code>&quot;1m&quot;</code> interval: 30 × 1,440 × 20 = 864,000 calls</li>
+<li><code>&quot;5m&quot;</code> interval: 30 × 288 × 20 = 172,800 calls</li>
+<li><code>&quot;15m&quot;</code> interval: 30 × 96 × 20 = 57,600 calls</li>
+</ul>
+<a id="network-and-api-impact" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Network and API Impact<a href="#network-and-api-impact" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When using external data sources (e.g., CCXT exchange APIs), throttling reduces API call frequency:</p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Potential API Calls (if getCandles in every getSignal)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;1m&quot;</code></td>
+<td>1,440 per day per symbol</td>
+</tr>
+<tr>
+<td><code>&quot;5m&quot;</code></td>
+<td>288 per day per symbol</td>
+</tr>
+<tr>
+<td><code>&quot;1h&quot;</code></td>
+<td>24 per day per symbol</td>
+</tr>
+</tbody>
+</table>
+<p>Most exchanges have rate limits (e.g., Binance: 1,200 requests/minute). Proper throttling prevents hitting these limits.</p>
+<a id="live-trading-behavior" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live Trading Behavior<a href="#live-trading-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="real-time-throttling-loop" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Real-Time Throttling Loop<a href="#real-time-throttling-loop" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode, the execution loop calls <code>tick()</code> approximately every minute, but throttling controls <code>getSignal</code> invocation:</p>
+<p><img src="../media/30_interval-throttling_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example Timeline</strong> (5-minute interval):</p>
+<ul>
+<li>10:00:00 → <code>tick()</code> called → <code>getSignal()</code> executed</li>
+<li>10:01:00 → <code>tick()</code> called → Throttled (skipped)</li>
+<li>10:02:00 → <code>tick()</code> called → Throttled (skipped)</li>
+<li>10:03:00 → <code>tick()</code> called → Throttled (skipped)</li>
+<li>10:04:00 → <code>tick()</code> called → Throttled (skipped)</li>
+<li>10:05:00 → <code>tick()</code> called → <code>getSignal()</code> executed</li>
+</ul>
+<a id="error-handling-and-throttling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Handling and Throttling<a href="#error-handling-and-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If <code>getSignal</code> throws an error, the timestamp is <strong>still updated</strong> to prevent error cascade loops:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">GET_SIGNAL_FN</span><span class="hl-1"> = </span><span class="hl-0">trycatch</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">self</span><span class="hl-1">: </span><span class="hl-13">ClientStrategy</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Update timestamp BEFORE calling getSignal</span><br/><span class="hl-1">    </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signal</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-0">getSignal</span><span class="hl-1">(</span><span class="hl-5">/* ... */</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// If this throws, next tick is still throttled</span><br/><span class="hl-1">    </span><span class="hl-5">// (prevents rapid error retry loop)</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">defaultValue:</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">fallback</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">); </span><span class="hl-5">// Log error</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior</strong>:</p>
+<ul>
+<li>Failed <code>getSignal</code> call counts toward throttle interval</li>
+<li>Prevents infinite error retry loops</li>
+<li>Strategy gets another chance after interval expires</li>
+<li>Errors are logged via <code>errorEmitter</code> for monitoring</li>
+</ul>
+<a id="interaction-with-fast-backtest" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Interaction with Fast Backtest<a href="#interaction-with-fast-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="throttling-during-signal-generation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Throttling During Signal Generation<a href="#throttling-during-signal-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>During normal ticking (signal generation phase), throttling applies:</p>
+<p><img src="../media/30_interval-throttling_6.svg" alt="Mermaid Diagram"></p>
+<a id="no-throttling-during-signal-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">No Throttling During Signal Monitoring<a href="#no-throttling-during-signal-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Once a signal is active, the &quot;fast backtest&quot; mode processes candles <strong>without throttling</strong>:</p>
+<p><img src="../media/30_interval-throttling_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Point</strong>: Throttling only applies to <strong>signal generation</strong>, not signal monitoring. Once a signal is active, every candle is checked for TP/SL/time_expired conditions.</p>
+<a id="advanced-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Advanced Patterns<a href="#advanced-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="conditional-signal-generation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Conditional Signal Generation<a href="#conditional-signal-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>While you cannot dynamically change the <code>interval</code> at runtime, you can implement conditional logic inside <code>getSignal</code> to achieve similar effects:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;adaptive-volatility&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-5">// Minimum check frequency</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">volatility</span><span class="hl-1"> = </span><span class="hl-0">calculateVolatility</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Effective throttling via application logic</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">volatility</span><span class="hl-1"> &lt; </span><span class="hl-8">LOW_VOLATILITY_THRESHOLD</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">; </span><span class="hl-5">// Skip during calm markets</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Only generate signals during high volatility</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-0">analyzeTrend</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits</strong>:</p>
+<ul>
+<li>Uses <code>&quot;1m&quot;</code> for quick reaction when needed</li>
+<li>Skips computation during unfavorable conditions</li>
+<li>Effectively creates dynamic throttling via <code>return null</code></li>
+</ul>
+<a id="multi-timeframe-interval-selection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Timeframe Interval Selection<a href="#multi-timeframe-interval-selection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For strategies analyzing multiple timeframes, use the <strong>longest</strong> timeframe as the interval:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;multi-timeframe-trend&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-5">// Matches longest analyzed timeframe</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch multiple timeframes</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles1m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">100</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles5m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">50</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles15m</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">20</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Analyze all timeframes (called once per 15 minutes)</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">shortTrend</span><span class="hl-1"> = </span><span class="hl-0">analyzeTrend</span><span class="hl-1">(</span><span class="hl-4">candles1m</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mediumTrend</span><span class="hl-1"> = </span><span class="hl-0">analyzeTrend</span><span class="hl-1">(</span><span class="hl-4">candles5m</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">longTrend</span><span class="hl-1"> = </span><span class="hl-0">analyzeTrend</span><span class="hl-1">(</span><span class="hl-4">candles15m</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Generate signal only if all timeframes align</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">shortTrend</span><span class="hl-1"> === </span><span class="hl-2">&quot;up&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">mediumTrend</span><span class="hl-1"> === </span><span class="hl-2">&quot;up&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">longTrend</span><span class="hl-1"> === </span><span class="hl-2">&quot;up&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Reasoning</strong>:</p>
+<ul>
+<li>15-minute candles only change every 15 minutes</li>
+<li>Calling <code>getSignal</code> more frequently (e.g., every 1m) wastes resources</li>
+<li>Lower timeframes (1m, 5m) are fetched fresh each time</li>
+<li>Prevents redundant analysis of unchanged 15m data</li>
+</ul>
+<a id="debugging-throttling-issues" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Debugging Throttling Issues<a href="#debugging-throttling-issues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="common-symptoms-and-solutions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Symptoms and Solutions<a href="#common-symptoms-and-solutions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>Likely Cause</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signal never appears</td>
+<td>Interval too long OR previous signal active</td>
+<td>Check <code>_lastSignalTimestamp</code> and <code>_pendingSignal</code></td>
+</tr>
+<tr>
+<td>Too many API calls</td>
+<td>Interval too short for strategy type</td>
+<td>Increase interval to match analysis timeframe</td>
+</tr>
+<tr>
+<td>Delayed entries</td>
+<td>Interval too long for market conditions</td>
+<td>Decrease interval OR adjust strategy logic</td>
+</tr>
+<tr>
+<td>Backtest too slow</td>
+<td><code>&quot;1m&quot;</code> interval on long timeframe</td>
+<td>Increase interval (e.g., <code>&quot;5m&quot;</code> or <code>&quot;15m&quot;</code>)</td>
+</tr>
+</tbody>
+</table>
+<a id="diagnostic-logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Diagnostic Logging<a href="#diagnostic-logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Add logging to observe throttling behavior:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;debug-throttle&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">when</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] getSignal CALLED`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Strategy logic...</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTick</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-7">new</span><span class="hl-9"> </span><span class="hl-0">Date</span><span class="hl-9">().</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">] tick: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">action</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Expected Output</strong> (5-minute interval):</p>
+<pre><code><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">00</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">00</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-4">getSignal</span><span class="hl-1"> </span><span class="hl-8">CALLED</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">01</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">02</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">03</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">04</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">05</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-10">tick</span><span class="hl-1">: </span><span class="hl-4">idle</span><br/><span class="hl-1">[</span><span class="hl-6">2024</span><span class="hl-1">-</span><span class="hl-6">01</span><span class="hl-1">-01</span><span class="hl-8">T10</span><span class="hl-1">:</span><span class="hl-6">05</span><span class="hl-1">:00</span><span class="hl-8">Z</span><span class="hl-1">] </span><span class="hl-4">getSignal</span><span class="hl-1"> </span><span class="hl-8">CALLED</span>
+</code><button>Copy</button></pre>
+
+<p>Notice <code>onTick</code> is called every minute, but <code>getSignal</code> is only called every 5 minutes.</p>
+<a id="best-practices-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices Summary<a href="#best-practices-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="core-principles" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Principles<a href="#core-principles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Match Interval to Analysis Timeframe</strong>: If your strategy analyzes 15-minute candles, use <code>&quot;15m&quot;</code> interval</li>
+<li><strong>Start Conservative</strong>: Begin with longer intervals (e.g., <code>&quot;15m&quot;</code>), optimize downward only if needed</li>
+<li><strong>Consider Computational Cost</strong>: Each interval reduction multiplies load (1m → 5m = 5× load increase)</li>
+<li><strong>Use <code>&quot;1m&quot;</code> Sparingly</strong>: Reserve for truly high-frequency strategies that need immediate reaction</li>
+<li><strong>Document Rationale</strong>: Add comments explaining your interval choice for future maintainers</li>
+</ol>
+<a id="checklist-for-interval-selection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Checklist for Interval Selection<a href="#checklist-for-interval-selection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>[ ] Identified longest timeframe analyzed in <code>getSignal</code></li>
+<li>[ ] Set <code>interval</code> to match or exceed that timeframe</li>
+<li>[ ] Verified strategy logic doesn't assume every-minute execution</li>
+<li>[ ] Tested performance with chosen interval in backtest</li>
+<li>[ ] Considered API rate limits if using external data sources</li>
+<li>[ ] Added logging to verify throttling behavior</li>
+<li>[ ] Documented interval choice in strategy <code>note</code> field</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#interval-throttling"><span>Interval <wbr/>Throttling</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#signalinterval-types"><span>Signal<wbr/>Interval <wbr/>Types</span></a></li><li><a href="#throttling-architecture"><span>Throttling <wbr/>Architecture</span></a></li><li><ul><li><a href="#component-overview"><span>Component <wbr/>Overview</span></a></li><li><a href="#state-management"><span>State <wbr/>Management</span></a></li></ul></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li><li><ul><li><a href="#interval-conversion-table"><span>Interval <wbr/>Conversion <wbr/>Table</span></a></li><li><a href="#throttling-logic-flow"><span>Throttling <wbr/>Logic <wbr/>Flow</span></a></li><li><a href="#actual-implementation-code"><span>Actual <wbr/>Implementation <wbr/>Code</span></a></li></ul></li><li><a href="#throttling-vs-signal-queue"><span>Throttling vs <wbr/>Signal <wbr/>Queue</span></a></li><li><ul><li><a href="#example-scenario"><span>Example <wbr/>Scenario</span></a></li></ul></li><li><a href="#configuration-in-strategy-schema"><span>Configuration in <wbr/>Strategy <wbr/>Schema</span></a></li><li><ul><li><a href="#required-property"><span>Required <wbr/>Property</span></a></li><li><a href="#basic-example"><span>Basic <wbr/>Example</span></a></li></ul></li><li><a href="#choosing-the-right-interval"><span>Choosing the <wbr/>Right <wbr/>Interval</span></a></li><li><ul><li><a href="#decision-tree"><span>Decision <wbr/>Tree</span></a></li><li><a href="#selection-guidelines"><span>Selection <wbr/>Guidelines</span></a></li><li><a href="#common-anti-patterns"><span>Common <wbr/>Anti-<wbr/>Patterns</span></a></li></ul></li><li><a href="#performance-implications"><span>Performance <wbr/>Implications</span></a></li><li><ul><li><a href="#computational-cost-table"><span>Computational <wbr/>Cost <wbr/>Table</span></a></li><li><a href="#backtest-performance"><span>Backtest <wbr/>Performance</span></a></li><li><a href="#network-and-api-impact"><span>Network and API <wbr/>Impact</span></a></li></ul></li><li><a href="#live-trading-behavior"><span>Live <wbr/>Trading <wbr/>Behavior</span></a></li><li><ul><li><a href="#real-time-throttling-loop"><span>Real-<wbr/>Time <wbr/>Throttling <wbr/>Loop</span></a></li><li><a href="#error-handling-and-throttling"><span>Error <wbr/>Handling and <wbr/>Throttling</span></a></li></ul></li><li><a href="#interaction-with-fast-backtest"><span>Interaction with <wbr/>Fast <wbr/>Backtest</span></a></li><li><ul><li><a href="#throttling-during-signal-generation"><span>Throttling <wbr/>During <wbr/>Signal <wbr/>Generation</span></a></li><li><a href="#no-throttling-during-signal-monitoring"><span>No <wbr/>Throttling <wbr/>During <wbr/>Signal <wbr/>Monitoring</span></a></li></ul></li><li><a href="#advanced-patterns"><span>Advanced <wbr/>Patterns</span></a></li><li><ul><li><a href="#conditional-signal-generation"><span>Conditional <wbr/>Signal <wbr/>Generation</span></a></li><li><a href="#multi-timeframe-interval-selection"><span>Multi-<wbr/>Timeframe <wbr/>Interval <wbr/>Selection</span></a></li></ul></li><li><a href="#debugging-throttling-issues"><span>Debugging <wbr/>Throttling <wbr/>Issues</span></a></li><li><ul><li><a href="#common-symptoms-and-solutions"><span>Common <wbr/>Symptoms and <wbr/>Solutions</span></a></li><li><a href="#diagnostic-logging"><span>Diagnostic <wbr/>Logging</span></a></li></ul></li><li><a href="#best-practices-summary"><span>Best <wbr/>Practices <wbr/>Summary</span></a></li><li><ul><li><a href="#core-principles"><span>Core <wbr/>Principles</span></a></li><li><a href="#checklist-for-interval-selection"><span>Checklist for <wbr/>Interval <wbr/>Selection</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

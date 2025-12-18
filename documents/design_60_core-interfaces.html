@@ -1,0 +1,736 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/60_core-interfaces | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_60_core-interfaces.html">design/60_core-interfaces</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="core-interfaces" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Core Interfaces<a href="#core-interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the schema interfaces that define the core configuration contracts for Backtest Kit. These interfaces are used to register strategies, exchanges, timeframes, risk profiles, walkers, position sizing rules, and optimizer configurations via the <code>add*</code> family of functions (see <a href="design_56_api-reference.html">Global Functions</a>).</p>
+<p>For information about runtime result types (signals, statistics, contracts), see <a href="design_56_api-reference.html">Signal &amp; Result Types</a> and <a href="design_56_api-reference.html">Statistics &amp; Contract Types</a>. For internal service interfaces, see <a href="design_56_api-reference.html">Service Layer Interfaces</a>.</p>
+<hr>
+<a id="schema-registration-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Registration Overview<a href="#schema-registration-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All schema interfaces follow a consistent registration pattern: define a configuration object implementing the schema interface, then register it using the corresponding <code>add*</code> function.</p>
+<p><strong>Schema Registration Flow</strong></p>
+<p><img src="../media/60_core-interfaces_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Schema Interface Categories</strong></p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Interface</th>
+<th>Registered Via</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Strategy</strong></td>
+<td><code>IStrategySchema</code></td>
+<td><code>addStrategy()</code></td>
+<td>Defines signal generation logic and interval throttling</td>
+</tr>
+<tr>
+<td><strong>Exchange</strong></td>
+<td><code>IExchangeSchema</code></td>
+<td><code>addExchange()</code></td>
+<td>Defines candle data source and price/quantity formatting</td>
+</tr>
+<tr>
+<td><strong>Frame</strong></td>
+<td><code>IFrameSchema</code></td>
+<td><code>addFrame()</code></td>
+<td>Defines backtest time period and iteration interval</td>
+</tr>
+<tr>
+<td><strong>Risk</strong></td>
+<td><code>IRiskSchema</code></td>
+<td><code>addRisk()</code></td>
+<td>Defines portfolio-level risk validations</td>
+</tr>
+<tr>
+<td><strong>Walker</strong></td>
+<td><code>IWalkerSchema</code></td>
+<td><code>addWalker()</code></td>
+<td>Defines strategy comparison configuration</td>
+</tr>
+<tr>
+<td><strong>Sizing</strong></td>
+<td><code>ISizingSchema</code></td>
+<td><code>addSizing()</code></td>
+<td>Defines position sizing calculation method</td>
+</tr>
+<tr>
+<td><strong>Optimizer</strong></td>
+<td><code>IOptimizerSchema</code></td>
+<td><code>addOptimizer()</code></td>
+<td>Defines LLM-based strategy generation parameters</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="istrategyschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IStrategySchema<a href="#istrategyschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines a trading strategy including signal generation logic, execution interval, and lifecycle callbacks. Registered via <code>addStrategy()</code> (see <a href="design_56_api-reference.html">Global Functions</a>).</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IStrategySchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">SignalInterval</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">getSignal</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">ISignalDto</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">riskName</span><span class="hl-1">?: </span><span class="hl-13">RiskName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">riskList</span><span class="hl-1">?: </span><span class="hl-13">RiskName</span><span class="hl-1">[];</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">SignalInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">StrategyName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>✓</td>
+<td>Unique identifier for strategy registration and retrieval</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment for developer reference</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>SignalInterval</code></td>
+<td>✓</td>
+<td>Minimum time between <code>getSignal()</code> calls (throttling)</td>
+</tr>
+<tr>
+<td><code>getSignal</code></td>
+<td><code>function</code></td>
+<td>✓</td>
+<td>Signal generation function returning <code>ISignalDto</code> or <code>null</code></td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IStrategyCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Lifecycle event hooks (onOpen, onClose, onActive, etc.)</td>
+</tr>
+<tr>
+<td><code>riskName</code></td>
+<td><code>RiskName</code></td>
+<td>✗</td>
+<td>Single risk profile to apply before signal creation</td>
+</tr>
+<tr>
+<td><code>riskList</code></td>
+<td><code>RiskName[]</code></td>
+<td>✗</td>
+<td>Multiple risk profiles to merge and apply (alternative to <code>riskName</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>getSignal Function Contract</strong></p>
+<p>The <code>getSignal</code> function is the core of strategy logic. It receives the current symbol and timestamp, and returns either a signal or <code>null</code>.</p>
+<pre><code class="typescript"><span class="hl-10">getSignal</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">ISignalDto</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li><strong>Parameters:</strong>
+<ul>
+<li><code>symbol</code>: Trading pair (e.g., &quot;BTCUSDT&quot;)</li>
+<li><code>when</code>: Current execution timestamp (ExecutionContext.when)</li>
+</ul>
+</li>
+<li><strong>Returns:</strong>
+<ul>
+<li><code>ISignalDto</code> with <code>priceOpen</code> set: Creates <strong>scheduled signal</strong> waiting for price to reach entry</li>
+<li><code>ISignalDto</code> with <code>priceOpen</code> omitted: Creates <strong>immediate signal</strong> at current VWAP price</li>
+<li><code>null</code>: No signal generated (idle state)</li>
+</ul>
+</li>
+</ul>
+<p>Inside <code>getSignal</code>, use <code>getCandles()</code> to fetch historical data for analysis (see <a href="design_56_api-reference.html">Exchange Functions</a>).</p>
+<p><strong>Signal Generation Flow</strong></p>
+<p><img src="../media/60_core-interfaces_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Strategy Callbacks</strong></p>
+<p>The <code>IStrategyCallbacks</code> interface defines lifecycle hooks invoked during signal execution:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IStrategyCallbacks</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTick</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onOpen</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onActive</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onIdle</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onClose</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">, </span><span class="hl-4">priceClose</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onSchedule</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">IScheduledSignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onCancel</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">IScheduledSignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onWrite</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onPartialProfit</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">revenuePercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">onPartialLoss</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">lossPercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-13">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>When Called</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onTick</code></td>
+<td>Every tick regardless of state</td>
+<td>General monitoring, logging all ticks</td>
+</tr>
+<tr>
+<td><code>onOpen</code></td>
+<td>Signal activated at <code>priceOpen</code></td>
+<td>Track entry execution</td>
+</tr>
+<tr>
+<td><code>onActive</code></td>
+<td>Signal being monitored (TP/SL/time)</td>
+<td>Track active position progress</td>
+</tr>
+<tr>
+<td><code>onIdle</code></td>
+<td>No active signal</td>
+<td>Track idle periods</td>
+</tr>
+<tr>
+<td><code>onClose</code></td>
+<td>Signal closed (TP/SL/time_expired)</td>
+<td>Track exit execution and PNL</td>
+</tr>
+<tr>
+<td><code>onSchedule</code></td>
+<td>Scheduled signal created</td>
+<td>Track pending orders</td>
+</tr>
+<tr>
+<td><code>onCancel</code></td>
+<td>Scheduled signal cancelled</td>
+<td>Track cancelled limit orders</td>
+</tr>
+<tr>
+<td><code>onWrite</code></td>
+<td>Signal persisted to storage</td>
+<td>Testing persistence layer</td>
+</tr>
+<tr>
+<td><code>onPartialProfit</code></td>
+<td>Profit milestone reached (10%, 20%, etc.)</td>
+<td>Track unrealized gains</td>
+</tr>
+<tr>
+<td><code>onPartialLoss</code></td>
+<td>Loss milestone reached (-10%, -20%, etc.)</td>
+<td>Track unrealized losses</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example: Simple Moving Average Crossover Strategy</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-crossover&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch last 50 candles at 1-hour interval</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">50</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate 20-period and 50-period moving averages</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ma20</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">slice</span><span class="hl-1">(-</span><span class="hl-6">20</span><span class="hl-1">).</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-6">20</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ma50</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">slice</span><span class="hl-1">(-</span><span class="hl-6">50</span><span class="hl-1">).</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-6">50</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentPrice</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Bullish crossover: MA20 &gt; MA50</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">ma20</span><span class="hl-1"> &gt; </span><span class="hl-4">ma50</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-4">currentPrice</span><span class="hl-1"> * </span><span class="hl-6">1.03</span><span class="hl-1">,  </span><span class="hl-5">// 3% profit target</span><br/><span class="hl-1">        </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-4">currentPrice</span><span class="hl-1"> * </span><span class="hl-6">0.98</span><span class="hl-1">,     </span><span class="hl-5">// 2% stop loss</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-6">240</span><span class="hl-1">,               </span><span class="hl-5">// 4 hours max duration</span><br/><span class="hl-1">        </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">`MA20: </span><span class="hl-7">${</span><span class="hl-4">ma20</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">, MA50: </span><span class="hl-7">${</span><span class="hl-4">ma50</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">;  </span><span class="hl-5">// No signal</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onOpen</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[OPEN] </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2"> at </span><span class="hl-7">${</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">onClose</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">priceClose</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[CLOSE] </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2"> at </span><span class="hl-7">${</span><span class="hl-4">priceClose</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">  </span><span class="hl-5">// Apply risk validation</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="iexchangeschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IExchangeSchema<a href="#iexchangeschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines a data source for market data including candle fetching and price/quantity formatting. Registered via <code>addExchange()</code>.</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IExchangeSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">getCandles</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">CandleInterval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">ICandleData</span><span class="hl-1">[]&gt;;</span><br/><span class="hl-1">    </span><span class="hl-0">formatQuantity</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-0">formatPrice</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IExchangeCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">ExchangeName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">CandleInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;2h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;4h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;6h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;8h&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ICandleData</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;  </span><span class="hl-5">// Unix timestamp in milliseconds</span><br/><span class="hl-1">    </span><span class="hl-4">open</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">high</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">low</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">close</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">volume</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>✓</td>
+<td>Unique identifier for exchange registration</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment</td>
+</tr>
+<tr>
+<td><code>getCandles</code></td>
+<td><code>function</code></td>
+<td>✓</td>
+<td>Fetch historical OHLCV candles from data source</td>
+</tr>
+<tr>
+<td><code>formatQuantity</code></td>
+<td><code>function</code></td>
+<td>✓</td>
+<td>Format quantity according to exchange precision rules</td>
+</tr>
+<tr>
+<td><code>formatPrice</code></td>
+<td><code>function</code></td>
+<td>✓</td>
+<td>Format price according to exchange precision rules</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IExchangeCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Event hooks (onCandleData)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>getCandles Function Contract</strong></p>
+<pre><code class="typescript"><span class="hl-10">getCandles</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">CandleInterval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">ICandleData</span><span class="hl-1">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li><strong>Parameters:</strong>
+<ul>
+<li><code>symbol</code>: Trading pair (e.g., &quot;BTCUSDT&quot;)</li>
+<li><code>interval</code>: Candle timeframe (&quot;1m&quot;, &quot;5m&quot;, &quot;1h&quot;, etc.)</li>
+<li><code>since</code>: Start date for candle fetching (inclusive)</li>
+<li><code>limit</code>: Maximum number of candles to return</li>
+</ul>
+</li>
+<li><strong>Returns:</strong> Array of <code>ICandleData</code> sorted by timestamp ascending</li>
+<li><strong>Requirements:</strong>
+<ul>
+<li>Must return complete candles only (no partial candles)</li>
+<li>Must detect and handle anomalous prices (validated by ClientExchange)</li>
+<li>Should implement retry logic for API failures</li>
+</ul>
+</li>
+</ul>
+<p><strong>Data Flow: Exchange to VWAP Calculation</strong></p>
+<p><img src="../media/60_core-interfaces_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example: CCXT Integration</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addExchange</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;ccxt&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exchange</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">ccxt</span><span class="hl-1">.</span><span class="hl-0">binance</span><span class="hl-1">();</span><br/><br/><span class="hl-0">addExchange</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">getCandles</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ohlcv</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">fetchOHLCV</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">(), </span><span class="hl-4">limit</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">ohlcv</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(([</span><span class="hl-4">timestamp</span><span class="hl-1">, </span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">close</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> ({</span><br/><span class="hl-1">      </span><span class="hl-4">timestamp</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">open</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">high</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">low</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">close</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">volume</span><br/><span class="hl-1">    }));</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">formatQuantity</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">loadMarkets</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">amountToPrecision</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">quantity</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">formatPrice</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">loadMarkets</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">priceToPrecision</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">price</span><span class="hl-1">);</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onCandleData</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Fetched </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> candles for </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2"> </span><span class="hl-7">${</span><span class="hl-4">interval</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="iframeschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IFrameSchema<a href="#iframeschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines a backtest time period and iteration interval for generating timeframes. Registered via <code>addFrame()</code>.</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IFrameSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">FrameName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-13">FrameInterval</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IFrameCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">FrameName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">FrameInterval</span><span class="hl-1"> = </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;30m&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;2h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;4h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;6h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;8h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;12h&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;1d&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;3d&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frameName</code></td>
+<td><code>FrameName</code></td>
+<td>✓</td>
+<td>Unique identifier for frame registration</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment</td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>FrameInterval</code></td>
+<td>✓</td>
+<td>Spacing between generated timestamps</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>✓</td>
+<td>Beginning of backtest period (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>✓</td>
+<td>End of backtest period (inclusive)</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IFrameCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Event hooks (onTimeframe)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Timeframe Generation</strong></p>
+<p>ClientFrame generates an array of <code>Date</code> objects from <code>startDate</code> to <code>endDate</code> spaced by <code>interval</code>. BacktestLogicPrivateService iterates through these timestamps, setting <code>ExecutionContext.when</code> for each tick.</p>
+<p><img src="../media/60_core-interfaces_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example: Multiple Time Ranges</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addFrame</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Short-term test (1 day, 1-minute granularity)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-test&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-02T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Quick test with high resolution&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Medium-term backtest (1 month, 5-minute granularity)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-02-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Standard backtest period&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Long-term analysis (1 year, 1-hour granularity)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1y-analysis&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2023-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Long-term performance evaluation&quot;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="iriskschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IRiskSchema<a href="#iriskschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines portfolio-level risk validation rules applied before signal creation. Registered via <code>addRisk()</code>.</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IRiskSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-13">RiskName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IRiskCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">    </span><span class="hl-4">validations</span><span class="hl-1">: (</span><span class="hl-13">IRiskValidation</span><span class="hl-1"> | </span><span class="hl-13">IRiskValidationFn</span><span class="hl-1">)[];</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">RiskName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IRiskValidation</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">validate</span><span class="hl-1">: </span><span class="hl-13">IRiskValidationFn</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IRiskValidationFn</span><span class="hl-1"> {</span><br/><span class="hl-1">    (</span><span class="hl-4">payload</span><span class="hl-1">: </span><span class="hl-13">IRiskValidationPayload</span><span class="hl-1">): </span><span class="hl-13">void</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IRiskValidationPayload</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">IRiskCheckArgs</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">pendingSignal</span><span class="hl-1">: </span><span class="hl-13">ISignalDto</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">activePositionCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">activePositions</span><span class="hl-1">: </span><span class="hl-13">IRiskActivePosition</span><span class="hl-1">[];</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>riskName</code></td>
+<td><code>RiskName</code></td>
+<td>✓</td>
+<td>Unique identifier for risk profile registration</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IRiskCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Event hooks (onRejected, onAllowed)</td>
+</tr>
+<tr>
+<td><code>validations</code></td>
+<td>Array</td>
+<td>✓</td>
+<td>Validation functions or objects with <code>validate</code> function and <code>note</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Validation Function Contract</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IRiskValidationFn</span><span class="hl-1"> {</span><br/><span class="hl-1">    (</span><span class="hl-4">payload</span><span class="hl-1">: </span><span class="hl-13">IRiskValidationPayload</span><span class="hl-1">): </span><span class="hl-13">void</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Validation functions receive a payload with:</p>
+<ul>
+<li><code>symbol</code>: Trading pair</li>
+<li><code>pendingSignal</code>: The signal to validate</li>
+<li><code>strategyName</code>: Strategy requesting the signal</li>
+<li><code>exchangeName</code>: Exchange name</li>
+<li><code>currentPrice</code>: Current VWAP price</li>
+<li><code>timestamp</code>: Current timestamp</li>
+<li><code>activePositionCount</code>: Number of currently open positions</li>
+<li><code>activePositions</code>: Array of active position details</li>
+</ul>
+<p><strong>Validation behavior:</strong></p>
+<ul>
+<li><strong>Throw error</strong>: Signal is rejected, <code>riskSubject</code> emits rejection event</li>
+<li><strong>Return void</strong>: Signal is allowed to proceed</li>
+</ul>
+<p><strong>Risk Validation Pipeline</strong></p>
+<p><img src="../media/60_core-interfaces_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example: Conservative Risk Profile</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addRisk</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Max 3 concurrent positions, no crypto pairs during weekends&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-5">// Validation 1: Maximum concurrent positions</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-0">validate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">payload</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-6">3</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Max 3 concurrent positions (current: </span><span class="hl-7">${</span><span class="hl-4">payload</span><span class="hl-9">.</span><span class="hl-4">activePositionCount</span><span class="hl-7">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Limit portfolio exposure&quot;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Validation 2: No crypto trading on weekends</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-0">validate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">payload</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">day</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">timestamp</span><span class="hl-1">).</span><span class="hl-0">getDay</span><span class="hl-1">();</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">isWeekend</span><span class="hl-1"> = </span><span class="hl-4">day</span><span class="hl-1"> === </span><span class="hl-6">0</span><span class="hl-1"> || </span><span class="hl-4">day</span><span class="hl-1"> === </span><span class="hl-6">6</span><span class="hl-1">;</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">isWeekend</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">.</span><span class="hl-0">includes</span><span class="hl-1">(</span><span class="hl-2">&quot;USD&quot;</span><span class="hl-1">)) {</span><br/><span class="hl-1">          </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;No crypto trading on weekends&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Reduce weekend volatility exposure&quot;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Validation 3: No overlapping symbols</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-0">validate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">payload</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">hasSymbol</span><span class="hl-1"> = </span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">some</span><span class="hl-1">(</span><span class="hl-4">pos</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">pos</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">payload</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">hasSymbol</span><span class="hl-1">) {</span><br/><span class="hl-1">          </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Already have active position for </span><span class="hl-7">${</span><span class="hl-4">payload</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;One position per symbol&quot;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onRejected</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[RISK REJECTED] </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">params</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>MergeRisk Pattern</strong></p>
+<p>When a strategy specifies <code>riskList</code> instead of <code>riskName</code>, the system creates a <code>MergeRisk</code> instance that combines multiple risk profiles. All validations from all profiles must pass.</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;aggressive-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskList:</span><span class="hl-1"> [</span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;volatility-filter&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;drawdown-limit&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other properties</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="iwalkerschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IWalkerSchema<a href="#iwalkerschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines a strategy comparison configuration for A/B testing multiple strategies. Registered via <code>addWalker()</code>.</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IWalkerSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-13">WalkerName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">FrameName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">strategies</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">[];</span><br/><span class="hl-1">    </span><span class="hl-4">metric</span><span class="hl-1">?: </span><span class="hl-13">WalkerMetric</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IWalkerCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">WalkerName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">WalkerMetric</span><span class="hl-1"> = </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;annualizedSharpeRatio&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;winRate&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;totalPnl&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;certaintyRatio&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;avgPnl&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;expectedYearlyReturns&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>walkerName</code></td>
+<td><code>WalkerName</code></td>
+<td>✓</td>
+<td>Unique identifier for walker registration</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>✓</td>
+<td>Exchange to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>frameName</code></td>
+<td><code>FrameName</code></td>
+<td>✓</td>
+<td>Timeframe to use for all strategy backtests</td>
+</tr>
+<tr>
+<td><code>strategies</code></td>
+<td><code>StrategyName[]</code></td>
+<td>✓</td>
+<td>List of strategy names to compare</td>
+</tr>
+<tr>
+<td><code>metric</code></td>
+<td><code>WalkerMetric</code></td>
+<td>✗</td>
+<td>Optimization metric (default: &quot;sharpeRatio&quot;)</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IWalkerCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Event hooks (onStrategyStart, onStrategyComplete)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Walker Execution Flow</strong></p>
+<p><img src="../media/60_core-interfaces_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Optimization Metrics</strong></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Formula / Description</th>
+<th>Higher is Better</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sharpeRatio</code></td>
+<td><code>avgPnl / stdDev</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>annualizedSharpeRatio</code></td>
+<td><code>sharpeRatio × √365</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>winRate</code></td>
+<td><code>(winCount / totalSignals) × 100</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>totalPnl</code></td>
+<td><code>Σ(pnlPercentage)</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>certaintyRatio</code></td>
+<td><code>avgWin / |avgLoss|</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>avgPnl</code></td>
+<td><code>totalPnl / totalSignals</code></td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>expectedYearlyReturns</code></td>
+<td>Based on avg trade duration and PNL</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example: Strategy Comparison</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addWalker</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;ma-crossover-fast&quot;</span><span class="hl-1">,   </span><span class="hl-5">// 10/20 MA</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;ma-crossover-slow&quot;</span><span class="hl-1">,   </span><span class="hl-5">// 20/50 MA</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;ma-crossover-ultra&quot;</span><span class="hl-1">,  </span><span class="hl-5">// 50/200 MA</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><span class="hl-1">,  </span><span class="hl-5">// Optimize for risk-adjusted returns</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onStrategyStart</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Testing </span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2"> on </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">...`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-0">onStrategyComplete</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">, </span><span class="hl-4">metric</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">: Sharpe Ratio = </span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Run comparison</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">results</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, { </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-comparison&quot;</span><span class="hl-1"> });</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Best strategy: </span><span class="hl-7">${</span><span class="hl-4">results</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-7">}</span><span class="hl-2"> (</span><span class="hl-7">${</span><span class="hl-4">results</span><span class="hl-9">.</span><span class="hl-4">bestMetric</span><span class="hl-7">}</span><span class="hl-2">)`</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="isizingschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ISizingSchema<a href="#isizingschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines position sizing calculation methods. Registered via <code>addSizing()</code>. Three sizing strategies are supported: fixed percentage, Kelly Criterion, and ATR-based.</p>
+<p><strong>Base Interface</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaBase</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-13">SizingName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">ISizingCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">SizingName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Fixed Percentage Sizing</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaFixedPercentage</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaBase</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategy</span><span class="hl-1">: </span><span class="hl-2">&quot;fixed-percentage&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-13">IPositionSizeFixedPercentageParams</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPositionSizeFixedPercentageParams</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">portfolioPercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;  </span><span class="hl-5">// Percentage of portfolio to risk per trade (e.g., 2 = 2%)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Kelly Criterion Sizing</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaKelly</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaBase</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategy</span><span class="hl-1">: </span><span class="hl-2">&quot;kelly&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-13">IPositionSizeKellyParams</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPositionSizeKellyParams</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;           </span><span class="hl-5">// Historical win rate (0-1, e.g., 0.55 = 55%)</span><br/><span class="hl-1">    </span><span class="hl-4">avgWinPercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;     </span><span class="hl-5">// Average win percentage</span><br/><span class="hl-1">    </span><span class="hl-4">avgLossPercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;    </span><span class="hl-5">// Average loss percentage</span><br/><span class="hl-1">    </span><span class="hl-4">kellyFraction</span><span class="hl-1">?: </span><span class="hl-13">number</span><span class="hl-1">;    </span><span class="hl-5">// Fraction of Kelly to use (default: 0.5 for half-Kelly)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>ATR-Based Sizing</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaATR</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">ISizingSchemaBase</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategy</span><span class="hl-1">: </span><span class="hl-2">&quot;atr&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-13">IPositionSizeATRParams</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPositionSizeATRParams</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">atrMultiplier</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;     </span><span class="hl-5">// Stop loss distance in ATR units (e.g., 2 = 2×ATR)</span><br/><span class="hl-1">    </span><span class="hl-4">riskPercent</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;       </span><span class="hl-5">// Percentage of portfolio to risk (e.g., 1 = 1%)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example: Multiple Sizing Profiles</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Conservative fixed percentage</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;fixed-percentage&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">params:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">portfolioPercent:</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1">  </span><span class="hl-5">// Risk 1% per trade</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Aggressive Kelly Criterion</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;kelly-aggressive&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;kelly&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">params:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">winRate:</span><span class="hl-1"> </span><span class="hl-6">0.58</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">avgWinPercent:</span><span class="hl-1"> </span><span class="hl-6">3.2</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">avgLossPercent:</span><span class="hl-1"> </span><span class="hl-6">1.8</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">kellyFraction:</span><span class="hl-1"> </span><span class="hl-6">0.75</span><span class="hl-1">  </span><span class="hl-5">// Use 75% of full Kelly</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Volatility-based ATR sizing</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&quot;atr-adaptive&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-2">&quot;atr&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">params:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">atrMultiplier:</span><span class="hl-1"> </span><span class="hl-6">2</span><span class="hl-1">,   </span><span class="hl-5">// Stop loss at 2×ATR</span><br/><span class="hl-1">    </span><span class="hl-4">riskPercent:</span><span class="hl-1"> </span><span class="hl-6">2</span><span class="hl-1">      </span><span class="hl-5">// Risk 2% per trade</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="ioptimizerschema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IOptimizerSchema<a href="#ioptimizerschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Defines configuration for LLM-powered strategy generation. Registered via <code>addOptimizer()</code>.</p>
+<p><strong>Interface Definition</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">OptimizerName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">sources</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSource</span><span class="hl-1">[];</span><br/><span class="hl-1">    </span><span class="hl-4">prompt</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">template</span><span class="hl-1">?: </span><span class="hl-13">IOptimizerTemplate</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">IOptimizerCallbacks</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">OptimizerName</span><span class="hl-1"> = </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSource</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">FrameName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">walkerName</span><span class="hl-1">?: </span><span class="hl-13">WalkerName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">strategies</span><span class="hl-1">: </span><span class="hl-13">IOptimizerStrategy</span><span class="hl-1">[];</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerStrategy</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">range</span><span class="hl-1">?: </span><span class="hl-13">IOptimizerRange</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-0">filter</span><span class="hl-1">?: (</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">IOptimizerFilterArgs</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">boolean</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Property Reference</strong></p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optimizerName</code></td>
+<td><code>OptimizerName</code></td>
+<td>✓</td>
+<td>Unique identifier for optimizer registration</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>✗</td>
+<td>Optional documentation comment</td>
+</tr>
+<tr>
+<td><code>sources</code></td>
+<td><code>IOptimizerSource[]</code></td>
+<td>✓</td>
+<td>Data sources (backtest results) to analyze</td>
+</tr>
+<tr>
+<td><code>prompt</code></td>
+<td><code>string</code></td>
+<td>✓</td>
+<td>System prompt for LLM strategy generation</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td><code>IOptimizerTemplate</code></td>
+<td>✗</td>
+<td>Custom code generation template (default: OptimizerTemplateService)</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IOptimizerCallbacks&gt;</code></td>
+<td>✗</td>
+<td>Event hooks (onDataFetch, onGenerate, onSave)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Optimizer Data Flow</strong></p>
+<p><img src="../media/60_core-interfaces_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example: Strategy Evolution</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addOptimizer</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;evolve-ma-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">sources:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><br/><span class="hl-1">        { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-crossover-fast&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">        { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-crossover-slow&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">        { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;ma-crossover-ultra&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">      ]</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">prompt:</span><span class="hl-1"> </span><span class="hl-2">`</span><br/><span class="hl-2">    Analyze the provided moving average crossover strategies.</span><br/><span class="hl-2">    Generate an improved version that combines the best characteristics.</span><br/><span class="hl-2">    </span><br/><span class="hl-2">    Requirements:</span><br/><span class="hl-2">    - Use multiple timeframe analysis</span><br/><span class="hl-2">    - Add volume confirmation</span><br/><span class="hl-2">    - Implement dynamic take profit based on volatility</span><br/><span class="hl-2">    - Return a complete strategy implementation</span><br/><span class="hl-2">  `</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onDataFetch</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Fetched </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> strategy results`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">onGenerate</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">code</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Generated </span><span class="hl-7">${</span><span class="hl-4">code</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> characters of code`</span><span class="hl-1">);</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">onSave</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">filepath</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Saved to </span><span class="hl-7">${</span><span class="hl-4">filepath</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="schema-interface-relationships" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Schema Interface Relationships<a href="#schema-interface-relationships" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Type Hierarchy</strong></p>
+<p><img src="../media/60_core-interfaces_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Registration and Retrieval Pattern</strong></p>
+<p>All schemas follow a consistent pattern:</p>
+<p><img src="../media/60_core-interfaces_8.svg" alt="Mermaid Diagram"></p>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Strategy</th>
+<th>Exchange</th>
+<th>Frame</th>
+<th>Risk</th>
+<th>Walker</th>
+<th>Sizing</th>
+<th>Optimizer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Register</strong></td>
+<td><code>addStrategy()</code></td>
+<td><code>addExchange()</code></td>
+<td><code>addFrame()</code></td>
+<td><code>addRisk()</code></td>
+<td><code>addWalker()</code></td>
+<td><code>addSizing()</code></td>
+<td><code>addOptimizer()</code></td>
+</tr>
+<tr>
+<td><strong>Validate</strong></td>
+<td><code>StrategyValidationService</code></td>
+<td><code>ExchangeValidationService</code></td>
+<td><code>FrameValidationService</code></td>
+<td><code>RiskValidationService</code></td>
+<td><code>WalkerValidationService</code></td>
+<td><code>SizingValidationService</code></td>
+<td><code>OptimizerValidationService</code></td>
+</tr>
+<tr>
+<td><strong>Store</strong></td>
+<td><code>StrategySchemaService</code></td>
+<td><code>ExchangeSchemaService</code></td>
+<td><code>FrameSchemaService</code></td>
+<td><code>RiskSchemaService</code></td>
+<td><code>WalkerSchemaService</code></td>
+<td><code>SizingSchemaService</code></td>
+<td><code>OptimizerSchemaService</code></td>
+</tr>
+<tr>
+<td><strong>Connect</strong></td>
+<td><code>StrategyConnectionService</code></td>
+<td><code>ExchangeConnectionService</code></td>
+<td><code>FrameConnectionService</code></td>
+<td><code>RiskConnectionService</code></td>
+<td>—</td>
+<td><code>SizingConnectionService</code></td>
+<td><code>OptimizerConnectionService</code></td>
+</tr>
+<tr>
+<td><strong>Client</strong></td>
+<td><code>ClientStrategy</code></td>
+<td><code>ClientExchange</code></td>
+<td><code>ClientFrame</code></td>
+<td><code>ClientRisk</code></td>
+<td>—</td>
+<td><code>ClientSizing</code></td>
+<td><code>ClientOptimizer</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="related-pages" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Pages<a href="#related-pages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong><a href="design_56_api-reference.html">Global Functions</a></strong>: <code>addStrategy()</code>, <code>addExchange()</code>, and other registration functions</li>
+<li><strong><a href="design_56_api-reference.html">Execution Classes API</a></strong>: <code>Backtest</code>, <code>Live</code>, <code>Walker</code> classes that consume these schemas</li>
+<li><strong><a href="design_56_api-reference.html">Signal &amp; Result Types</a></strong>: <code>ISignalDto</code>, <code>ISignalRow</code>, <code>IStrategyTickResult</code> interfaces</li>
+<li><strong><a href="design_56_api-reference.html">Statistics &amp; Contract Types</a></strong>: Result models and event contracts</li>
+<li><strong><a href="design_56_api-reference.html">Service Layer Interfaces</a></strong>: Internal service interfaces for advanced usage</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#core-interfaces"><span>Core <wbr/>Interfaces</span></a><ul><li><a href="#schema-registration-overview"><span>Schema <wbr/>Registration <wbr/>Overview</span></a></li><li><a href="#istrategyschema"><span>IStrategy<wbr/>Schema</span></a></li><li><a href="#iexchangeschema"><span>IExchange<wbr/>Schema</span></a></li><li><a href="#iframeschema"><span>IFrame<wbr/>Schema</span></a></li><li><a href="#iriskschema"><span>IRisk<wbr/>Schema</span></a></li><li><a href="#iwalkerschema"><span>IWalker<wbr/>Schema</span></a></li><li><a href="#isizingschema"><span>ISizing<wbr/>Schema</span></a></li><li><a href="#ioptimizerschema"><span>IOptimizer<wbr/>Schema</span></a></li><li><a href="#schema-interface-relationships"><span>Schema <wbr/>Interface <wbr/>Relationships</span></a></li><li><a href="#related-pages"><span>Related <wbr/>Pages</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

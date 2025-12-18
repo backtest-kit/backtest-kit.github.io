@@ -1,0 +1,565 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/34_position-sizing | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_34_position-sizing.html">design/34_position-sizing</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="position-sizing" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Position Sizing<a href="#position-sizing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the position sizing system in Backtest Kit, which calculates the quantity of assets to trade based on account balance, risk parameters, and market conditions. Position sizing strategies include fixed percentage allocation, Kelly criterion, and ATR-based volatility adjustment. For portfolio-level risk constraints and signal validation, see <a href="design_31_risk-management.html">Risk Management</a>. For signal generation and lifecycle, see <a href="design_08_core-concepts.html">Signals &amp; Signal Lifecycle</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The position sizing system provides pluggable strategies for determining trade quantities. Each strategy implements a calculation function that takes account balance, risk parameters, signal data, and market conditions as input, then outputs a formatted quantity suitable for order execution.</p>
+<p><strong>Key capabilities:</strong></p>
+<ul>
+<li>Multiple built-in strategies (FixedPercentage, Kelly, ATR)</li>
+<li>Custom strategy registration via <code>addSizing()</code></li>
+<li>Integration with exchange precision formatting</li>
+<li>Position size analytics and reporting via <code>PositionSize</code> class</li>
+</ul>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="core-components" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Components<a href="#core-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/34_position-sizing_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Component Responsibilities:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ISizingSchema</code></td>
+<td>Base interface defining <code>sizingName</code>, <code>calculate</code> function, and strategy-specific parameters</td>
+</tr>
+<tr>
+<td>Strategy schemas</td>
+<td>Type-safe definitions for FixedPercentage, Kelly, and ATR strategies</td>
+</tr>
+<tr>
+<td>Calculate params</td>
+<td>Runtime parameters passed to sizing functions (balance, signal, prices, etc.)</td>
+</tr>
+<tr>
+<td><code>SizingSchemaService</code></td>
+<td>Registry for storing sizing schemas via <code>ToolRegistry</code> pattern</td>
+</tr>
+<tr>
+<td><code>SizingValidationService</code></td>
+<td>Memoized existence checks for sizing schema names</td>
+</tr>
+<tr>
+<td><code>SizingConnectionService</code></td>
+<td>Memoized factory for creating sizing calculator instances</td>
+</tr>
+<tr>
+<td><code>PositionSize</code> class</td>
+<td>Public API for running calculations and generating reports</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="sizing-strategy-types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Sizing Strategy Types<a href="#sizing-strategy-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="interface-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Interface Hierarchy<a href="#interface-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/34_position-sizing_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="strategy-implementations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Strategy Implementations<a href="#strategy-implementations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="fixed-percentage-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Fixed Percentage Strategy<a href="#fixed-percentage-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Allocates a fixed percentage of account balance to each trade. The simplest and most common approach.</p>
+<p><strong>Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sizingName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier for this sizing strategy</td>
+</tr>
+<tr>
+<td><code>percentageOfBalance</code></td>
+<td><code>number</code></td>
+<td>Percentage of account to risk per trade (e.g., 2.0 for 2%)</td>
+</tr>
+<tr>
+<td><code>calculate</code></td>
+<td><code>function</code></td>
+<td>Function that computes position quantity</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Calculate Parameters (<code>ISizingCalculateParamsFixedPercentage</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>accountBalance</code></td>
+<td><code>number</code></td>
+<td>Current account balance in quote currency</td>
+</tr>
+<tr>
+<td><code>pendingSignal</code></td>
+<td><code>ISignalDto</code></td>
+<td>Signal with TP/SL prices</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current market price (VWAP)</td>
+</tr>
+<tr>
+<td><code>when</code></td>
+<td><code>Date</code></td>
+<td>Current timestamp</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;fixed-2-percent&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">percentageOfBalance:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">accountBalance</span><span class="hl-1">, </span><span class="hl-8">pendingSignal</span><span class="hl-1">, </span><span class="hl-8">currentPrice</span><span class="hl-1"> } = </span><span class="hl-4">params</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceStopLoss</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate stop loss distance</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">slDistance</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&#39;long&#39;</span><span class="hl-1"> </span><br/><span class="hl-1">      ? </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><br/><span class="hl-1">      : </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Risk amount = balance * percentage / 100</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">riskAmount</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * (</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">percentageOfBalance</span><span class="hl-1"> / </span><span class="hl-6">100</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Quantity = riskAmount / (slDistance * priceOpen)</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">quantity</span><span class="hl-1"> = </span><span class="hl-4">riskAmount</span><span class="hl-1"> / (</span><span class="hl-4">slDistance</span><span class="hl-1"> * </span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Calculation Logic:</strong></p>
+<ol>
+<li>Determine risk amount: <code>accountBalance * (percentageOfBalance / 100)</code></li>
+<li>Calculate stop loss distance as percentage: <code>|priceOpen - priceStopLoss| / priceOpen</code></li>
+<li>Compute quantity: <code>riskAmount / (slDistance * priceOpen)</code></li>
+</ol>
+<hr>
+<a id="kelly-criterion-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Kelly Criterion Strategy<a href="#kelly-criterion-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Risk-adjusted sizing based on win rate and risk/reward ratio. Maximizes long-term growth rate while accounting for statistical edge.</p>
+<p><strong>Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sizingName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier</td>
+</tr>
+<tr>
+<td><code>maxKellyFraction</code></td>
+<td><code>number</code></td>
+<td>Cap on Kelly fraction (e.g., 0.25 for quarter-Kelly)</td>
+</tr>
+<tr>
+<td><code>defaultWinRate</code></td>
+<td><code>number?</code></td>
+<td>Fallback win rate if no historical data available</td>
+</tr>
+<tr>
+<td><code>calculate</code></td>
+<td><code>function</code></td>
+<td>Kelly calculation function</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Calculate Parameters (<code>ISizingCalculateParamsKelly</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base params</td>
+<td><code>ISizingCalculateParams</code></td>
+<td>Standard sizing params</td>
+</tr>
+<tr>
+<td><code>winRate</code></td>
+<td><code>number</code></td>
+<td>Historical win rate (0-1)</td>
+</tr>
+<tr>
+<td><code>riskRewardRatio</code></td>
+<td><code>number</code></td>
+<td>Average reward/risk ratio</td>
+</tr>
+<tr>
+<td><code>kellyFraction</code></td>
+<td><code>number</code></td>
+<td>Fraction of Kelly to use</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Kelly Formula:</strong></p>
+<pre><code><span class="hl-4">Kelly</span><span class="hl-1"> % = (</span><span class="hl-4">winRate</span><span class="hl-1"> * (</span><span class="hl-4">riskRewardRatio</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">) - </span><span class="hl-6">1</span><span class="hl-1">) / </span><span class="hl-4">riskRewardRatio</span><br/><span class="hl-4">Position</span><span class="hl-1"> </span><span class="hl-4">Size</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * </span><span class="hl-0">min</span><span class="hl-1">(</span><span class="hl-4">Kelly</span><span class="hl-1"> %, </span><span class="hl-4">maxKellyFraction</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxKellyFraction:</span><span class="hl-1"> </span><span class="hl-6">0.25</span><span class="hl-1">, </span><span class="hl-5">// Quarter-Kelly for safety</span><br/><span class="hl-1">  </span><span class="hl-4">defaultWinRate:</span><span class="hl-1"> </span><span class="hl-6">0.5</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">accountBalance</span><span class="hl-1">, </span><span class="hl-8">pendingSignal</span><span class="hl-1">, </span><span class="hl-8">currentPrice</span><span class="hl-1"> } = </span><span class="hl-4">params</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceTakeProfit</span><span class="hl-1">, </span><span class="hl-8">priceStopLoss</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate risk/reward ratio</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">reward</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&#39;long&#39;</span><br/><span class="hl-1">      ? (</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><br/><span class="hl-1">      : (</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">risk</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&#39;long&#39;</span><br/><span class="hl-1">      ? (</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><br/><span class="hl-1">      : (</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">rrRatio</span><span class="hl-1"> = </span><span class="hl-4">reward</span><span class="hl-1"> / </span><span class="hl-4">risk</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Kelly calculation</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">winRate</span><span class="hl-1"> = </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">winRate</span><span class="hl-1"> || </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">defaultWinRate</span><span class="hl-1"> || </span><span class="hl-6">0.5</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">kellyPercent</span><span class="hl-1"> = (</span><span class="hl-4">winRate</span><span class="hl-1"> * (</span><span class="hl-4">rrRatio</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">) - </span><span class="hl-6">1</span><span class="hl-1">) / </span><span class="hl-4">rrRatio</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">cappedKelly</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">max</span><span class="hl-1">(</span><span class="hl-6">0</span><span class="hl-1">, </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">min</span><span class="hl-1">(</span><span class="hl-4">kellyPercent</span><span class="hl-1">, </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">maxKellyFraction</span><span class="hl-1">));</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Position size</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">positionValue</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * </span><span class="hl-4">cappedKelly</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">quantity</span><span class="hl-1"> = </span><span class="hl-4">positionValue</span><span class="hl-1"> / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Safety Considerations:</strong></p>
+<ul>
+<li>Full Kelly is aggressive; use fractional Kelly (0.25-0.5) for reduced volatility</li>
+<li>Cap at <code>maxKellyFraction</code> to prevent over-leveraging</li>
+<li>Negative Kelly (no edge) returns 0 position size</li>
+</ul>
+<hr>
+<a id="atr-based-volatility-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ATR-Based Volatility Strategy<a href="#atr-based-volatility-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Adjusts position size based on Average True Range (ATR), scaling down during high volatility and up during low volatility.</p>
+<p><strong>Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>sizingName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier</td>
+</tr>
+<tr>
+<td><code>atrMultiplier</code></td>
+<td><code>number</code></td>
+<td>Multiplier for ATR stop distance (e.g., 2.0)</td>
+</tr>
+<tr>
+<td><code>atrPeriod</code></td>
+<td><code>number</code></td>
+<td>Lookback period for ATR calculation (e.g., 14)</td>
+</tr>
+<tr>
+<td><code>maxRiskPercent</code></td>
+<td><code>number</code></td>
+<td>Maximum % of balance to risk per trade</td>
+</tr>
+<tr>
+<td><code>calculate</code></td>
+<td><code>function</code></td>
+<td>ATR-based calculation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Calculate Parameters (<code>ISizingCalculateParamsATR</code>):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base params</td>
+<td><code>ISizingCalculateParams</code></td>
+<td>Standard sizing params</td>
+</tr>
+<tr>
+<td><code>atr</code></td>
+<td><code>number</code></td>
+<td>Current ATR value</td>
+</tr>
+<tr>
+<td><code>atrMultiplier</code></td>
+<td><code>number</code></td>
+<td>Stop loss distance = ATR * multiplier</td>
+</tr>
+<tr>
+<td><code>maxRiskPercent</code></td>
+<td><code>number</code></td>
+<td>Risk cap as percentage</td>
+</tr>
+<tr>
+<td><code>stopLossDistance</code></td>
+<td><code>number</code></td>
+<td>Calculated stop loss distance</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;atr-2x&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">atrMultiplier:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">atrPeriod:</span><span class="hl-1"> </span><span class="hl-6">14</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxRiskPercent:</span><span class="hl-1"> </span><span class="hl-6">3.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">symbol</span><span class="hl-1">, </span><span class="hl-8">accountBalance</span><span class="hl-1">, </span><span class="hl-8">pendingSignal</span><span class="hl-1">, </span><span class="hl-8">currentPrice</span><span class="hl-1"> } = </span><span class="hl-4">params</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch candles for ATR calculation</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;1h&#39;</span><span class="hl-1">, </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">atrPeriod</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate ATR</span><br/><span class="hl-1">    </span><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">atr</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">i</span><span class="hl-1"> = </span><span class="hl-6">1</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">; </span><span class="hl-4">i</span><span class="hl-1">++) {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tr</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">max</span><span class="hl-1">(</span><br/><span class="hl-1">        </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">].</span><span class="hl-4">high</span><span class="hl-1"> - </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">].</span><span class="hl-4">low</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">].</span><span class="hl-4">high</span><span class="hl-1"> - </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">-</span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1">),</span><br/><span class="hl-1">        </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">].</span><span class="hl-4">low</span><span class="hl-1"> - </span><span class="hl-4">candles</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">-</span><span class="hl-6">1</span><span class="hl-1">].</span><span class="hl-4">close</span><span class="hl-1">)</span><br/><span class="hl-1">      );</span><br/><span class="hl-1">      </span><span class="hl-4">atr</span><span class="hl-1"> += </span><span class="hl-4">tr</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-4">atr</span><span class="hl-1"> /= </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">atrPeriod</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Stop loss distance based on ATR</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">slDistance</span><span class="hl-1"> = (</span><span class="hl-4">atr</span><span class="hl-1"> * </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">atrMultiplier</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Risk amount</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxRisk</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * (</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">maxRiskPercent</span><span class="hl-1"> / </span><span class="hl-6">100</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Quantity</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">quantity</span><span class="hl-1"> = </span><span class="hl-4">maxRisk</span><span class="hl-1"> / (</span><span class="hl-4">slDistance</span><span class="hl-1"> * </span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Calculation Flow:</strong></p>
+<ol>
+<li>Calculate ATR from recent candles</li>
+<li>Determine stop loss distance: <code>ATR * atrMultiplier / currentPrice</code></li>
+<li>Calculate max risk: <code>accountBalance * (maxRiskPercent / 100)</code></li>
+<li>Compute quantity: <code>maxRisk / (slDistance * priceOpen)</code></li>
+</ol>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Automatically reduces position size during volatile markets</li>
+<li>Increases position size during stable markets</li>
+<li>Maintains consistent risk across varying market conditions</li>
+</ul>
+<hr>
+<a id="integration-with-strategy-execution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Strategy Execution<a href="#integration-with-strategy-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="position-sizing-in-signal-lifecycle" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Sizing in Signal Lifecycle<a href="#position-sizing-in-signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/34_position-sizing_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Integration Points:</strong></p>
+<ol>
+<li>
+<p><strong>Strategy Registration (<code>addSizing</code>):</strong></p>
+<ul>
+<li>User defines sizing strategy with <code>sizingName</code> and <code>calculate</code> function</li>
+<li><code>SizingSchemaService</code> stores schema in <code>ToolRegistry</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Signal Execution (<code>ClientStrategy.tick</code>):</strong></p>
+<ul>
+<li>When new signal created, retrieve sizing calculator via <code>SizingConnectionService</code></li>
+<li>Call <code>calculate()</code> with current market conditions</li>
+<li>Pass raw quantity to <code>ClientExchange.formatQuantity()</code></li>
+</ul>
+</li>
+<li>
+<p><strong>Exchange Formatting:</strong></p>
+<ul>
+<li>Exchange-specific precision rules applied</li>
+<li>Output complies with exchange lot size requirements</li>
+</ul>
+</li>
+<li>
+<p><strong>Risk Validation:</strong></p>
+<ul>
+<li>Calculated quantity validated against portfolio-level risk limits</li>
+<li>See <a href="design_31_risk-management.html">Portfolio-Wide Limits</a> for risk integration</li>
+</ul>
+</li>
+</ol>
+<hr>
+<a id="public-api-usage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Usage<a href="#public-api-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registering-a-sizing-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registering a Sizing Strategy<a href="#registering-a-sizing-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/34_position-sizing_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Method: <code>addSizing(schema: ISizingSchema)</code></strong></p>
+<p>Registers a position sizing strategy for use in trading strategies.</p>
+<p><strong>Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>schema.sizingName</code></td>
+<td><code>string</code></td>
+<td>Yes</td>
+<td>Unique identifier for this sizing strategy</td>
+</tr>
+<tr>
+<td><code>schema.note</code></td>
+<td><code>string</code></td>
+<td>No</td>
+<td>Optional documentation/description</td>
+</tr>
+<tr>
+<td><code>schema.calculate</code></td>
+<td><code>function</code></td>
+<td>Yes</td>
+<td>Position size calculation function</td>
+</tr>
+<tr>
+<td>Strategy params</td>
+<td>varies</td>
+<td>Yes</td>
+<td>Strategy-specific parameters (e.g., <code>percentageOfBalance</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Register fixed percentage strategy</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;conservative-1pct&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&#39;Conservative 1% risk per trade&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">percentageOfBalance:</span><span class="hl-1"> </span><span class="hl-6">1.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Implementation...</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="using-sizing-in-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Using Sizing in Strategies<a href="#using-sizing-in-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies reference sizing by <code>sizingName</code> in their schema definition:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// 1. Define sizing strategy</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;kelly-conservative&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxKellyFraction:</span><span class="hl-1"> </span><span class="hl-6">0.25</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">defaultWinRate:</span><span class="hl-1"> </span><span class="hl-6">0.55</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Kelly calculation...</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// 2. Reference in strategy schema</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;my-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;5m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;kelly-conservative&#39;</span><span class="hl-1">, </span><span class="hl-5">// Link to sizing strategy</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Signal generation...</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Execution Flow:</strong></p>
+<ol>
+<li>Strategy schema includes <code>sizingName</code> reference</li>
+<li>During signal execution, <code>ClientStrategy</code> validates sizing exists</li>
+<li><code>SizingConnectionService</code> retrieves calculator instance (memoized)</li>
+<li><code>calculate()</code> called with current market context</li>
+<li>Returned quantity formatted and used for order execution</li>
+</ol>
+<hr>
+<a id="listing-available-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Listing Available Strategies<a href="#listing-available-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Method: <code>listSizings(): string[]</code></strong></p>
+<p>Returns array of all registered sizing strategy names.</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1">, </span><span class="hl-4">listSizings</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;fixed-2pct&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">percentageOfBalance:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">maxKellyFraction:</span><span class="hl-1"> </span><span class="hl-6">0.25</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">sizings</span><span class="hl-1"> = </span><span class="hl-0">listSizings</span><span class="hl-1">();</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">sizings</span><span class="hl-1">); </span><span class="hl-5">// [&#39;fixed-2pct&#39;, &#39;kelly-quarter&#39;]</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="positionsize-class---reporting--analytics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PositionSize Class - Reporting &amp; Analytics<a href="#positionsize-class---reporting--analytics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>PositionSize</code> class provides methods for calculating position sizes across multiple scenarios and generating reports.</p>
+<p><strong>Class: <code>PositionSize</code></strong></p>
+<pre><code class="typescript"><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">PositionSize</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">options</span><span class="hl-1">: {...}): </span><span class="hl-13">AsyncIterableIterator</span><span class="hl-1">&lt;...&gt;</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">options</span><span class="hl-1">: {...}): </span><span class="hl-13">void</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;...&gt;</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">columns</span><span class="hl-1">?: ...): </span><span class="hl-13">string</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">filePath</span><span class="hl-1">?: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;</span><br/><span class="hl-1">  </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">sizingName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">void</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="running-position-size-calculations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Running Position Size Calculations<a href="#running-position-size-calculations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Method: <code>PositionSize.run(symbol, options)</code></strong></p>
+<p>Runs position size calculations for a range of scenarios (account balances, signal prices, etc.).</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">PositionSize</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">accountBalances:</span><span class="hl-1"> [</span><span class="hl-6">10000</span><span class="hl-1">, </span><span class="hl-6">50000</span><span class="hl-1">, </span><span class="hl-6">100000</span><span class="hl-1">], </span><span class="hl-5">// Test different balances</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrices:</span><span class="hl-1"> [</span><span class="hl-6">30000</span><span class="hl-1">, </span><span class="hl-6">35000</span><span class="hl-1">, </span><span class="hl-6">40000</span><span class="hl-1">],    </span><span class="hl-5">// Test different prices</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Balance: $</span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">accountBalance</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Price: $</span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Quantity: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">quantity</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Position Value: $</span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">positionValue</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Method: <code>PositionSize.background(symbol, options)</code></strong></p>
+<p>Runs calculations in the background, emitting events for monitoring.</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">PositionSize</span><span class="hl-1">, </span><span class="hl-4">listenPerformance</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">listenPerformance</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Calculation took </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">duration</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;atr-2x&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">accountBalances:</span><span class="hl-1"> [</span><span class="hl-6">10000</span><span class="hl-1">, </span><span class="hl-6">25000</span><span class="hl-1">, </span><span class="hl-6">50000</span><span class="hl-1">],</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="generating-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generating Reports<a href="#generating-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Method: <code>PositionSize.getData(symbol, sizingName)</code></strong></p>
+<p>Returns structured data for position size calculations.</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">data</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">summary</span><span class="hl-1">);</span><br/><span class="hl-5">// {</span><br/><span class="hl-5">//   averageQuantity: 0.1234,</span><br/><span class="hl-5">//   medianQuantity: 0.1150,</span><br/><span class="hl-5">//   minQuantity: 0.0500,</span><br/><span class="hl-5">//   maxQuantity: 0.2000,</span><br/><span class="hl-5">//   totalScenarios: 27</span><br/><span class="hl-5">// }</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">scenarios</span><span class="hl-1">);</span><br/><span class="hl-5">// [</span><br/><span class="hl-5">//   { accountBalance: 10000, currentPrice: 30000, quantity: 0.1000, ... },</span><br/><span class="hl-5">//   { accountBalance: 10000, currentPrice: 35000, quantity: 0.0857, ... },</span><br/><span class="hl-5">//   ...</span><br/><span class="hl-5">// ]</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Method: <code>PositionSize.getReport(symbol, sizingName, columns?)</code></strong></p>
+<p>Generates formatted markdown report.</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">report</span><span class="hl-1"> = </span><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">report</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Sample Output:</strong></p>
+<pre><code class="markdown"># Position Size Report: kelly-quarter
+
+Symbol: BTCUSDT
+Strategy: kelly-quarter
+Generated: 2024-01-15 10:30:00
+
+## Summary Statistics
+
+| Metric | Value |
+|--------|-------|
+| Average Quantity | 0.1234 BTC |
+| Median Quantity | 0.1150 BTC |
+| Min Quantity | 0.0500 BTC |
+| Max Quantity | 0.2000 BTC |
+| Total Scenarios | 27 |
+
+## Scenarios
+
+| Balance | Price | Quantity | Position Value | Risk % |
+|---------|-------|----------|----------------|--------|
+| $10,000 | $30,000 | 0.1000 | $3,000 | 2.5% |
+| $10,000 | $35,000 | 0.0857 | $3,000 | 2.5% |
+...
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Method: <code>PositionSize.dump(symbol, sizingName, filePath?)</code></strong></p>
+<p>Saves report to file system.</p>
+<pre><code class="typescript"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;kelly-quarter&#39;</span><span class="hl-1">, </span><span class="hl-2">&#39;./reports/position-size.md&#39;</span><span class="hl-1">);</span><br/><span class="hl-5">// Saves to ./reports/position-size.md</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Default path: <code>./dump/position-size/{symbol}_{sizingName}.md</code></p>
+<hr>
+<a id="best-practices" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="choosing-a-sizing-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Choosing a Sizing Strategy<a href="#choosing-a-sizing-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Strategy</th>
+<th>Use When</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fixed Percentage</strong></td>
+<td>Consistent risk tolerance, simple execution</td>
+<td>Easy to understand, predictable</td>
+<td>Doesn't adapt to market conditions</td>
+</tr>
+<tr>
+<td><strong>Kelly Criterion</strong></td>
+<td>Optimizing long-term growth, statistical edge available</td>
+<td>Mathematically optimal, adjusts to edge</td>
+<td>Requires accurate win rate/RR, can be aggressive</td>
+</tr>
+<tr>
+<td><strong>ATR-Based</strong></td>
+<td>Volatility-sensitive positioning, trend following</td>
+<td>Adapts to volatility, reduces risk in wild markets</td>
+<td>Requires ATR calculation, more complex</td>
+</tr>
+</tbody>
+</table>
+<a id="risk-management-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Management Integration<a href="#risk-management-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Position sizing works with risk validation:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addRisk</span><span class="hl-1">, </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// 1. Define position sizing</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;fixed-2pct&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">percentageOfBalance:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// 2. Define risk limits that validate position sizes</span><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&#39;portfolio-limits&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-5">// Max 3 concurrent positions</span><br/><span class="hl-1">    ({ </span><span class="hl-4">activePositionCount</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-6">3</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&#39;Max 3 positions&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-5">// Max 6% total portfolio risk</span><br/><span class="hl-1">    ({ </span><span class="hl-4">pendingSignal</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">activePositions</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">positionRisk</span><span class="hl-1"> = </span><span class="hl-5">/* calculate from pendingSignal */</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">totalRisk</span><span class="hl-1"> = </span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">pos</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-5">/* position risk */</span><span class="hl-1">;</span><br/><span class="hl-1">      }, </span><span class="hl-6">0</span><span class="hl-1">) + </span><span class="hl-4">positionRisk</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">totalRisk</span><span class="hl-1"> &gt; </span><span class="hl-6">6.0</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&#39;Total portfolio risk exceeds 6%&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// 3. Use both in strategy</span><br/><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;my-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;fixed-2pct&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&#39;portfolio-limits&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Validation Order:</strong></p>
+<ol>
+<li>Signal generated by <code>getSignal()</code></li>
+<li>Position quantity calculated by sizing strategy</li>
+<li>Risk validations run with calculated quantity</li>
+<li>If risk validation fails, signal rejected (see <a href="design_31_risk-management.html">Signal Validation Pipeline</a>)</li>
+</ol>
+<hr>
+<a id="testing-sizing-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testing Sizing Strategies<a href="#testing-sizing-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Use <code>PositionSize.run()</code> to test strategies across scenarios:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">PositionSize</span><span class="hl-1">, </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Define strategy</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;test-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Your calculation...</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Test across scenarios</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">PositionSize</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&#39;BTCUSDT&#39;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;test-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&#39;binance&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">accountBalances:</span><span class="hl-1"> [</span><span class="hl-6">5000</span><span class="hl-1">, </span><span class="hl-6">10000</span><span class="hl-1">, </span><span class="hl-6">20000</span><span class="hl-1">, </span><span class="hl-6">50000</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrices:</span><span class="hl-1"> [</span><span class="hl-6">25000</span><span class="hl-1">, </span><span class="hl-6">30000</span><span class="hl-1">, </span><span class="hl-6">35000</span><span class="hl-1">, </span><span class="hl-6">40000</span><span class="hl-1">, </span><span class="hl-6">45000</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">signalConfigs:</span><span class="hl-1"> [</span><br/><span class="hl-1">    { </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&#39;long&#39;</span><span class="hl-1">, </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-6">30000</span><span class="hl-1">, </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-6">33000</span><span class="hl-1">, </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-6">29000</span><span class="hl-1"> },</span><br/><span class="hl-1">    { </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&#39;short&#39;</span><span class="hl-1">, </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-6">30000</span><span class="hl-1">, </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-6">27000</span><span class="hl-1">, </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-6">31000</span><span class="hl-1"> },</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Validate results</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">assert</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">quantity</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">, </span><span class="hl-2">&#39;Quantity should be positive&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">assert</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">positionValue</span><span class="hl-1"> &lt;= </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">accountBalance</span><span class="hl-1">, </span><span class="hl-2">&#39;Position value should not exceed balance&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">riskPercent</span><span class="hl-1"> = (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">quantity</span><span class="hl-1"> * </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">stopLossDistance</span><span class="hl-1"> * </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">currentPrice</span><span class="hl-1">) / </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">accountBalance</span><span class="hl-1"> * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">assert</span><span class="hl-1">(</span><span class="hl-4">riskPercent</span><span class="hl-1"> &lt;= </span><span class="hl-6">5.0</span><span class="hl-1">, </span><span class="hl-2">&#39;Risk should not exceed 5%&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="advanced-topics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Advanced Topics<a href="#advanced-topics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="custom-sizing-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Sizing Strategies<a href="#custom-sizing-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Implement custom strategies by providing a <code>calculate</code> function:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addSizing</span><span class="hl-1">, </span><span class="hl-4">getCandles</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Volatility-adjusted with Bollinger Bands</span><br/><span class="hl-0">addSizing</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">sizingName:</span><span class="hl-1"> </span><span class="hl-2">&#39;bollinger-adaptive&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">period:</span><span class="hl-1"> </span><span class="hl-6">20</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">stdDevMultiplier:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">baseRiskPercent:</span><span class="hl-1"> </span><span class="hl-6">2.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">calculate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">symbol</span><span class="hl-1">, </span><span class="hl-8">accountBalance</span><span class="hl-1">, </span><span class="hl-8">pendingSignal</span><span class="hl-1">, </span><span class="hl-8">currentPrice</span><span class="hl-1">, </span><span class="hl-8">when</span><span class="hl-1"> } = </span><span class="hl-4">params</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceStopLoss</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch candles</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&#39;1h&#39;</span><span class="hl-1">, </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">period</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate Bollinger Bands</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">closes</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">sma</span><span class="hl-1"> = </span><span class="hl-4">closes</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">a</span><span class="hl-1">, </span><span class="hl-4">b</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">a</span><span class="hl-1"> + </span><span class="hl-4">b</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">closes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">variance</span><span class="hl-1"> = </span><span class="hl-4">closes</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">pow</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> - </span><span class="hl-4">sma</span><span class="hl-1">, </span><span class="hl-6">2</span><span class="hl-1">), </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">closes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stdDev</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">sqrt</span><span class="hl-1">(</span><span class="hl-4">variance</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">upperBand</span><span class="hl-1"> = </span><span class="hl-4">sma</span><span class="hl-1"> + </span><span class="hl-4">stdDev</span><span class="hl-1"> * </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">stdDevMultiplier</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">lowerBand</span><span class="hl-1"> = </span><span class="hl-4">sma</span><span class="hl-1"> - </span><span class="hl-4">stdDev</span><span class="hl-1"> * </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">stdDevMultiplier</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">bandWidth</span><span class="hl-1"> = (</span><span class="hl-4">upperBand</span><span class="hl-1"> - </span><span class="hl-4">lowerBand</span><span class="hl-1">) / </span><span class="hl-4">sma</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Adjust risk based on band width</span><br/><span class="hl-1">    </span><span class="hl-5">// Narrow bands (low volatility) = increase position size</span><br/><span class="hl-1">    </span><span class="hl-5">// Wide bands (high volatility) = decrease position size</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">volatilityFactor</span><span class="hl-1"> = </span><span class="hl-6">1</span><span class="hl-1"> / (</span><span class="hl-6">1</span><span class="hl-1"> + </span><span class="hl-4">bandWidth</span><span class="hl-1"> * </span><span class="hl-6">10</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">adjustedRisk</span><span class="hl-1"> = </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">baseRiskPercent</span><span class="hl-1"> * </span><span class="hl-4">volatilityFactor</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Calculate position size</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">slDistance</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&#39;long&#39;</span><br/><span class="hl-1">      ? </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><br/><span class="hl-1">      : </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">riskAmount</span><span class="hl-1"> = </span><span class="hl-4">accountBalance</span><span class="hl-1"> * (</span><span class="hl-4">adjustedRisk</span><span class="hl-1"> / </span><span class="hl-6">100</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">quantity</span><span class="hl-1"> = </span><span class="hl-4">riskAmount</span><span class="hl-1"> / (</span><span class="hl-4">slDistance</span><span class="hl-1"> * </span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">quantity</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Custom Strategy Considerations:</strong></p>
+<ul>
+<li>Use <code>getCandles()</code> for historical data access</li>
+<li>Respect temporal context (no look-ahead bias)</li>
+<li>Handle edge cases (division by zero, negative values)</li>
+<li>Return 0 for &quot;no position&quot; scenarios</li>
+<li>Consider exchange precision limits</li>
+</ul>
+<hr>
+<a id="multi-strategy-portfolio-sizing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Strategy Portfolio Sizing<a href="#multi-strategy-portfolio-sizing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Coordinate sizing across multiple strategies:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addRisk</span><span class="hl-1">, </span><span class="hl-4">addSizing</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Global position sizing coordinator</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">portfolioState</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">allocatedCapital:</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">reservedCapital:</span><span class="hl-1"> </span><span class="hl-6">0</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&#39;portfolio-coordinator&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">pendingSignal</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">activePositions</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-5">// Calculate total allocated capital</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">activeCapital</span><span class="hl-1"> = </span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">pos</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">pos</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> * </span><span class="hl-5">/* position quantity */</span><span class="hl-1">;</span><br/><span class="hl-1">      }, </span><span class="hl-6">0</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Calculate pending position capital</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pendingCapital</span><span class="hl-1"> = (</span><span class="hl-4">pendingSignal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1"> || </span><span class="hl-4">currentPrice</span><span class="hl-1">) * </span><span class="hl-5">/* calculated quantity */</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Check total allocation doesn&#39;t exceed limit</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">totalAllocation</span><span class="hl-1"> = </span><span class="hl-4">activeCapital</span><span class="hl-1"> + </span><span class="hl-4">pendingCapital</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">accountBalance</span><span class="hl-1"> = </span><span class="hl-6">100000</span><span class="hl-1">; </span><span class="hl-5">// Get from config</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">totalAllocation</span><span class="hl-1"> &gt; </span><span class="hl-4">accountBalance</span><span class="hl-1"> * </span><span class="hl-6">0.8</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&#39;Portfolio allocation exceeds 80% limit&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Reserve capital for this position</span><br/><span class="hl-1">      </span><span class="hl-4">portfolioState</span><span class="hl-1">.</span><span class="hl-4">allocatedCapital</span><span class="hl-1"> = </span><span class="hl-4">totalAllocation</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The position sizing system provides:</p>
+<ol>
+<li><strong>Multiple Strategies</strong> - FixedPercentage, Kelly, ATR-based, and custom implementations</li>
+<li><strong>Type-Safe Interfaces</strong> - Separate schemas for each strategy type with compile-time validation</li>
+<li><strong>Integration</strong> - Seamless connection to signal execution, risk management, and exchange formatting</li>
+<li><strong>Testing &amp; Reporting</strong> - <code>PositionSize</code> class for scenario analysis and documentation</li>
+<li><strong>Flexibility</strong> - Plugin architecture for custom sizing algorithms</li>
+</ol>
+<p><strong>Related Documentation:</strong></p>
+<ul>
+<li><a href="design_31_risk-management.html">Risk Management</a> - Portfolio limits and signal validation</li>
+<li><a href="design_31_risk-management.html">Risk Validation Pipeline</a> - How sizing interacts with risk checks</li>
+<li><a href="design_08_core-concepts.html">Signals &amp; Signal Lifecycle</a> - Signal execution flow</li>
+<li><a href="design_36_exchanges-data-sources.html">Exchange Configuration</a> - Quantity formatting and precision</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#position-sizing"><span>Position <wbr/>Sizing</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#overview"><span>Overview</span></a></li><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><ul><li><a href="#core-components"><span>Core <wbr/>Components</span></a></li></ul></li><li><a href="#sizing-strategy-types"><span>Sizing <wbr/>Strategy <wbr/>Types</span></a></li><li><ul><li><a href="#interface-hierarchy"><span>Interface <wbr/>Hierarchy</span></a></li></ul></li><li><a href="#strategy-implementations"><span>Strategy <wbr/>Implementations</span></a></li><li><ul><li><a href="#fixed-percentage-strategy"><span>Fixed <wbr/>Percentage <wbr/>Strategy</span></a></li><li><a href="#kelly-criterion-strategy"><span>Kelly <wbr/>Criterion <wbr/>Strategy</span></a></li><li><a href="#atr-based-volatility-strategy"><span>ATR-<wbr/>Based <wbr/>Volatility <wbr/>Strategy</span></a></li></ul></li><li><a href="#integration-with-strategy-execution"><span>Integration with <wbr/>Strategy <wbr/>Execution</span></a></li><li><ul><li><a href="#position-sizing-in-signal-lifecycle"><span>Position <wbr/>Sizing in <wbr/>Signal <wbr/>Lifecycle</span></a></li></ul></li><li><a href="#public-api-usage"><span>Public API <wbr/>Usage</span></a></li><li><ul><li><a href="#registering-a-sizing-strategy"><span>Registering a <wbr/>Sizing <wbr/>Strategy</span></a></li><li><a href="#using-sizing-in-strategies"><span>Using <wbr/>Sizing in <wbr/>Strategies</span></a></li><li><a href="#listing-available-strategies"><span>Listing <wbr/>Available <wbr/>Strategies</span></a></li></ul></li><li><a href="#positionsize-class---reporting--analytics"><span>Position<wbr/>Size <wbr/>Class -<wbr/> <wbr/>Reporting &amp; <wbr/>Analytics</span></a></li><li><ul><li><a href="#running-position-size-calculations"><span>Running <wbr/>Position <wbr/>Size <wbr/>Calculations</span></a></li><li><a href="#generating-reports"><span>Generating <wbr/>Reports</span></a></li></ul></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#choosing-a-sizing-strategy"><span>Choosing a <wbr/>Sizing <wbr/>Strategy</span></a></li><li><a href="#risk-management-integration"><span>Risk <wbr/>Management <wbr/>Integration</span></a></li><li><a href="#testing-sizing-strategies"><span>Testing <wbr/>Sizing <wbr/>Strategies</span></a></li></ul></li><li><a href="#advanced-topics"><span>Advanced <wbr/>Topics</span></a></li><li><ul><li><a href="#custom-sizing-strategies"><span>Custom <wbr/>Sizing <wbr/>Strategies</span></a></li><li><a href="#multi-strategy-portfolio-sizing"><span>Multi-<wbr/>Strategy <wbr/>Portfolio <wbr/>Sizing</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,201 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/19_data-flow-patterns | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_19_data-flow-patterns.html">design/19_data-flow-patterns</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="data-flow-patterns" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Data Flow Patterns<a href="#data-flow-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the end-to-end data flow patterns in Backtest Kit, tracing how data moves from user configuration through validation, execution, signal processing, and finally to reporting. It maps the transformation of data structures at each stage and identifies the specific services, classes, and methods that handle each transformation.</p>
+<p>For information about the service layer architecture and dependency injection patterns, see <a href="design_14_architecture-deep-dive.html">Service Layer &amp; Dependency Injection</a>. For details on client implementations, see <a href="design_14_architecture-deep-dive.html">Client Layer</a>. For the event-driven architecture, see <a href="design_14_architecture-deep-dive.html">Event System Architecture</a>. For execution mode specifics, see <a href="design_20_execution-modes.html">Execution Modes</a>.</p>
+<p>This page focuses on <strong>how data flows</strong> rather than <strong>what components do</strong>. It serves as a reference for understanding the complete journey of trading signals from conception to completion.</p>
+<hr>
+<a id="configuration-phase-user-input-to-schema-storage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Phase: User Input to Schema Storage<a href="#configuration-phase-user-input-to-schema-storage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The data flow begins when users call registration functions to define their trading strategies, exchanges, and risk parameters. This phase transforms user-provided JavaScript objects into validated, immutable schema entries stored in registry services.</p>
+<a id="configuration-registration-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Configuration Registration Flow<a href="#configuration-registration-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_0.svg" alt="Mermaid Diagram"></p>
+<a id="data-transformation-user-objects-to-schema-entries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Transformation: User Objects to Schema Entries<a href="#data-transformation-user-objects-to-schema-entries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Input Type</th>
+<th>Validation Layer</th>
+<th>Storage Format</th>
+<th>Registry Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IStrategySchema</code></td>
+<td><code>StrategyValidationService</code> checks for duplicate names</td>
+<td>Stored in <code>ToolRegistry&lt;IStrategySchema&gt;</code></td>
+<td><code>strategyName: string</code></td>
+</tr>
+<tr>
+<td><code>IExchangeSchema</code></td>
+<td><code>ExchangeValidationService</code> checks for duplicate names</td>
+<td>Stored in <code>ToolRegistry&lt;IExchangeSchema&gt;</code></td>
+<td><code>exchangeName: string</code></td>
+</tr>
+<tr>
+<td><code>IFrameSchema</code></td>
+<td><code>FrameValidationService</code> checks for duplicate names</td>
+<td>Stored in <code>ToolRegistry&lt;IFrameSchema&gt;</code></td>
+<td><code>frameName: string</code></td>
+</tr>
+<tr>
+<td><code>IRiskSchema</code></td>
+<td><code>RiskValidationService</code> checks for duplicate names</td>
+<td>Stored in <code>ToolRegistry&lt;IRiskSchema&gt;</code></td>
+<td><code>riskName: string</code></td>
+</tr>
+<tr>
+<td><code>IWalkerSchema</code></td>
+<td><code>WalkerValidationService</code> validates strategy list</td>
+<td>Stored in <code>ToolRegistry&lt;IWalkerSchema&gt;</code></td>
+<td><code>walkerName: string</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="execution-initiation-api-call-to-context-setup" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Initiation: API Call to Context Setup<a href="#execution-initiation-api-call-to-context-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When users invoke <code>Backtest.run()</code>, <code>Live.run()</code>, or <code>Walker.run()</code>, the framework validates all schema references, establishes execution contexts, and routes operations to the appropriate services. This phase prepares the runtime environment before any signal processing begins.</p>
+<a id="execution-startup-flow-backtest-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Startup Flow (Backtest Mode)<a href="#execution-startup-flow-backtest-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_1.svg" alt="Mermaid Diagram"></p>
+<a id="context-propagation-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Propagation Pattern<a href="#context-propagation-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses ambient context services (<code>MethodContextService</code> and <code>ExecutionContextService</code>) to propagate configuration without explicit parameter passing. This pattern uses the <code>di-scoped</code> library to maintain context throughout the call stack.</p>
+<p><img src="../media/19_data-flow-patterns_2.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="signal-generation-tick-to-signal-creation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Generation: Tick to Signal Creation<a href="#signal-generation-tick-to-signal-creation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>During execution, the framework calls <code>ClientStrategy.tick()</code> on each timeframe to generate trading signals. This process involves throttling checks, user function invocation, multi-stage validation, risk checks, and persistence decisions.</p>
+<a id="signal-generation-data-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Generation Data Flow<a href="#signal-generation-data-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_3.svg" alt="Mermaid Diagram"></p>
+<a id="signal-validation-pipeline" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Validation Pipeline<a href="#signal-validation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>VALIDATE_SIGNAL_FN</code> performs comprehensive validation before any signal activates:</p>
+<table>
+<thead>
+<tr>
+<th>Validation Stage</th>
+<th>Check</th>
+<th>GLOBAL_CONFIG Parameter</th>
+<th>Failure Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Schema Fields</td>
+<td>Required fields present (<code>id</code>, <code>symbol</code>, <code>position</code>, etc.)</td>
+<td>N/A</td>
+<td>Missing required data</td>
+</tr>
+<tr>
+<td>2. Finite Prices</td>
+<td>All prices are finite numbers &gt; 0</td>
+<td>N/A</td>
+<td>NaN or Infinity detected</td>
+</tr>
+<tr>
+<td>3. TP/SL Logic</td>
+<td>Long: <code>TP &gt; open &gt; SL</code><br/>Short: <code>SL &gt; open &gt; TP</code></td>
+<td>N/A</td>
+<td>Invalid price relationships</td>
+</tr>
+<tr>
+<td>4. TP Distance</td>
+<td>TP far enough to cover fees</td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>Profit too small (&lt; 0.2%)</td>
+</tr>
+<tr>
+<td>5. SL Min Distance</td>
+<td>SL not too close (instant stop)</td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Stop too tight</td>
+</tr>
+<tr>
+<td>6. SL Max Distance</td>
+<td>SL not too far (risk limit)</td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Risk too high</td>
+</tr>
+<tr>
+<td>7. Signal Lifetime</td>
+<td>Duration within limits</td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Signal too long (blocks risk)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="signal-processing-active-monitoring-to-closure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Processing: Active Monitoring to Closure<a href="#signal-processing-active-monitoring-to-closure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Once a signal opens, the framework monitors it on every tick, checking for take profit, stop loss, or time expiration conditions. For backtest mode, the <code>backtest()</code> method processes multiple candles efficiently.</p>
+<a id="live-mode-monitoring-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Mode Monitoring Flow<a href="#live-mode-monitoring-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_4.svg" alt="Mermaid Diagram"></p>
+<a id="backtest-mode-fast-processing-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode Fast Processing Flow<a href="#backtest-mode-fast-processing-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_5.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="event-propagation-signal-results-to-event-consumers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Propagation: Signal Results to Event Consumers<a href="#event-propagation-signal-results-to-event-consumers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>After each tick or signal closure, the framework emits events through RxJS Subject-based emitters. Multiple markdown services subscribe to these events to accumulate data for report generation.</p>
+<a id="event-flow-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Flow Architecture<a href="#event-flow-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_6.svg" alt="Mermaid Diagram"></p>
+<a id="event-filtering-and-storage-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Filtering and Storage Pattern<a href="#event-filtering-and-storage-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each markdown service subscribes to specific events and maintains a bounded event queue:</p>
+<table>
+<thead>
+<tr>
+<th>Markdown Service</th>
+<th>Event Filter</th>
+<th>Queue Bound</th>
+<th>Storage Key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestMarkdownService</code></td>
+<td><code>action === &quot;closed&quot;</code></td>
+<td>250 events</td>
+<td><code>${symbol}:${strategyName}</code></td>
+</tr>
+<tr>
+<td><code>LiveMarkdownService</code></td>
+<td>All actions (idle, opened, active, closed)</td>
+<td>250 events</td>
+<td><code>${symbol}:${strategyName}</code></td>
+</tr>
+<tr>
+<td><code>ScheduleMarkdownService</code></td>
+<td><code>action === &quot;scheduled&quot; || &quot;cancelled&quot;</code></td>
+<td>250 events</td>
+<td><code>${symbol}:${strategyName}</code></td>
+</tr>
+<tr>
+<td><code>HeatMarkdownService</code></td>
+<td><code>action === &quot;closed&quot;</code></td>
+<td>No bound (portfolio-wide)</td>
+<td><code>portfolio</code></td>
+</tr>
+<tr>
+<td><code>PartialMarkdownService</code></td>
+<td>Partial profit/loss events</td>
+<td>250 events</td>
+<td><code>${symbol}:${strategyName}</code></td>
+</tr>
+<tr>
+<td><code>RiskMarkdownService</code></td>
+<td>Risk rejection events</td>
+<td>250 events</td>
+<td><code>${symbol}:${strategyName}</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="report-generation-accumulated-events-to-statistics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Generation: Accumulated Events to Statistics<a href="#report-generation-accumulated-events-to-statistics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The final stage transforms accumulated event data into statistical models and formatted markdown reports. This process calculates metrics like Sharpe ratio, win rate, and PNL using safe math functions.</p>
+<a id="statistics-calculation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Statistics Calculation Flow<a href="#statistics-calculation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_7.svg" alt="Mermaid Diagram"></p>
+<a id="report-formatting-and-dump" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Report Formatting and Dump<a href="#report-formatting-and-dump" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_8.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="cross-cutting-data-flows" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cross-Cutting Data Flows<a href="#cross-cutting-data-flows" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="persistence-and-recovery-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence and Recovery Flow<a href="#persistence-and-recovery-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_9.svg" alt="Mermaid Diagram"></p>
+<a id="memoization-and-caching-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization and Caching Pattern<a href="#memoization-and-caching-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/19_data-flow-patterns_10.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="complete-end-to-end-flow-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Complete End-to-End Flow Summary<a href="#complete-end-to-end-flow-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/19_data-flow-patterns_11.svg" alt="Mermaid Diagram"></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#data-flow-patterns"><span>Data <wbr/>Flow <wbr/>Patterns</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#configuration-phase-user-input-to-schema-storage"><span>Configuration <wbr/>Phase: <wbr/>User <wbr/>Input to <wbr/>Schema <wbr/>Storage</span></a></li><li><ul><li><a href="#configuration-registration-flow"><span>Configuration <wbr/>Registration <wbr/>Flow</span></a></li><li><a href="#data-transformation-user-objects-to-schema-entries"><span>Data <wbr/>Transformation: <wbr/>User <wbr/>Objects to <wbr/>Schema <wbr/>Entries</span></a></li></ul></li><li><a href="#execution-initiation-api-call-to-context-setup"><span>Execution <wbr/>Initiation: API <wbr/>Call to <wbr/>Context <wbr/>Setup</span></a></li><li><ul><li><a href="#execution-startup-flow-backtest-mode"><span>Execution <wbr/>Startup <wbr/>Flow (<wbr/>Backtest <wbr/>Mode)</span></a></li><li><a href="#context-propagation-pattern"><span>Context <wbr/>Propagation <wbr/>Pattern</span></a></li></ul></li><li><a href="#signal-generation-tick-to-signal-creation"><span>Signal <wbr/>Generation: <wbr/>Tick to <wbr/>Signal <wbr/>Creation</span></a></li><li><ul><li><a href="#signal-generation-data-flow"><span>Signal <wbr/>Generation <wbr/>Data <wbr/>Flow</span></a></li><li><a href="#signal-validation-pipeline"><span>Signal <wbr/>Validation <wbr/>Pipeline</span></a></li></ul></li><li><a href="#signal-processing-active-monitoring-to-closure"><span>Signal <wbr/>Processing: <wbr/>Active <wbr/>Monitoring to <wbr/>Closure</span></a></li><li><ul><li><a href="#live-mode-monitoring-flow"><span>Live <wbr/>Mode <wbr/>Monitoring <wbr/>Flow</span></a></li><li><a href="#backtest-mode-fast-processing-flow"><span>Backtest <wbr/>Mode <wbr/>Fast <wbr/>Processing <wbr/>Flow</span></a></li></ul></li><li><a href="#event-propagation-signal-results-to-event-consumers"><span>Event <wbr/>Propagation: <wbr/>Signal <wbr/>Results to <wbr/>Event <wbr/>Consumers</span></a></li><li><ul><li><a href="#event-flow-architecture"><span>Event <wbr/>Flow <wbr/>Architecture</span></a></li><li><a href="#event-filtering-and-storage-pattern"><span>Event <wbr/>Filtering and <wbr/>Storage <wbr/>Pattern</span></a></li></ul></li><li><a href="#report-generation-accumulated-events-to-statistics"><span>Report <wbr/>Generation: <wbr/>Accumulated <wbr/>Events to <wbr/>Statistics</span></a></li><li><ul><li><a href="#statistics-calculation-flow"><span>Statistics <wbr/>Calculation <wbr/>Flow</span></a></li><li><a href="#report-formatting-and-dump"><span>Report <wbr/>Formatting and <wbr/>Dump</span></a></li></ul></li><li><a href="#cross-cutting-data-flows"><span>Cross-<wbr/>Cutting <wbr/>Data <wbr/>Flows</span></a></li><li><ul><li><a href="#persistence-and-recovery-flow"><span>Persistence and <wbr/>Recovery <wbr/>Flow</span></a></li><li><a href="#memoization-and-caching-pattern"><span>Memoization and <wbr/>Caching <wbr/>Pattern</span></a></li></ul></li><li><a href="#complete-end-to-end-flow-summary"><span>Complete <wbr/>End-<wbr/>to-<wbr/>End <wbr/>Flow <wbr/>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

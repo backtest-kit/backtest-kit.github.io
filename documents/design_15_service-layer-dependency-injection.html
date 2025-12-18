@@ -1,0 +1,418 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/15_service-layer-dependency-injection | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_15_service-layer-dependency-injection.html">design/15_service-layer-dependency-injection</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="service-layer--dependency-injection" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Service Layer &amp; Dependency Injection<a href="#service-layer--dependency-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the service layer architecture and dependency injection (DI) system that powers the backtest-kit framework. The service layer provides a structured approach to organizing business logic, managing dependencies, and enabling testability through inversion of control.</p>
+<p><strong>Scope</strong>: This page covers the DI container implementation, the 11 service categories, and how services are registered and resolved. For details on the actual client business logic (ClientStrategy, ClientExchange, etc.), see <a href="design_14_architecture-deep-dive.html">Client Layer</a>. For memoization patterns used by connection services, see <a href="design_14_architecture-deep-dive.html">Connection Services &amp; Memoization</a>.</p>
+<hr>
+<a id="overview--purpose" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview &amp; Purpose<a href="#overview--purpose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The service layer acts as the glue between the public API (addStrategy, Backtest.run, etc.) and the core business logic (ClientStrategy, ClientExchange). It provides:</p>
+<ul>
+<li><strong>Dependency Injection</strong>: Symbol-based tokens enable lazy instantiation and testability</li>
+<li><strong>Separation of Concerns</strong>: 11 distinct service categories organize responsibilities</li>
+<li><strong>Context Propagation</strong>: ExecutionContext and MethodContext flow through the call stack</li>
+<li><strong>Memoization</strong>: Connection services cache client instances by schema name</li>
+<li><strong>Acyclic Dependencies</strong>: Careful layering prevents circular dependency issues</li>
+</ul>
+<p>The framework uses a custom DI container rather than a third-party library to maintain zero runtime dependencies and optimize for the specific patterns needed (memoization, context services, lazy initialization).</p>
+<hr>
+<a id="dependency-injection-container" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Container<a href="#dependency-injection-container" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The DI container consists of three core mechanisms defined across three files:</p>
+<a id="types-symbol-registry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TYPES Symbol Registry<a href="#types-symbol-registry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>TYPES</code> object in <code>src/lib/core/types.ts:1-105</code> defines unique Symbol identifiers for every service in the framework:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;loggerService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">contextServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">executionContextService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;executionContextService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">methodContextService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;methodContextService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">connectionServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;exchangeConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">strategyConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;strategyConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">frameConnectionService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;frameConnectionService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-5">// ... 4 more</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-5">// ... 8 more service categories</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">TYPES</span><span class="hl-1"> = {</span><br/><span class="hl-1">    ...</span><span class="hl-4">baseServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">contextServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">connectionServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">coreServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">globalServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">commandServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">logicPrivateServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">logicPublicServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">markdownServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">validationServices</span><span class="hl-1">,</span><br/><span class="hl-1">    ...</span><span class="hl-4">templateServices</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The Symbol-based approach ensures:</p>
+<ul>
+<li><strong>Type Safety</strong>: TypeScript can enforce correct usage</li>
+<li><strong>No Name Collisions</strong>: Symbols are globally unique</li>
+<li><strong>IDE Support</strong>: Autocomplete works across the codebase</li>
+</ul>
+<a id="registration-with-provide" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration with <code>provide()</code><a href="#registration-with-provide" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>src/lib/core/provide.ts:1-143</code> file registers factory functions for each service:</p>
+<pre><code class="typescript"><span class="hl-5">// Base Services</span><br/><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">LoggerService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Context Services</span><br/><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ExecutionContextService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">MethodContextService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Connection Services</span><br/><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeConnectionService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ExchangeConnectionService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">StrategyConnectionService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-5">// ... 5 more</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ... 8 more categories</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each <code>provide()</code> call maps a Symbol token to a factory function. The factory is not invoked immediately—services are lazily instantiated on first use.</p>
+<a id="resolution-with-inject-and-init" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Resolution with <code>inject()</code> and <code>init()</code><a href="#resolution-with-inject-and-init" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>src/lib/index.ts:1-246</code> file uses <code>inject()</code> to create lazy resolvers for each service:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">contextServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">executionContextService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">TExecutionContextService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">    </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><br/><span class="hl-1">  ),</span><br/><span class="hl-1">  </span><span class="hl-4">methodContextService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">TMethodContextService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">    </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><br/><span class="hl-1">  ),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-5">// ... more categories</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backtest</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">baseServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">contextServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">connectionServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">coreServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">globalServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">commandServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPrivateServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPublicServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">markdownServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">validationServices</span><span class="hl-1">,</span><br/><span class="hl-1">  ...</span><span class="hl-4">templateServices</span><span class="hl-1">,</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">init</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>init()</code> call at the end triggers initialization of the DI container. After this point, any access to <code>backtest.loggerService</code> will instantiate the service (if not already created) and return the singleton instance.</p>
+<hr>
+<a id="di-container-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">DI Container Architecture<a href="#di-container-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram shows how the three DI mechanisms work together:</p>
+<p><img src="../media/15_service-layer-dependency-injection_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="the-11-service-categories" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The 11 Service Categories<a href="#the-11-service-categories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework organizes services into 11 distinct categories, each with a specific responsibility. This structure is reflected in both <code>src/lib/core/types.ts</code> and <code>src/lib/index.ts</code>.</p>
+<a id="category-summary-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Category Summary Table<a href="#category-summary-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Count</th>
+<th>Responsibility</th>
+<th>Example Services</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Base Services</strong></td>
+<td>1</td>
+<td>Centralized logging with context</td>
+<td>LoggerService</td>
+</tr>
+<tr>
+<td><strong>Context Services</strong></td>
+<td>2</td>
+<td>Ambient context propagation</td>
+<td>ExecutionContextService, MethodContextService</td>
+</tr>
+<tr>
+<td><strong>Schema Services</strong></td>
+<td>7</td>
+<td>Configuration storage (ToolRegistry pattern)</td>
+<td>StrategySchemaService, ExchangeSchemaService</td>
+</tr>
+<tr>
+<td><strong>Validation Services</strong></td>
+<td>9</td>
+<td>Existence checks and shallow validation</td>
+<td>StrategyValidationService, ConfigValidationService</td>
+</tr>
+<tr>
+<td><strong>Connection Services</strong></td>
+<td>7</td>
+<td>Memoized client instance factories</td>
+<td>StrategyConnectionService, ExchangeConnectionService</td>
+</tr>
+<tr>
+<td><strong>Core Services</strong></td>
+<td>3</td>
+<td>Business logic orchestration</td>
+<td>StrategyCoreService, ExchangeCoreService</td>
+</tr>
+<tr>
+<td><strong>Global Services</strong></td>
+<td>4</td>
+<td>Shared state management</td>
+<td>RiskGlobalService, PartialGlobalService</td>
+</tr>
+<tr>
+<td><strong>Logic Services (Private)</strong></td>
+<td>3</td>
+<td>Internal execution implementation</td>
+<td>BacktestLogicPrivateService, LiveLogicPrivateService</td>
+</tr>
+<tr>
+<td><strong>Logic Services (Public)</strong></td>
+<td>3</td>
+<td>External API wrappers</td>
+<td>BacktestLogicPublicService, LiveLogicPublicService</td>
+</tr>
+<tr>
+<td><strong>Command Services</strong></td>
+<td>3</td>
+<td>Top-level API entry points</td>
+<td>BacktestCommandService, LiveCommandService</td>
+</tr>
+<tr>
+<td><strong>Markdown Services</strong></td>
+<td>9</td>
+<td>Event-driven report generation</td>
+<td>BacktestMarkdownService, LiveMarkdownService</td>
+</tr>
+<tr>
+<td><strong>Template Services</strong></td>
+<td>1</td>
+<td>Code generation for optimizers</td>
+<td>OptimizerTemplateService</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Total Services</strong>: 52</p>
+<hr>
+<a id="service-category-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Category Details<a href="#service-category-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="1-base-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Base Services<a href="#1-base-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Provide foundational infrastructure needed by all other services.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>LoggerService</code>: Centralized logging with automatic context injection (symbol, strategyName, timestamp). Wraps user-provided ILogger implementation.</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:61-63</code></p>
+<p><strong>Usage Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&#39;methodName&#39;</span><span class="hl-1">, { </span><span class="hl-4">data</span><span class="hl-1"> });</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;simple message&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="2-context-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Context Services<a href="#2-context-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Propagate ambient information throughout the call stack without explicit parameter passing.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>ExecutionContextService</code>: Manages <code>symbol</code>, <code>when</code> (timestamp), and <code>backtest</code> flag. Used by ClientStrategy to determine execution mode.</li>
+<li><code>MethodContextService</code>: Manages <code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code>. Used by connection services to route operations.</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:65-72</code></p>
+<p><strong>Context Flow Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Set method context at API boundary</span><br/><span class="hl-4">MethodContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(() </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Set execution context per tick</span><br/><span class="hl-1">  </span><span class="hl-4">ExecutionContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(() </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// All services can now access context without parameters</span><br/><span class="hl-1">    </span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(); </span><span class="hl-5">// knows symbol, when, strategyName</span><br/><span class="hl-1">  }, { </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1"> });</span><br/><span class="hl-1">}, { </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="3-schema-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Schema Services<a href="#3-schema-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Store immutable user-provided configurations using the ToolRegistry pattern.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>StrategySchemaService</code>: Stores IStrategySchema objects</li>
+<li><code>ExchangeSchemaService</code>: Stores IExchangeSchema objects</li>
+<li><code>FrameSchemaService</code>: Stores IFrameSchema objects</li>
+<li><code>WalkerSchemaService</code>: Stores IWalkerSchema objects</li>
+<li><code>SizingSchemaService</code>: Stores ISizingSchema objects</li>
+<li><code>RiskSchemaService</code>: Stores IRiskSchema objects</li>
+<li><code>OptimizerSchemaService</code>: Stores IOptimizerSchema objects</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:98-112</code></p>
+<p><strong>Registration Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// From addStrategy function</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Retrieval Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">schema</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="4-validation-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. Validation Services<a href="#4-validation-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Perform memoized existence checks and shallow validation of schema references.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>StrategyValidationService</code>: Validates strategy names exist</li>
+<li><code>ExchangeValidationService</code>: Validates exchange names exist</li>
+<li><code>FrameValidationService</code>: Validates frame names exist</li>
+<li><code>WalkerValidationService</code>: Validates walker names exist</li>
+<li><code>SizingValidationService</code>: Validates sizing names exist</li>
+<li><code>RiskValidationService</code>: Validates risk names exist and checks circular dependencies in riskList</li>
+<li><code>OptimizerValidationService</code>: Validates optimizer names exist</li>
+<li><code>ConfigValidationService</code>: Validates GLOBAL_CONFIG parameters</li>
+<li><code>ColumnValidationService</code>: Validates report column configurations</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:189-217</code></p>
+<p><strong>Usage Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Before executing backtest, validate all required schemas exist</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">assertExist</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">exchangeValidationService</span><span class="hl-1">.</span><span class="hl-0">assertExist</span><span class="hl-1">(</span><span class="hl-4">exchangeName</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">frameValidationService</span><span class="hl-1">.</span><span class="hl-0">assertExist</span><span class="hl-1">(</span><span class="hl-4">frameName</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>List Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Used by listStrategies() function</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategies</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">list</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="5-connection-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">5. Connection Services<a href="#5-connection-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Create and cache (memoize) client instances by unique keys to prevent redundant instantiation.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>StrategyConnectionService</code>: Creates ClientStrategy instances per <code>symbol:strategyName</code></li>
+<li><code>ExchangeConnectionService</code>: Creates ClientExchange instances per <code>exchangeName</code></li>
+<li><code>FrameConnectionService</code>: Creates ClientFrame instances per <code>frameName</code></li>
+<li><code>SizingConnectionService</code>: Creates ClientSizing instances per <code>sizingName</code></li>
+<li><code>RiskConnectionService</code>: Creates ClientRisk or MergeRisk instances per <code>riskName</code> or <code>riskList</code></li>
+<li><code>OptimizerConnectionService</code>: Creates ClientOptimizer instances per <code>optimizerName</code></li>
+<li><code>PartialConnectionService</code>: Creates ClientPartial instances per <code>symbol</code></li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:74-96</code></p>
+<p><strong>Memoization Pattern</strong>: See <a href="design_14_architecture-deep-dive.html">Connection Services &amp; Memoization</a> for details.</p>
+<a id="6-core-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">6. Core Services<a href="#6-core-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Orchestrate business logic by coordinating between connection services and context services.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>StrategyCoreService</code>: Main orchestration for strategy execution. Coordinates ClientStrategy.tick() and ClientStrategy.backtest() calls.</li>
+<li><code>ExchangeCoreService</code>: Orchestrates candle fetching and VWAP calculation via ClientExchange.</li>
+<li><code>FrameCoreService</code>: Orchestrates timeframe generation via ClientFrame.</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:114-118</code></p>
+<p><strong>Orchestration Example</strong> (StrategyCoreService):</p>
+<pre><code class="typescript"><span class="hl-5">// Called by BacktestLogicPrivateService</span><br/><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-5">// 1. Gets context from ExecutionContextService</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">symbol</span><span class="hl-1">, </span><span class="hl-8">when</span><span class="hl-1"> } = </span><span class="hl-4">executionContext</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 2. Routes to correct ClientStrategy via StrategyConnectionService</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">client</span><span class="hl-1"> = </span><span class="hl-4">strategyConnectionService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 3. Executes business logic</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">when</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="7-global-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">7. Global Services<a href="#7-global-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Manage shared state that spans multiple strategies or symbols.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>RiskGlobalService</code>: Tracks portfolio-wide risk across all strategies</li>
+<li><code>SizingGlobalService</code>: Manages position sizing calculations</li>
+<li><code>OptimizerGlobalService</code>: Coordinates optimizer execution state</li>
+<li><code>PartialGlobalService</code>: Tracks partial profit/loss events across strategies</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:120-129</code></p>
+<p><strong>State Sharing Example</strong> (RiskGlobalService):</p>
+<pre><code class="typescript"><span class="hl-5">// Multiple ClientStrategy instances share the same ClientRisk instance</span><br/><span class="hl-5">// which has access to RiskGlobalService for portfolio-wide limits</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="8-logic-services-private" class="tsd-anchor"></a><h3 class="tsd-anchor-link">8. Logic Services (Private)<a href="#8-logic-services-private" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Implement internal execution logic using async generators for streaming results.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>BacktestLogicPrivateService</code>: Implements timeframe iteration loop for historical simulation</li>
+<li><code>LiveLogicPrivateService</code>: Implements infinite loop with sleep intervals for real-time trading</li>
+<li><code>WalkerLogicPrivateService</code>: Implements strategy comparison by running multiple backtests sequentially</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:141-151</code></p>
+<p><strong>Async Generator Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Backtest: finite loop through timeframes</span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">timeframe</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">timeframes</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">();</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&#39;closed&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">; </span><span class="hl-5">// Stream results incrementally</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="9-logic-services-public" class="tsd-anchor"></a><h3 class="tsd-anchor-link">9. Logic Services (Public)<a href="#9-logic-services-public" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Wrap private logic services to provide clean external API with validation and error handling.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>BacktestLogicPublicService</code>: Public wrapper for BacktestLogicPrivateService</li>
+<li><code>LiveLogicPublicService</code>: Public wrapper for LiveLogicPrivateService</li>
+<li><code>WalkerLogicPublicService</code>: Public wrapper for WalkerLogicPrivateService</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:153-163</code></p>
+<p><strong>Wrapper Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Public service validates inputs before delegating to private service</span><br/><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">: </span><span class="hl-4">IMethodContext</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">); </span><span class="hl-5">// Validation layer</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">yield</span><span class="hl-7">*</span><span class="hl-1"> </span><span class="hl-4">privateService</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">); </span><span class="hl-5">// Delegate to private</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="10-command-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">10. Command Services<a href="#10-command-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Provide top-level entry points for the public API (Backtest, Live, Walker classes).</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>BacktestCommandService</code>: Entry point for Backtest.run() and Backtest.background()</li>
+<li><code>LiveCommandService</code>: Entry point for Live.run() and Live.background()</li>
+<li><code>WalkerCommandService</code>: Entry point for Walker.run() and Walker.background()</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:131-139</code></p>
+<p><strong>Command Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Command service handles method context and delegates to logic service</span><br/><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">: </span><span class="hl-4">IMethodContext</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(() </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">  }, </span><span class="hl-4">context</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="11-markdown-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">11. Markdown Services<a href="#11-markdown-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Subscribe to event emitters, accumulate data, and generate formatted reports on demand.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>BacktestMarkdownService</code>: Generates reports from signalBacktestEmitter</li>
+<li><code>LiveMarkdownService</code>: Generates reports from signalLiveEmitter</li>
+<li><code>ScheduleMarkdownService</code>: Tracks scheduled/opened/cancelled signals</li>
+<li><code>PerformanceMarkdownService</code>: Tracks execution timing metrics</li>
+<li><code>WalkerMarkdownService</code>: Generates strategy comparison reports</li>
+<li><code>HeatMarkdownService</code>: Generates portfolio-wide heatmaps</li>
+<li><code>PartialMarkdownService</code>: Tracks partial profit/loss events</li>
+<li><code>OutlineMarkdownService</code>: Generates outline/summary reports</li>
+<li><code>RiskMarkdownService</code>: Tracks risk rejection events</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:165-187</code></p>
+<p><strong>Event Subscription Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Markdown services subscribe to relevant emitters</span><br/><span class="hl-4">signalBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-0">append</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">); </span><span class="hl-5">// Max 250 events per key</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generate report on demand</span><br/><span class="hl-0">getReport</span><span class="hl-1">() {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">events</span><span class="hl-1"> = </span><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">formatMarkdown</span><span class="hl-1">(</span><span class="hl-4">events</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="12-template-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">12. Template Services<a href="#12-template-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Generate executable code from optimizer schemas.</p>
+<p><strong>Services</strong>:</p>
+<ul>
+<li><code>OptimizerTemplateService</code>: Generates .mjs files with strategy code, LLM integration, and backtest execution logic</li>
+</ul>
+<p><strong>Location</strong>: <code>src/lib/index.ts:219-223</code></p>
+<p><strong>Code Generation Pattern</strong>: See <a href="design_46_advanced-features.html">Code Generation &amp; Templates</a> for details.</p>
+<hr>
+<a id="service-dependency-graph" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Dependency Graph<a href="#service-dependency-graph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This diagram maps the dependencies between major service categories, showing how the acyclic architecture prevents circular dependencies:</p>
+<p><img src="../media/15_service-layer-dependency-injection_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Architectural Principles</strong>:</p>
+<ol>
+<li><strong>Layered Dependencies</strong>: Services only depend on services in the same layer or layers below</li>
+<li><strong>No Circular Dependencies</strong>: The graph is acyclic (DAG)</li>
+<li><strong>Context Propagation</strong>: Context services are used by all layers but don't depend on them</li>
+<li><strong>Infrastructure Services</strong>: Base and Context services have no dependencies (except each other)</li>
+<li><strong>Reporting Independence</strong>: Markdown services subscribe to events but don't block execution</li>
+</ol>
+<hr>
+<a id="the-central-backtest-object" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The Central <code>backtest</code> Object<a href="#the-central-backtest-object" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>src/lib/index.ts:225-238</code> file exports a single <code>backtest</code> object that aggregates all 52 services:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backtest</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">baseServices</span><span class="hl-1">,           </span><span class="hl-5">// 1 service</span><br/><span class="hl-1">  ...</span><span class="hl-4">contextServices</span><span class="hl-1">,        </span><span class="hl-5">// 2 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">connectionServices</span><span class="hl-1">,     </span><span class="hl-5">// 7 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">schemaServices</span><span class="hl-1">,         </span><span class="hl-5">// 7 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">coreServices</span><span class="hl-1">,           </span><span class="hl-5">// 3 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">globalServices</span><span class="hl-1">,         </span><span class="hl-5">// 4 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">commandServices</span><span class="hl-1">,        </span><span class="hl-5">// 3 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPrivateServices</span><span class="hl-1">,   </span><span class="hl-5">// 3 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">logicPublicServices</span><span class="hl-1">,    </span><span class="hl-5">// 3 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">markdownServices</span><span class="hl-1">,       </span><span class="hl-5">// 9 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">validationServices</span><span class="hl-1">,     </span><span class="hl-5">// 9 services</span><br/><span class="hl-1">  ...</span><span class="hl-4">templateServices</span><span class="hl-1">,       </span><span class="hl-5">// 1 service</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">init</span><span class="hl-1">();</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-3">default</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-access-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Access Patterns<a href="#service-access-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Internal code accesses services through this object:</p>
+<pre><code class="typescript"><span class="hl-5">// From any internal module</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;../lib/index&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Access any service</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&#39;method&#39;</span><span class="hl-1">, { </span><span class="hl-4">data</span><span class="hl-1"> });</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">assertExist</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="testability" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testability<a href="#testability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>backtest</code> object enables easy mocking for unit tests:</p>
+<pre><code class="typescript"><span class="hl-5">// In tests, replace specific services</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mockLogger</span><span class="hl-1"> = { </span><span class="hl-4">info:</span><span class="hl-1"> </span><span class="hl-4">jest</span><span class="hl-1">.</span><span class="hl-0">fn</span><span class="hl-1">(), </span><span class="hl-4">log:</span><span class="hl-1"> </span><span class="hl-4">jest</span><span class="hl-1">.</span><span class="hl-0">fn</span><span class="hl-1">() };</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-4">mockLogger</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Run code under test</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">someFunction</span><span class="hl-1">();</span><br/><br/><span class="hl-5">// Verify mock was called</span><br/><span class="hl-0">expect</span><span class="hl-1">(</span><span class="hl-4">mockLogger</span><span class="hl-1">.</span><span class="hl-4">info</span><span class="hl-1">).</span><span class="hl-0">toHaveBeenCalledWith</span><span class="hl-1">(...);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="service-initialization-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Initialization Lifecycle<a href="#service-initialization-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The initialization sequence follows this pattern:</p>
+<p><img src="../media/15_service-layer-dependency-injection_2.svg" alt="Mermaid Diagram"></p>
+<a id="lazy-instantiation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lazy Instantiation<a href="#lazy-instantiation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services are created only when first accessed:</p>
+<pre><code class="typescript"><span class="hl-5">// 1. Loading the module does NOT create services</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// 2. First access creates the service</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">logger</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">; </span><span class="hl-5">// LoggerService() constructor runs here</span><br/><br/><span class="hl-5">// 3. Subsequent accesses return cached instance</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">logger2</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">; </span><span class="hl-5">// Same instance, no new construction</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">assert</span><span class="hl-1">(</span><span class="hl-4">logger</span><span class="hl-1"> === </span><span class="hl-4">logger2</span><span class="hl-1">); </span><span class="hl-5">// true</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-constructor-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Constructor Pattern<a href="#service-constructor-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services receive dependencies via constructor injection:</p>
+<pre><code class="typescript"><span class="hl-5">// Example: BacktestCommandService constructor</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">BacktestCommandService</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">loggerService</span><span class="hl-1">: </span><span class="hl-13">LoggerService</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1">: </span><span class="hl-13">BacktestLogicPublicService</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">() {</span><br/><span class="hl-1">    </span><span class="hl-5">// Inject dependencies via backtest object</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">backtestLogicPublicService</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern enables:</p>
+<ul>
+<li><strong>Circular dependency detection</strong>: Constructor injection makes cycles impossible</li>
+<li><strong>Clear dependency graph</strong>: Dependencies are explicit in constructor</li>
+<li><strong>Easy testing</strong>: Can mock dependencies by replacing them on <code>backtest</code> object</li>
+</ul>
+<hr>
+<a id="service-type-definitions-and-interfaces" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Type Definitions and Interfaces<a href="#service-type-definitions-and-interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>While the DI container uses concrete classes, the framework also defines interfaces for major service categories to enable flexibility and testing.</p>
+<a id="internal-service-access-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Internal Service Access Pattern<a href="#internal-service-access-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services access each other through the <code>backtest</code> object, which provides concrete instances:</p>
+<pre><code class="typescript"><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">StrategyCoreService</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">() {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1"> = </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-5">// ... etc</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="type-safe-resolution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type-Safe Resolution<a href="#type-safe-resolution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>inject&lt;T&gt;()</code> function provides type safety:</p>
+<pre><code class="typescript"><span class="hl-5">// From index.ts</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>TypeScript ensures:</p>
+<ul>
+<li><code>TYPES.loggerService</code> maps to correct factory in <code>provide.ts</code></li>
+<li>Factory returns type compatible with <code>LoggerService</code></li>
+<li>Access via <code>backtest.loggerService</code> returns correct type</li>
+</ul>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The service layer architecture provides:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Implementation</th>
+<th>Benefit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dependency Injection</strong></td>
+<td>Symbol-based tokens + provide/inject</td>
+<td>Testability, lazy loading, clear dependencies</td>
+</tr>
+<tr>
+<td><strong>Service Categories</strong></td>
+<td>11 distinct categories</td>
+<td>Separation of concerns, clear responsibilities</td>
+</tr>
+<tr>
+<td><strong>Context Propagation</strong></td>
+<td>ExecutionContext + MethodContext</td>
+<td>Avoid parameter drilling, clean APIs</td>
+</tr>
+<tr>
+<td><strong>Memoization</strong></td>
+<td>Connection services cache clients</td>
+<td>Performance optimization, single instances</td>
+</tr>
+<tr>
+<td><strong>Acyclic Dependencies</strong></td>
+<td>Layered architecture</td>
+<td>No circular dependencies, maintainability</td>
+</tr>
+<tr>
+<td><strong>Central Object</strong></td>
+<td><code>backtest</code> aggregates all services</td>
+<td>Single import point, easy mocking</td>
+</tr>
+<tr>
+<td><strong>Lazy Instantiation</strong></td>
+<td>Services created on first access</td>
+<td>Fast startup, low memory footprint</td>
+</tr>
+</tbody>
+</table>
+<p>The combination of these patterns creates a maintainable, testable, and performant architecture that scales from simple backtests to complex multi-strategy live trading systems.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#service-layer--dependency-injection"><span>Service <wbr/>Layer &amp; <wbr/>Dependency <wbr/>Injection</span></a><ul><li><a href="#overview--purpose"><span>Overview &amp; <wbr/>Purpose</span></a></li><li><a href="#dependency-injection-container"><span>Dependency <wbr/>Injection <wbr/>Container</span></a></li><li><ul><li><a href="#types-symbol-registry"><span>TYPES <wbr/>Symbol <wbr/>Registry</span></a></li><li><a href="#registration-with-provide"><span>Registration with provide()</span></a></li><li><a href="#resolution-with-inject-and-init"><span>Resolution with inject() and init()</span></a></li></ul></li><li><a href="#di-container-architecture"><span>DI <wbr/>Container <wbr/>Architecture</span></a></li><li><a href="#the-11-service-categories"><span>The 11 <wbr/>Service <wbr/>Categories</span></a></li><li><ul><li><a href="#category-summary-table"><span>Category <wbr/>Summary <wbr/>Table</span></a></li></ul></li><li><a href="#service-category-details"><span>Service <wbr/>Category <wbr/>Details</span></a></li><li><ul><li><a href="#1-base-services"><span>1. <wbr/>Base <wbr/>Services</span></a></li><li><a href="#2-context-services"><span>2. <wbr/>Context <wbr/>Services</span></a></li><li><a href="#3-schema-services"><span>3. <wbr/>Schema <wbr/>Services</span></a></li><li><a href="#4-validation-services"><span>4. <wbr/>Validation <wbr/>Services</span></a></li><li><a href="#5-connection-services"><span>5. <wbr/>Connection <wbr/>Services</span></a></li><li><a href="#6-core-services"><span>6. <wbr/>Core <wbr/>Services</span></a></li><li><a href="#7-global-services"><span>7. <wbr/>Global <wbr/>Services</span></a></li><li><a href="#8-logic-services-private"><span>8. <wbr/>Logic <wbr/>Services (<wbr/>Private)</span></a></li><li><a href="#9-logic-services-public"><span>9. <wbr/>Logic <wbr/>Services (<wbr/>Public)</span></a></li><li><a href="#10-command-services"><span>10. <wbr/>Command <wbr/>Services</span></a></li><li><a href="#11-markdown-services"><span>11. <wbr/>Markdown <wbr/>Services</span></a></li><li><a href="#12-template-services"><span>12. <wbr/>Template <wbr/>Services</span></a></li></ul></li><li><a href="#service-dependency-graph"><span>Service <wbr/>Dependency <wbr/>Graph</span></a></li><li><a href="#the-central-backtest-object"><span>The <wbr/>Central backtest <wbr/>Object</span></a></li><li><ul><li><a href="#service-access-patterns"><span>Service <wbr/>Access <wbr/>Patterns</span></a></li><li><a href="#testability"><span>Testability</span></a></li></ul></li><li><a href="#service-initialization-lifecycle"><span>Service <wbr/>Initialization <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#lazy-instantiation"><span>Lazy <wbr/>Instantiation</span></a></li><li><a href="#service-constructor-pattern"><span>Service <wbr/>Constructor <wbr/>Pattern</span></a></li></ul></li><li><a href="#service-type-definitions-and-interfaces"><span>Service <wbr/>Type <wbr/>Definitions and <wbr/>Interfaces</span></a></li><li><ul><li><a href="#internal-service-access-pattern"><span>Internal <wbr/>Service <wbr/>Access <wbr/>Pattern</span></a></li><li><a href="#type-safe-resolution"><span>Type-<wbr/>Safe <wbr/>Resolution</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,559 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/24_async-generator-patterns | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_24_async-generator-patterns.html">design/24_async-generator-patterns</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="async-generator-patterns" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Async Generator Patterns<a href="#async-generator-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the async generator patterns used throughout Backtest Kit's execution modes to enable memory-efficient streaming, early termination, and progressive result delivery. Async generators are the core architectural pattern that allows the framework to process large backtests without accumulating results in memory and support graceful shutdown in live trading.</p>
+<p>For information about the higher-level execution orchestration, see <a href="design_20_execution-modes.html">Execution Modes</a>. For details on how signals flow through the system, see <a href="design_08_core-concepts.html">Signal Lifecycle</a>.</p>
+<hr>
+<a id="overview-generator-based-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview: Generator-Based Architecture<a href="#overview-generator-based-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtest Kit uses JavaScript async generators (<code>async function*</code>) as the primary pattern for orchestrating all three execution modes. This pattern provides:</p>
+<ul>
+<li><strong>Streaming results</strong>: Values are yielded one at a time without accumulating in arrays</li>
+<li><strong>Memory efficiency</strong>: Only the current signal state is held in memory</li>
+<li><strong>Early termination</strong>: Consumers can <code>break</code> from loops to stop execution</li>
+<li><strong>Progressive updates</strong>: Walker mode yields after each strategy completion</li>
+<li><strong>Lazy evaluation</strong>: Computation happens on-demand as values are consumed</li>
+</ul>
+<p>The generator pattern is implemented at two layers:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Services</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Private Logic</strong></td>
+<td><code>BacktestLogicPrivateService</code>, <code>LiveLogicPrivateService</code>, <code>WalkerLogicPrivateService</code></td>
+<td>Core generator implementation with <code>async *run()</code> methods</td>
+</tr>
+<tr>
+<td><strong>Public Logic</strong></td>
+<td><code>BacktestLogicPublicService</code>, <code>LiveLogicPublicService</code>, <code>WalkerLogicPublicService</code></td>
+<td>Context propagation wrappers that call private services</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="generator-types-finite-vs-infinite" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Generator Types: Finite vs Infinite<a href="#generator-types-finite-vs-infinite" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements two distinct generator lifecycles depending on the execution mode:</p>
+<p><img src="../media/24_async-generator-patterns_0.svg" alt="Mermaid Diagram"></p>
+<a id="finite-generators-backtest-walker" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Finite Generators (Backtest, Walker)<a href="#finite-generators-backtest-walker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest Mode</strong> uses a traditional for-loop pattern with bounded iteration:</p>
+<ul>
+<li>Fetches complete <code>timeframes</code> array at start: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:69-72</code></li>
+<li>Iterates with index: <code>while (i &lt; timeframes.length)</code></li>
+<li>Advances index: <code>i++</code> after processing each frame</li>
+<li><strong>Natural completion</strong>: Generator exhausts when all timeframes are processed</li>
+<li><strong>Frame skipping</strong>: After signal closes, <code>i</code> advances to <code>closeTimestamp</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:403-409</code></li>
+</ul>
+<p><strong>Walker Mode</strong> iterates through a finite list of strategies:</p>
+<ul>
+<li>Uses <code>for (const strategyName of strategies)</code>: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:115</code></li>
+<li>Yields after each strategy backtest completes: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:231</code></li>
+<li><strong>Natural completion</strong>: Generator exhausts when all strategies are tested</li>
+<li><strong>Early exit</strong>: <code>break</code> on stop signal: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:125</code></li>
+</ul>
+<a id="infinite-generators-live" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Infinite Generators (Live)<a href="#infinite-generators-live" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Live Mode</strong> uses an infinite loop for continuous monitoring:</p>
+<ul>
+<li>Never-ending loop: <code>while (true)</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:70</code></li>
+<li>Real-time progression: <code>when = new Date()</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:72</code></li>
+<li>Sleep interval: <code>await sleep(TICK_TTL)</code> where <code>TICK_TTL = 1min + 1ms</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:14</code>, <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:173</code></li>
+<li><strong>Only terminates on explicit stop</strong>: Checks <code>getStopped()</code> flag: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:122-136</code></li>
+<li><strong>Graceful shutdown</strong>: Waits for signal to close before breaking: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:155-170</code></li>
+</ul>
+<hr>
+<a id="backtest-generator-timeframe-iteration-with-fast-skip" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest Generator: Timeframe Iteration with Fast Skip<a href="#backtest-generator-timeframe-iteration-with-fast-skip" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest generator implements a deterministic iteration pattern that processes historical data minute-by-minute while optimizing performance through timeframe skipping.</p>
+<p><img src="../media/24_async-generator-patterns_1.svg" alt="Mermaid Diagram"></p>
+<a id="key-implementation-details" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Implementation Details<a href="#key-implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Timeframe Generation</strong>:</p>
+<ul>
+<li>Calls <code>frameCoreService.getTimeframe()</code> once at start: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:69-72</code></li>
+<li>Stores complete array: <code>const timeframes = await this.frameCoreService.getTimeframe(...)</code></li>
+<li>Tracks progress: <code>processedFrames: i, totalFrames: timeframes.length</code></li>
+</ul>
+<p><strong>Progress Tracking</strong>:</p>
+<ul>
+<li>Emits after each frame: <code>await progressBacktestEmitter.next({...})</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:84-92</code></li>
+<li>Progress percentage: <code>progress: totalFrames &gt; 0 ? i / totalFrames : 0</code></li>
+<li>Final 100% emission: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:452-461</code></li>
+</ul>
+<p><strong>Fast Backtest Optimization</strong>:
+When a signal opens (<code>action === &quot;opened&quot;</code>), the generator fetches all required candles at once and calls <code>strategyCoreService.backtest()</code>:</p>
+<ol>
+<li><strong>Calculate buffer</strong>: <code>bufferMinutes = CC_AVG_PRICE_CANDLES_COUNT - 1</code> (for VWAP calculation): <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:317</code></li>
+<li><strong>Fetch candles</strong>: <code>totalCandles = signal.minuteEstimatedTime + bufferMinutes</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:319</code></li>
+<li><strong>Process signal</strong>: <code>backtestResult = await strategyCoreService.backtest(symbol, candles, when, true)</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:361-366</code></li>
+<li><strong>Skip timeframes</strong>: Advances <code>i</code> to <code>closeTimestamp</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:403-409</code></li>
+</ol>
+<p>This optimization avoids tick-by-tick processing while signals are active, drastically improving performance.</p>
+<p><strong>Scheduled Signal Handling</strong>:
+For scheduled signals (<code>priceOpen</code> not yet reached), the generator:</p>
+<ol>
+<li>Fetches extended candles: <code>bufferMinutes + CC_SCHEDULE_AWAIT_MINUTES + minuteEstimatedTime + 1</code>: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:176</code></li>
+<li>Includes wait time: <code>CC_SCHEDULE_AWAIT_MINUTES</code> for activation window</li>
+<li>Monitors both activation and cancellation: <code>backtest()</code> handles both paths</li>
+</ol>
+<p><strong>Performance Metrics</strong>:</p>
+<ul>
+<li>Tracks frame duration: <code>performance.now()</code> before/after processing: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:79</code>, <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:434</code></li>
+<li>Tracks signal duration: Start when opened/scheduled, end when closed: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:155</code>, <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:259</code></li>
+<li>Emits <code>performanceEmitter</code> events: <code>src/lib/services/logic/private/BacktestLogicPrivateService.ts:391-401</code></li>
+</ul>
+<hr>
+<a id="live-generator-infinite-loop-with-real-time-polling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live Generator: Infinite Loop with Real-Time Polling<a href="#live-generator-infinite-loop-with-real-time-polling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The live generator implements an infinite loop that continuously monitors real-time market conditions with crash recovery and graceful shutdown support.</p>
+<p><img src="../media/24_async-generator-patterns_2.svg" alt="Mermaid Diagram"></p>
+<a id="key-implementation-details-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Implementation Details<a href="#key-implementation-details-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Infinite Loop Structure</strong>:</p>
+<ul>
+<li>Never-ending: <code>while (true)</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:70</code></li>
+<li>Real-time timestamp: <code>const when = new Date()</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:72</code></li>
+<li>Tick interval: <code>TICK_TTL = 1 * 60 * 1_000 + 1</code> (1 minute + 1ms): <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:14</code></li>
+<li>Sleep between iterations: <code>await sleep(TICK_TTL)</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:173</code></li>
+</ul>
+<p><strong>Selective Yielding</strong>:
+The generator only yields <code>opened</code> and <code>closed</code> results, filtering out <code>idle</code>, <code>active</code>, and <code>scheduled</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// Skip idle/active/scheduled - only sleep</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;idle&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><span class="hl-5">// ... similar for active, scheduled</span><br/><br/><span class="hl-5">// Yield opened/closed</span><br/><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1"> | </span><span class="hl-13">IStrategyTickResultOpened</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This keeps the consumer loop clean and focused on actionable events: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:118-152</code></p>
+<p><strong>Crash Recovery</strong>:
+The live generator relies on <code>ClientStrategy.waitForInit()</code> to load persisted signal state:</p>
+<ul>
+<li>Called automatically during <code>strategyCoreService.tick()</code> initialization</li>
+<li>Reads from <code>PersistSignalAdapter</code> file storage</li>
+<li>Restores <code>pendingSignal</code> if process crashed mid-signal</li>
+<li>Reference: <code>docs/internals.md:76</code></li>
+</ul>
+<p><strong>Error Handling with Continue</strong>:
+If <code>tick()</code> throws an error, the generator:</p>
+<ol>
+<li>Logs warning: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:78-91</code></li>
+<li>Emits to <code>errorEmitter</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:92</code></li>
+<li>Sleeps: <code>await sleep(TICK_TTL)</code></li>
+<li><strong>Continues loop</strong>: <code>continue</code> instead of breaking: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:94</code></li>
+</ol>
+<p>This ensures transient errors (network issues, API rate limits) don't kill the live trading process.</p>
+<p><strong>Graceful Shutdown Logic</strong>:</p>
+<p>The generator implements two stop checks:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Location</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idle state</td>
+<td><code>LiveLogicPrivateService.ts:118-136</code></td>
+<td>Immediate break if no active signal</td>
+</tr>
+<tr>
+<td>Signal closed</td>
+<td><code>LiveLogicPrivateService.ts:155-170</code></td>
+<td>Break after signal closes</td>
+</tr>
+</tbody>
+</table>
+<p>This ensures:</p>
+<ul>
+<li><strong>No orphaned positions</strong>: Never stops with active signal</li>
+<li><strong>Clean exit</strong>: Always waits for <code>action === &quot;closed&quot;</code></li>
+<li><strong>User control</strong>: Responds to <code>strategyCoreService.getStopped()</code> flag</li>
+</ul>
+<p><strong>Performance Tracking</strong>:</p>
+<ul>
+<li>Measures tick duration: <code>performance.now()</code> before/after: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:71</code>, <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:103</code></li>
+<li>Tracks delta: <code>previousTimestamp</code> for inter-tick timing: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:68</code></li>
+<li>Emits <code>performanceEmitter</code> with <code>metricType: &quot;live_tick&quot;</code>: <code>src/lib/services/logic/private/LiveLogicPrivateService.ts:105-115</code></li>
+</ul>
+<hr>
+<a id="walker-generator-progressive-strategy-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker Generator: Progressive Strategy Comparison<a href="#walker-generator-progressive-strategy-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The walker generator orchestrates multiple backtests sequentially, yielding progress updates after each strategy completes to enable real-time comparison tracking.</p>
+<p><img src="../media/24_async-generator-patterns_3.svg" alt="Mermaid Diagram"></p>
+<a id="key-implementation-details-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Implementation Details<a href="#key-implementation-details-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Sequential Backtest Execution</strong>:</p>
+<ul>
+<li>Iterates: <code>for (const strategyName of strategies)</code>: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:115</code></li>
+<li>Creates backtest iterator: <code>backtestLogicPublicService.run(symbol, context)</code>: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:137-141</code></li>
+<li>Consumes fully: <code>await resolveDocuments(iterator)</code>: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:144</code></li>
+</ul>
+<p><strong>Stop Signal Management</strong>:
+Uses a <code>Set</code> to track stopped strategies with subscription filtering:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stoppedStrategies</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Set</span><span class="hl-1">&lt;</span><span class="hl-13">StrategyName</span><span class="hl-1">&gt;();</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubscribe</span><span class="hl-1"> = </span><span class="hl-4">walkerStopSubject</span><br/><span class="hl-1">  .</span><span class="hl-0">filter</span><span class="hl-1">((</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">symbol</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1"> === </span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">connect</span><span class="hl-1">((</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">stoppedStrategies</span><span class="hl-1">.</span><span class="hl-0">add</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This enables:</p>
+<ul>
+<li><strong>Per-strategy stopping</strong>: Specific strategies can be stopped mid-comparison</li>
+<li><strong>Symbol/walker isolation</strong>: Filter by both <code>symbol</code> AND <code>walkerName</code>: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:99</code></li>
+<li><strong>Cleanup</strong>: <code>unsubscribe()</code> called in <code>finally</code> block: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:113</code>, <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:235</code></li>
+</ul>
+<p><strong>Metric Extraction &amp; Ranking</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">value</span><span class="hl-1"> = </span><span class="hl-4">stats</span><span class="hl-1">[</span><span class="hl-4">metric</span><span class="hl-1">];</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">metricValue</span><span class="hl-1"> = </span><span class="hl-5">/* safe number check */</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">isBetter</span><span class="hl-1"> = </span><span class="hl-4">bestMetric</span><span class="hl-1"> === </span><span class="hl-7">null</span><span class="hl-1"> || (</span><span class="hl-4">metricValue</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">metricValue</span><span class="hl-1"> &gt; </span><span class="hl-4">bestMetric</span><span class="hl-1">);</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">isBetter</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">metricValue</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1"> = </span><span class="hl-4">metricValue</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1"> = </span><span class="hl-4">strategyName</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li>Extracts dynamic metric: <code>stats[metric]</code> where <code>metric</code> is configurable: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:172</code></li>
+<li>Safe math checking: Validates finite, non-NaN values: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:173-180</code></li>
+<li>Higher-is-better: Uses <code>&gt;</code> comparison for ranking: <code>src/lib/services/logic/private/WalkerLogicPrivateService.ts:183-190</code></li>
+</ul>
+<p><strong>Progressive Result Yielding</strong>:</p>
+<p>After each strategy completes, the generator constructs a <code>WalkerContract</code>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">walkerContract</span><span class="hl-1">: </span><span class="hl-13">WalkerContract</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">,  </span><span class="hl-5">// Current strategy</span><br/><span class="hl-1">  </span><span class="hl-4">stats</span><span class="hl-1">,          </span><span class="hl-5">// Full statistics for current strategy</span><br/><span class="hl-1">  </span><span class="hl-4">metricValue</span><span class="hl-1">,    </span><span class="hl-5">// Extracted metric value</span><br/><span class="hl-1">  </span><span class="hl-4">metric</span><span class="hl-1">,         </span><span class="hl-5">// Metric being compared</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1">,     </span><span class="hl-5">// Best value so far</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1">,   </span><span class="hl-5">// Best strategy so far</span><br/><span class="hl-1">  </span><span class="hl-4">strategiesTested</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">walkerEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">walkerContract</span><span class="hl-1">);</span><br/><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">walkerContract</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This enables consumers to:</p>
+<ul>
+<li>Track live progress: <code>strategiesTested / totalStrategies</code></li>
+<li>See running best: <code>bestStrategy</code>, <code>bestMetric</code></li>
+<li>Access full stats: Complete statistics for current strategy</li>
+</ul>
+<p><strong>Lifecycle Callbacks</strong>:</p>
+<p>The walker supports optional callbacks throughout execution:</p>
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Timing</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onStrategyStart</code></td>
+<td>Before backtest starts</td>
+<td><code>WalkerLogicPrivateService.ts:129-131</code></td>
+</tr>
+<tr>
+<td><code>onStrategyError</code></td>
+<td>On backtest failure</td>
+<td><code>WalkerLogicPrivateService.ts:157-159</code></td>
+</tr>
+<tr>
+<td><code>onStrategyComplete</code></td>
+<td>After successful backtest</td>
+<td><code>WalkerLogicPrivateService.ts:221-228</code></td>
+</tr>
+<tr>
+<td><code>onComplete</code></td>
+<td>After all strategies tested</td>
+<td><code>WalkerLogicPrivateService.ts:254-256</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Final Results Emission</strong>:</p>
+<p>After loop completion, the generator emits comprehensive results:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">finalResults</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">exchangeName</span><span class="hl-1">, </span><span class="hl-4">frameName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">metric</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies:</span><span class="hl-1"> </span><span class="hl-4">strategies</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">bestStats:</span><span class="hl-1"> </span><span class="hl-4">bestStrategy</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1"> </span><br/><span class="hl-1">    ? </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">bestStrategy</span><span class="hl-1">) </span><br/><span class="hl-1">    : </span><span class="hl-7">null</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">walkerCompleteSubject</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">finalResults</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="memory-efficiency-through-streaming" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memory Efficiency Through Streaming<a href="#memory-efficiency-through-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Async generators enable constant memory usage regardless of dataset size by avoiding result accumulation.</p>
+<a id="traditional-array-accumulation-anti-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Traditional Array Accumulation (Anti-Pattern)<a href="#traditional-array-accumulation-anti-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// ❌ Memory grows linearly with signals</span><br/><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">runBacktest_WRONG</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1">[]&gt; {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">results</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1">[] = []; </span><span class="hl-5">// Growing array</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">timeframes</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">); </span><span class="hl-5">// Accumulates in memory</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">results</span><span class="hl-1">; </span><span class="hl-5">// All results held until end</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="generator-based-streaming-actual-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generator-Based Streaming (Actual Implementation)<a href="#generator-based-streaming-actual-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// ✅ Constant memory - yields one result at a time</span><br/><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">timeframes</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">; </span><span class="hl-5">// Consumer processes immediately</span><br/><span class="hl-1">      </span><span class="hl-5">// result is eligible for garbage collection</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The framework's generators maintain constant memory by:</p>
+<ol>
+<li><strong>No result arrays</strong>: Never accumulating closed signals in internal arrays</li>
+<li><strong>Immediate yielding</strong>: Passing results to consumer as soon as available</li>
+<li><strong>Lazy markdown accumulation</strong>: <code>BacktestMarkdownService</code> subscribes to events but limits to 250 events per key: <code>docs/internals.md:101</code></li>
+</ol>
+<a id="memory-usage-comparison" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Usage Comparison<a href="#memory-usage-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Memory Formula</th>
+<th>10K Signals</th>
+<th>100K Signals</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Array accumulation</td>
+<td>O(n) = <code>n * sizeof(result)</code></td>
+<td>~10MB</td>
+<td>~100MB</td>
+</tr>
+<tr>
+<td>Async generator</td>
+<td>O(1) = <code>sizeof(currentResult)</code></td>
+<td>~1KB</td>
+<td>~1KB</td>
+</tr>
+<tr>
+<td>Markdown service</td>
+<td>O(min(n, 250))</td>
+<td>250 events</td>
+<td>250 events</td>
+</tr>
+</tbody>
+</table>
+<p>The generator pattern enables processing multi-year backtests (hundreds of thousands of signals) with minimal memory footprint.</p>
+<hr>
+<a id="early-termination-support" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Early Termination Support<a href="#early-termination-support" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All generators support early termination, allowing consumers to stop execution mid-stream by breaking from the <code>for await</code> loop.</p>
+<a id="consumer-side-termination" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Consumer-Side Termination<a href="#consumer-side-termination" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Consumer can break at any time</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Early exit on loss threshold</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &lt; -</span><span class="hl-6">10</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Generator stops immediately</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>When the consumer breaks:</p>
+<ol>
+<li>Generator's next iteration is never requested</li>
+<li>Generator's <code>finally</code> blocks execute (if any)</li>
+<li>Resources are released</li>
+<li>No further computation occurs</li>
+</ol>
+<a id="producer-side-stop-mechanism" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Producer-Side Stop Mechanism<a href="#producer-side-stop-mechanism" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework also supports <strong>producer-initiated stopping</strong> via <code>getStopped()</code> checks:</p>
+<p><img src="../media/24_async-generator-patterns_4.svg" alt="Mermaid Diagram"></p>
+<a id="backtest-stop-checks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Stop Checks<a href="#backtest-stop-checks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The backtest generator includes three stop checks:</p>
+<table>
+<thead>
+<tr>
+<th>Location</th>
+<th>Condition</th>
+<th>Line Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Before tick</td>
+<td>Always checks before processing frame</td>
+<td><code>BacktestLogicPrivateService.ts:95-110</code></td>
+</tr>
+<tr>
+<td>After idle tick</td>
+<td>Only when no active signal</td>
+<td><code>BacktestLogicPrivateService.ts:132-150</code></td>
+</tr>
+<tr>
+<td>After signal closes</td>
+<td>After yielding closed result</td>
+<td><code>BacktestLogicPrivateService.ts:284-300</code>, <code>BacktestLogicPrivateService.ts:413-430</code></td>
+</tr>
+</tbody>
+</table>
+<p>This ensures:</p>
+<ul>
+<li><strong>Responsive stopping</strong>: Checks on every frame</li>
+<li><strong>Safe termination</strong>: Never stops mid-signal (only when idle or just closed)</li>
+<li><strong>Clean state</strong>: Signal always completes before stopping</li>
+</ul>
+<a id="live-stop-checks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Stop Checks<a href="#live-stop-checks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The live generator includes two conditional checks:</p>
+<table>
+<thead>
+<tr>
+<th>Location</th>
+<th>Condition</th>
+<th>Line Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idle state</td>
+<td>When <code>action === &quot;idle&quot;</code></td>
+<td><code>LiveLogicPrivateService.ts:118-136</code></td>
+</tr>
+<tr>
+<td>After signal closes</td>
+<td>When <code>action === &quot;closed&quot;</code></td>
+<td><code>LiveLogicPrivateService.ts:155-170</code></td>
+</tr>
+</tbody>
+</table>
+<p>The logic ensures graceful shutdown:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">getStopped</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-2">&quot;stopped by user request (after signal closed)&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Only break after position is closed</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="walker-stop-signals" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Stop Signals<a href="#walker-stop-signals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The walker uses a different pattern with pre-filtering:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stoppedStrategies</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Set</span><span class="hl-1">&lt;</span><span class="hl-13">StrategyName</span><span class="hl-1">&gt;();</span><br/><br/><span class="hl-4">walkerStopSubject</span><br/><span class="hl-1">  .</span><span class="hl-0">filter</span><span class="hl-1">((</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">symbol</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1"> === </span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">connect</span><span class="hl-1">((</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">stoppedStrategies</span><span class="hl-1">.</span><span class="hl-0">add</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">));</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategyName</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">strategies</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">stoppedStrategies</span><span class="hl-1">.</span><span class="hl-0">has</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-3">break</span><span class="hl-1">; </span><span class="hl-5">// Skip remaining strategies</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// ... run backtest</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This allows:</p>
+<ul>
+<li><strong>Selective stopping</strong>: Stop specific strategies, not entire walker</li>
+<li><strong>Symbol isolation</strong>: Filter by <code>symbol</code> AND <code>walkerName</code></li>
+<li><strong>No active signal disruption</strong>: Check happens before backtest starts</li>
+</ul>
+<hr>
+<a id="error-handling-in-generators" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling in Generators<a href="#error-handling-in-generators" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Generators implement error handling strategies appropriate to their execution mode, with different levels of fault tolerance.</p>
+<a id="backtest-try-catch-with-continue" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest: Try-Catch with Continue<a href="#backtest-try-catch-with-continue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Backtest mode catches errors during <code>tick()</code> and continues processing:</p>
+<pre><code class="typescript"><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">;</span><br/><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-7">true</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`backtestLogicPrivateService tick failed when=</span><span class="hl-7">${</span><span class="hl-4">when</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;tick failed, skipping timeframe&quot;</span><span class="hl-1">, { </span><span class="hl-4">error</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">i</span><span class="hl-1">++; </span><span class="hl-5">// Skip this frame</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Continue to next frame</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Also catches during candle fetching and <code>backtest()</code> calls:</p>
+<ul>
+<li>Candle fetch error: <code>BacktestLogicPrivateService.ts:179-202</code></li>
+<li>Backtest method error: <code>BacktestLogicPrivateService.ts:222-242</code></li>
+</ul>
+<p>Strategy:</p>
+<ul>
+<li><strong>Non-fatal errors</strong>: Individual frame failures don't stop entire backtest</li>
+<li><strong>Skip and continue</strong>: Move to next timeframe</li>
+<li><strong>Error emission</strong>: Notify listeners via <code>errorEmitter</code></li>
+<li><strong>Logging</strong>: Detailed context for debugging</li>
+</ul>
+<a id="live-try-catch-with-sleep-retry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live: Try-Catch with Sleep-Retry<a href="#live-try-catch-with-sleep-retry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live mode uses a different strategy due to infinite loop:</p>
+<pre><code class="typescript"><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">;</span><br/><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-7">false</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`liveLogicPrivateService tick failed when=</span><span class="hl-7">${</span><span class="hl-4">when</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;tick failed, retrying after sleep&quot;</span><span class="hl-1">, { </span><span class="hl-4">error</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">); </span><span class="hl-5">// Wait before retry</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Retry on next iteration</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Strategy:</p>
+<ul>
+<li><strong>Transient error tolerance</strong>: Assumes errors are temporary (network, API limits)</li>
+<li><strong>Sleep before retry</strong>: <code>TICK_TTL</code> delay prevents tight error loops</li>
+<li><strong>Never terminates</strong>: Infinite loop continues despite errors</li>
+<li><strong>Suitable for live trading</strong>: Brief API outages don't kill the process</li>
+</ul>
+<a id="walker-try-catch-with-skip-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker: Try-Catch with Skip Strategy<a href="#walker-try-catch-with-skip-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker mode catches errors during individual strategy backtests:</p>
+<pre><code class="typescript"><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">resolveDocuments</span><span class="hl-1">(</span><span class="hl-4">iterator</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`walkerLogicPrivateService backtest failed strategyName=</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;backtest failed for strategy, skipping&quot;</span><span class="hl-1">, { </span><span class="hl-4">error</span><span class="hl-1"> });</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">errorEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">callbacks</span><span class="hl-1">?.</span><span class="hl-4">onStrategyError</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">walkerSchema</span><span class="hl-1">.</span><span class="hl-4">callbacks</span><span class="hl-1">.</span><span class="hl-0">onStrategyError</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Skip this strategy, continue to next</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Strategy:</p>
+<ul>
+<li><strong>Isolation</strong>: One strategy failure doesn't affect others</li>
+<li><strong>Callback notification</strong>: <code>onStrategyError</code> allows custom handling</li>
+<li><strong>Skip and continue</strong>: Move to next strategy</li>
+<li><strong>Comparison integrity</strong>: Best strategy still calculated from successful runs</li>
+</ul>
+<a id="error-event-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Event Flow<a href="#error-event-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All three modes follow this pattern:</p>
+<p><img src="../media/24_async-generator-patterns_5.svg" alt="Mermaid Diagram"></p>
+<ul>
+<li><strong>Local logging</strong>: <code>loggerService</code> records context</li>
+<li><strong>Global emission</strong>: <code>errorEmitter</code> broadcasts to subscribers</li>
+<li><strong>User notification</strong>: <code>listenError()</code> callbacks can handle errors: <code>docs/internals.md:87</code></li>
+</ul>
+<hr>
+<a id="context-propagation-through-generators" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Propagation Through Generators<a href="#context-propagation-through-generators" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All generator patterns integrate with the framework's context services to propagate ambient information without explicit parameter threading.</p>
+<a id="context-service-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Service Integration<a href="#context-service-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/24_async-generator-patterns_6.svg" alt="Mermaid Diagram"></p>
+<a id="public-logic-layer-method-context-setup" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Public Logic Layer: Method Context Setup<a href="#public-logic-layer-method-context-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Public services wrap private generators with context initialization:</p>
+<p><strong>BacktestLogicPublicService</strong>:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">async</span><span class="hl-1"> *</span><span class="hl-0">run</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: { </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">; </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">; </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">; }</span><br/><span class="hl-1">): </span><span class="hl-4">AsyncGenerator</span><span class="hl-1">&lt;</span><span class="hl-4">IStrategyBacktestResult</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  yield* this.methodContextService.runInContext(</span><span class="hl-0">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-13">return</span><span class="hl-1"> </span><span class="hl-13">this</span><span class="hl-1">.</span><span class="hl-13">backtestLogicPrivateService</span><span class="hl-1">.</span><span class="hl-13">run</span><span class="hl-1">(</span><span class="hl-13">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">  }, context);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This sets <code>MethodContext</code> containing:</p>
+<ul>
+<li><code>strategyName</code>: Strategy being executed</li>
+<li><code>exchangeName</code>: Exchange for data fetching</li>
+<li><code>frameName</code>: Timeframe definition (backtest only)</li>
+</ul>
+<a id="private-logic-layer-execution-context-per-tick" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Private Logic Layer: Execution Context per Tick<a href="#private-logic-layer-execution-context-per-tick" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Private services set <code>ExecutionContext</code> for each tick/frame:</p>
+<p><strong>BacktestLogicPrivateService</strong> implicitly via <code>strategyCoreService.tick()</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// StrategyCoreService internally does:</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">.</span><span class="hl-0">runInContext</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">).</span><span class="hl-0">tick</span><span class="hl-1">();</span><br/><span class="hl-1">}, { </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-4">backtest:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This sets <code>ExecutionContext</code> containing:</p>
+<ul>
+<li><code>symbol</code>: Current trading pair</li>
+<li><code>when</code>: Current timestamp (historical or real-time)</li>
+<li><code>backtest</code>: Boolean flag for mode detection</li>
+</ul>
+<a id="accessing-context-within-generators" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Accessing Context Within Generators<a href="#accessing-context-within-generators" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Context is available throughout the call stack without passing parameters:</p>
+<pre><code class="typescript"><span class="hl-5">// In BacktestLogicPrivateService</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">progressBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-5">// From parameter</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="typescript"><span class="hl-5">// In ClientStrategy (deep in call stack)</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">count</span><span class="hl-1">);</span><br/><span class="hl-5">// getCandles internally uses:</span><br/><span class="hl-5">// - executionContextService.context.symbol</span><br/><span class="hl-5">// - executionContextService.context.when</span><br/><span class="hl-5">// - methodContextService.context.exchangeName</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="benefits-for-generator-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Benefits for Generator Pattern<a href="#benefits-for-generator-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Context propagation enables generators to:</p>
+<ol>
+<li><strong>Avoid parameter drilling</strong>: No need to pass <code>strategyName</code>, <code>exchangeName</code> through every function</li>
+<li><strong>Maintain clean signatures</strong>: Generator methods have minimal parameters</li>
+<li><strong>Support nested calls</strong>: Context automatically flows to all nested services</li>
+<li><strong>Enable lazy initialization</strong>: Services can access context when needed</li>
+</ol>
+<hr>
+<a id="yield-semantics-and-consumer-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Yield Semantics and Consumer Patterns<a href="#yield-semantics-and-consumer-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Generators use the <code>yield</code> keyword to pass values to consumers, with different semantics for each mode.</p>
+<a id="backtest-yield-closed-signals-only" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest: Yield Closed Signals Only<a href="#backtest-yield-closed-signals-only" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Backtest mode yields only when signals close:</p>
+<pre><code class="typescript"><span class="hl-5">// Opens signal → fetches candles → calls backtest() → yields result</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// ... fetch candles, call backtest()</span><br/><span class="hl-1">  </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">backtestResult</span><span class="hl-1">; </span><span class="hl-5">// Always IStrategyBacktestResult (closed)</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;scheduled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// ... fetch candles, call backtest()</span><br/><span class="hl-1">  </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">backtestResult</span><span class="hl-1">; </span><span class="hl-5">// IStrategyBacktestResult (closed or cancelled)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Type</strong>: <code>AsyncGenerator&lt;IStrategyBacktestResult&gt;</code></p>
+<p><strong>Yielded results</strong>:</p>
+<ul>
+<li><code>IStrategyBacktestResult</code> with <code>action: &quot;closed&quot;</code> or <code>action: &quot;cancelled&quot;</code></li>
+<li>Contains full signal with PNL calculation</li>
+<li>One yield per signal lifecycle</li>
+</ul>
+<p><strong>Consumer pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-5">// result is always closed</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">); </span><span class="hl-5">// &quot;take_profit&quot; | &quot;stop_loss&quot; | &quot;time_expired&quot;</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-yield-opened-and-closed" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live: Yield Opened and Closed<a href="#live-yield-opened-and-closed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live mode yields at signal boundaries:</p>
+<pre><code class="typescript"><span class="hl-5">// Skip idle/active/scheduled</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;idle&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Don&#39;t yield</span><br/><span class="hl-1">}</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;active&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Don&#39;t yield</span><br/><span class="hl-1">}</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;scheduled&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">continue</span><span class="hl-1">; </span><span class="hl-5">// Don&#39;t yield</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Yield opened and closed</span><br/><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1"> </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1"> | </span><span class="hl-13">IStrategyTickResultOpened</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Type</strong>: <code>AsyncGenerator&lt;IStrategyTickResultClosed | IStrategyTickResultOpened&gt;</code></p>
+<p><strong>Yielded results</strong>:</p>
+<ul>
+<li><code>IStrategyTickResultOpened</code>: Signal just activated</li>
+<li><code>IStrategyTickResultClosed</code>: Signal closed with PNL</li>
+</ul>
+<p><strong>Consumer pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">live</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;New signal:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Send Telegram notification</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;PNL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Log trade to database</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="walker-yield-per-strategy-completion" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker: Yield Per Strategy Completion<a href="#walker-yield-per-strategy-completion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker mode yields after each strategy test:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategyName</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">strategies</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// ... run backtest for strategy</span><br/><span class="hl-1">  </span><span class="hl-5">// ... calculate stats</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">walkerContract</span><span class="hl-1">: </span><span class="hl-13">WalkerContract</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">stats</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">metricValue</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">bestMetric</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">bestStrategy</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategiesTested</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">totalStrategies</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">// ...</span><br/><span class="hl-1">  };</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">walkerEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">walkerContract</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">walkerContract</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Type</strong>: <code>AsyncGenerator&lt;WalkerContract&gt;</code></p>
+<p><strong>Yielded results</strong>:</p>
+<ul>
+<li><code>WalkerContract</code>: Contains stats for just-completed strategy</li>
+<li>Includes running best: <code>bestStrategy</code>, <code>bestMetric</code></li>
+<li>Progress tracking: <code>strategiesTested / totalStrategies</code></li>
+</ul>
+<p><strong>Consumer pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">progress</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">walker</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategiesTested</span><span class="hl-7">}</span><span class="hl-2">/</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">totalStrategies</span><span class="hl-7">}</span><span class="hl-2">]`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Strategy: </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Metric: </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">metricValue</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Best so far: </span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestStrategy</span><span class="hl-7">}</span><span class="hl-2"> (</span><span class="hl-7">${</span><span class="hl-4">progress</span><span class="hl-9">.</span><span class="hl-4">bestMetric</span><span class="hl-7">}</span><span class="hl-2">)`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="yield-vs-emit-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Yield vs Emit Pattern<a href="#yield-vs-emit-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses both <code>yield</code> (generator protocol) and event emission:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Purpose</th>
+<th>Persistence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>yield</code></td>
+<td>Return value to consumer</td>
+<td>Consumed once</td>
+</tr>
+<tr>
+<td><code>await emitter.next()</code></td>
+<td>Broadcast event</td>
+<td>Multiple subscribers</td>
+</tr>
+</tbody>
+</table>
+<p>Generators yield <strong>and</strong> emit:</p>
+<pre><code class="typescript"><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">backtestResult</span><span class="hl-1">; </span><span class="hl-5">// Consumer gets result</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">backtestResult</span><span class="hl-1">); </span><span class="hl-5">// Event subscribers notified</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This dual approach enables:</p>
+<ul>
+<li><strong>Consumer control</strong>: Generator consumer gets direct results</li>
+<li><strong>Observability</strong>: Event listeners (markdown services) can monitor independently</li>
+<li><strong>Decoupling</strong>: Consumer and observers are independent</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#async-generator-patterns"><span>Async <wbr/>Generator <wbr/>Patterns</span></a><ul><li><a href="#overview-generator-based-architecture"><span>Overview: <wbr/>Generator-<wbr/>Based <wbr/>Architecture</span></a></li><li><a href="#generator-types-finite-vs-infinite"><span>Generator <wbr/>Types: <wbr/>Finite vs <wbr/>Infinite</span></a></li><li><ul><li><a href="#finite-generators-backtest-walker"><span>Finite <wbr/>Generators (<wbr/>Backtest, <wbr/>Walker)</span></a></li><li><a href="#infinite-generators-live"><span>Infinite <wbr/>Generators (<wbr/>Live)</span></a></li></ul></li><li><a href="#backtest-generator-timeframe-iteration-with-fast-skip"><span>Backtest <wbr/>Generator: <wbr/>Timeframe <wbr/>Iteration with <wbr/>Fast <wbr/>Skip</span></a></li><li><ul><li><a href="#key-implementation-details"><span>Key <wbr/>Implementation <wbr/>Details</span></a></li></ul></li><li><a href="#live-generator-infinite-loop-with-real-time-polling"><span>Live <wbr/>Generator: <wbr/>Infinite <wbr/>Loop with <wbr/>Real-<wbr/>Time <wbr/>Polling</span></a></li><li><ul><li><a href="#key-implementation-details-1"><span>Key <wbr/>Implementation <wbr/>Details</span></a></li></ul></li><li><a href="#walker-generator-progressive-strategy-comparison"><span>Walker <wbr/>Generator: <wbr/>Progressive <wbr/>Strategy <wbr/>Comparison</span></a></li><li><ul><li><a href="#key-implementation-details-2"><span>Key <wbr/>Implementation <wbr/>Details</span></a></li></ul></li><li><a href="#memory-efficiency-through-streaming"><span>Memory <wbr/>Efficiency <wbr/>Through <wbr/>Streaming</span></a></li><li><ul><li><a href="#traditional-array-accumulation-anti-pattern"><span>Traditional <wbr/>Array <wbr/>Accumulation (<wbr/>Anti-<wbr/>Pattern)</span></a></li><li><a href="#generator-based-streaming-actual-implementation"><span>Generator-<wbr/>Based <wbr/>Streaming (<wbr/>Actual <wbr/>Implementation)</span></a></li><li><a href="#memory-usage-comparison"><span>Memory <wbr/>Usage <wbr/>Comparison</span></a></li></ul></li><li><a href="#early-termination-support"><span>Early <wbr/>Termination <wbr/>Support</span></a></li><li><ul><li><a href="#consumer-side-termination"><span>Consumer-<wbr/>Side <wbr/>Termination</span></a></li><li><a href="#producer-side-stop-mechanism"><span>Producer-<wbr/>Side <wbr/>Stop <wbr/>Mechanism</span></a></li><li><a href="#backtest-stop-checks"><span>Backtest <wbr/>Stop <wbr/>Checks</span></a></li><li><a href="#live-stop-checks"><span>Live <wbr/>Stop <wbr/>Checks</span></a></li><li><a href="#walker-stop-signals"><span>Walker <wbr/>Stop <wbr/>Signals</span></a></li></ul></li><li><a href="#error-handling-in-generators"><span>Error <wbr/>Handling in <wbr/>Generators</span></a></li><li><ul><li><a href="#backtest-try-catch-with-continue"><span>Backtest: <wbr/>Try-<wbr/>Catch with <wbr/>Continue</span></a></li><li><a href="#live-try-catch-with-sleep-retry"><span>Live: <wbr/>Try-<wbr/>Catch with <wbr/>Sleep-<wbr/>Retry</span></a></li><li><a href="#walker-try-catch-with-skip-strategy"><span>Walker: <wbr/>Try-<wbr/>Catch with <wbr/>Skip <wbr/>Strategy</span></a></li><li><a href="#error-event-flow"><span>Error <wbr/>Event <wbr/>Flow</span></a></li></ul></li><li><a href="#context-propagation-through-generators"><span>Context <wbr/>Propagation <wbr/>Through <wbr/>Generators</span></a></li><li><ul><li><a href="#context-service-integration"><span>Context <wbr/>Service <wbr/>Integration</span></a></li><li><a href="#public-logic-layer-method-context-setup"><span>Public <wbr/>Logic <wbr/>Layer: <wbr/>Method <wbr/>Context <wbr/>Setup</span></a></li><li><a href="#private-logic-layer-execution-context-per-tick"><span>Private <wbr/>Logic <wbr/>Layer: <wbr/>Execution <wbr/>Context per <wbr/>Tick</span></a></li><li><a href="#accessing-context-within-generators"><span>Accessing <wbr/>Context <wbr/>Within <wbr/>Generators</span></a></li><li><a href="#benefits-for-generator-pattern"><span>Benefits for <wbr/>Generator <wbr/>Pattern</span></a></li></ul></li><li><a href="#yield-semantics-and-consumer-patterns"><span>Yield <wbr/>Semantics and <wbr/>Consumer <wbr/>Patterns</span></a></li><li><ul><li><a href="#backtest-yield-closed-signals-only"><span>Backtest: <wbr/>Yield <wbr/>Closed <wbr/>Signals <wbr/>Only</span></a></li><li><a href="#live-yield-opened-and-closed"><span>Live: <wbr/>Yield <wbr/>Opened and <wbr/>Closed</span></a></li><li><a href="#walker-yield-per-strategy-completion"><span>Walker: <wbr/>Yield <wbr/>Per <wbr/>Strategy <wbr/>Completion</span></a></li><li><a href="#yield-vs-emit-pattern"><span>Yield vs <wbr/>Emit <wbr/>Pattern</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

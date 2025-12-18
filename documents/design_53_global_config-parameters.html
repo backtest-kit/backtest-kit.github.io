@@ -1,0 +1,385 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/53_global_config-parameters | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_53_global_config-parameters.html">design/53_global_config-parameters</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="global_config-parameters" class="tsd-anchor"></a><h1 class="tsd-anchor-link">GLOBAL_CONFIG Parameters<a href="#global_config-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents all configuration parameters in the <code>GLOBAL_CONFIG</code> object, which controls system-wide behavior including trading execution, signal validation, data fetching, anomaly detection, and reporting. These parameters provide critical safeguards to prevent unprofitable trades, data corruption, and system instability.</p>
+<p>For information about customizing report columns, see <a href="design_52_configuration-reference.html">Column Configuration</a>. For logger configuration, see <a href="design_52_configuration-reference.html">Logger Configuration</a>. For strategy-level configuration, see <a href="design_25_strategy-development.html">Strategy Schema Definition</a>.</p>
+<hr>
+<a id="configuration-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Architecture<a href="#configuration-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/53_global_config-parameters_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Configuration Flow Overview</strong></p>
+<p>The <code>GLOBAL_CONFIG</code> object serves as the single source of truth for system-wide parameters. Parameters are enforced at multiple layers: signal validation (before execution), execution (during trading), and data fetching (during candle retrieval). The <code>setConfig()</code> function allows runtime modification, with optional reset to <code>DEFAULT_CONFIG</code>.</p>
+<hr>
+<a id="accessing-and-modifying-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Accessing and Modifying Configuration<a href="#accessing-and-modifying-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="reading-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Reading Configuration<a href="#reading-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">GLOBAL_CONFIG</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Read current values</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">feePercent</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">minTPDistance</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="modifying-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Modifying Configuration<a href="#modifying-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Partial update (merge with existing)</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.15</span><span class="hl-1">,  </span><span class="hl-5">// Increase fees</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.2</span><span class="hl-1">,  </span><span class="hl-5">// Increase slippage</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Full reset to defaults, then apply</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">1.0</span><span class="hl-1">,</span><br/><span class="hl-1">}, </span><span class="hl-7">true</span><span class="hl-1">);  </span><span class="hl-5">// true = reset to defaults first</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Important:</strong> Configuration changes affect all subsequent signal validations and executions. Changes do not affect already-opened signals.</p>
+<hr>
+<a id="parameter-categories" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameter Categories<a href="#parameter-categories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="trading-execution-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Trading Execution Parameters<a href="#trading-execution-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Description</th>
+<th>Applied When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_PERCENT_FEE</code></td>
+<td><code>0.1</code></td>
+<td>Fee percentage per transaction (0.1% = 10 basis points). Applied twice: entry and exit, total 0.2%.</td>
+<td>PNL calculation on signal close</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_SLIPPAGE</code></td>
+<td><code>0.1</code></td>
+<td>Slippage percentage per transaction (0.1% = 10 basis points). Simulates market impact and order book depth. Applied twice: entry and exit, total ~0.2%.</td>
+<td>PNL calculation on signal close</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cost Calculation Formula:</strong></p>
+<pre><code><span class="hl-8">LONG</span><span class="hl-1"> </span><span class="hl-8">PNL</span><span class="hl-1"> = ((</span><span class="hl-4">priceClose</span><span class="hl-1"> / </span><span class="hl-4">priceOpen</span><span class="hl-1">) - </span><span class="hl-6">1</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-1">         - (</span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1"> * </span><span class="hl-6">2</span><span class="hl-1">)</span><br/><span class="hl-1">         - (</span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1"> * </span><span class="hl-6">2</span><span class="hl-1">)</span><br/><br/><span class="hl-8">SHORT</span><span class="hl-1"> </span><span class="hl-8">PNL</span><span class="hl-1"> = ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> / </span><span class="hl-4">priceClose</span><span class="hl-1">) - </span><span class="hl-6">1</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-1">          - (</span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1"> * </span><span class="hl-6">2</span><span class="hl-1">)</span><br/><span class="hl-1">          - (</span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1"> * </span><span class="hl-6">2</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Example:</strong> LONG entry at $42,000, exit at $43,000:</p>
+<ul>
+<li>Gross profit: +2.38%</li>
+<li>Fees (2 × 0.1%): -0.2%</li>
+<li>Slippage (2 × 0.1%): -0.2%</li>
+<li><strong>Net profit: ~1.98%</strong></li>
+</ul>
+<hr>
+<a id="signal-validation-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Validation Parameters<a href="#signal-validation-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>These parameters enforce minimum quality standards for signals, preventing unprofitable or catastrophic trades.</p>
+<p><img src="../media/53_global_config-parameters_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>7-Stage Signal Validation Pipeline</strong></p>
+<p>Every signal passes through seven validation stages before execution. Any failure results in immediate rejection with error logging and risk event emission.</p>
+<hr>
+<a id="cc_min_takeprofit_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT<a href="#cc_min_takeprofit_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>0.5</code><br>
+<strong>Unit:</strong> Percentage (0.5 = 0.5%)<br>
+<strong>Purpose:</strong> Ensures TakeProfit is far enough from <code>priceOpen</code> to cover transaction costs and provide minimum profit margin.</p>
+<p><strong>Calculation:</strong></p>
+<pre><code><span class="hl-10">LONG</span><span class="hl-1">:   </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-10">SHORT</span><span class="hl-1">:  </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><br/><span class="hl-4">Must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> &gt;= </span><span class="hl-8">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Rationale:</strong></p>
+<ul>
+<li>Slippage effect: ~0.2% (0.1% × 2 transactions)</li>
+<li>Fees: 0.2% (0.1% × 2 transactions)</li>
+<li>Minimum profit buffer: 0.1%</li>
+<li><strong>Total: 0.5%</strong></li>
+</ul>
+<p><strong>Example Validation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// REJECTED: TP too close</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">42010</span><span class="hl-1">,  </span><span class="hl-5">// Only 0.024% distance - fails validation</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ACCEPTED: TP covers costs</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">42210</span><span class="hl-1">,  </span><span class="hl-5">// 0.5% distance - passes validation</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Test Coverage:</strong> <code>test/e2e/sanitize.test.mjs:27-122</code> demonstrates rejection of micro-profit signals (0.024% TP distance).</p>
+<hr>
+<a id="cc_min_stoploss_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MIN_STOPLOSS_DISTANCE_PERCENT<a href="#cc_min_stoploss_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>0.5</code><br>
+<strong>Unit:</strong> Percentage (0.5 = 0.5%)<br>
+<strong>Purpose:</strong> Prevents signals from being immediately stopped out due to normal price volatility.</p>
+<p><strong>Calculation:</strong></p>
+<pre><code><span class="hl-10">LONG</span><span class="hl-1">:   </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-10">SHORT</span><span class="hl-1">:  </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><br/><span class="hl-4">Must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> &gt;= </span><span class="hl-8">CC_MIN_STOPLOSS_DISTANCE_PERCENT</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Rationale:</strong> Normal market fluctuations can move price ±0.3% without trend change. A 0.5% minimum prevents &quot;instant stop-out&quot; scenarios where price briefly touches SL on noise.</p>
+<hr>
+<a id="cc_max_stoploss_distance_percent" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MAX_STOPLOSS_DISTANCE_PERCENT<a href="#cc_max_stoploss_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>20</code><br>
+<strong>Unit:</strong> Percentage (20 = 20%)<br>
+<strong>Purpose:</strong> Prevents catastrophic losses from extreme StopLoss values that could destroy portfolio.</p>
+<p><strong>Calculation:</strong></p>
+<pre><code><span class="hl-10">LONG</span><span class="hl-1">:   </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-10">SHORT</span><span class="hl-1">:  </span><span class="hl-4">distance</span><span class="hl-1"> = ((</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><br/><span class="hl-4">Must</span><span class="hl-1"> </span><span class="hl-4">be</span><span class="hl-1"> &lt;= </span><span class="hl-8">CC_MAX_STOPLOSS_DISTANCE_PERCENT</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Example Validation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// REJECTED: SL too far</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">20000</span><span class="hl-1">,  </span><span class="hl-5">// -52% risk - CATASTROPHIC!</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ACCEPTED: Reasonable SL</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">34000</span><span class="hl-1">,  </span><span class="hl-5">// -19% risk - within 20% limit</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Test Coverage:</strong> <code>test/e2e/sanitize.test.mjs:134-229</code> demonstrates rejection of extreme StopLoss (-52% risk).</p>
+<hr>
+<a id="cc_max_signal_lifetime_minutes" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MAX_SIGNAL_LIFETIME_MINUTES<a href="#cc_max_signal_lifetime_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>1440</code><br>
+<strong>Unit:</strong> Minutes (1440 = 1 day)<br>
+<strong>Purpose:</strong> Prevents &quot;eternal signals&quot; that block risk limits for extended periods, causing strategy deadlock.</p>
+<p><strong>Validation:</strong></p>
+<pre><code><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> &lt;= </span><span class="hl-8">CC_MAX_SIGNAL_LIFETIME_MINUTES</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Problem Scenario:</strong></p>
+<ul>
+<li>Signal with <code>minuteEstimatedTime: 50000</code> (34+ days)</li>
+<li>Blocks risk limit for entire month</li>
+<li>No new signals can open while this one is active</li>
+<li>Strategy effectively dead for 30+ days</li>
+</ul>
+<p><strong>Example Validation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// REJECTED: Excessive lifetime</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-6">50000</span><span class="hl-1">,  </span><span class="hl-5">// 34+ days - REJECTED</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ACCEPTED: Reasonable lifetime</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">position</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceOpen</span><span class="hl-1">: </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceTakeProfit</span><span class="hl-1">: </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">priceStopLoss</span><span class="hl-1">: </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">minuteEstimatedTime</span><span class="hl-1">: </span><span class="hl-6">1440</span><span class="hl-1">,  </span><span class="hl-5">// 1 day - ACCEPTED</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Test Coverage:</strong> <code>test/e2e/sanitize.test.mjs:241-339</code> demonstrates rejection of excessive lifetime (50,000 minutes).</p>
+<hr>
+<a id="cc_schedule_await_minutes" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_SCHEDULE_AWAIT_MINUTES<a href="#cc_schedule_await_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>120</code><br>
+<strong>Unit:</strong> Minutes (120 = 2 hours)<br>
+<strong>Purpose:</strong> Maximum time a scheduled signal waits for <code>priceOpen</code> activation before automatic cancellation.</p>
+<p><strong>Behavior:</strong></p>
+<pre><code><span class="hl-4">When</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-4">becomes</span><span class="hl-1"> </span><span class="hl-10">scheduled</span><span class="hl-1">:</span><br/><span class="hl-1">  </span><span class="hl-4">scheduledAt</span><span class="hl-1"> = </span><span class="hl-4">timestamp</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">scheduling</span><br/><span class="hl-1">  </span><br/><span class="hl-4">On</span><span class="hl-1"> </span><span class="hl-4">each</span><span class="hl-1"> </span><span class="hl-10">tick</span><span class="hl-1">:</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">scheduledAt</span><span class="hl-1"> &gt; </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-6">60000</span><span class="hl-1">):</span><br/><span class="hl-1">    </span><span class="hl-4">Cancel</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1"> </span><span class="hl-3">with</span><span class="hl-1"> </span><span class="hl-10">reason</span><span class="hl-1">: </span><span class="hl-2">&quot;time_expired&quot;</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Use Case:</strong> Prevents scheduled signals from waiting indefinitely if market moves away from <code>priceOpen</code> entry level.</p>
+<hr>
+<a id="cc_max_signal_generation_seconds" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_MAX_SIGNAL_GENERATION_SECONDS<a href="#cc_max_signal_generation_seconds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>180</code><br>
+<strong>Unit:</strong> Seconds (180 = 3 minutes)<br>
+<strong>Purpose:</strong> Maximum execution time for <code>getSignal</code> function. Prevents long-running or stuck signal generation routines from blocking system.</p>
+<p><strong>Note:</strong> This timeout is documented but enforcement depends on execution environment. Used primarily for monitoring and alerting.</p>
+<hr>
+<a id="data-fetching-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Fetching Parameters<a href="#data-fetching-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Parameters controlling <code>Exchange.getCandles()</code> retry logic and VWAP calculation.</p>
+<p><img src="../media/53_global_config-parameters_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Retry Logic Flow</strong></p>
+<p>Candle fetching uses exponential backoff with configurable retry count and delay. Maximum 3 attempts by default before failure.</p>
+<hr>
+<a id="cc_get_candles_retry_count" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_RETRY_COUNT<a href="#cc_get_candles_retry_count" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>3</code><br>
+<strong>Unit:</strong> Count (integer)<br>
+<strong>Purpose:</strong> Number of retry attempts for <code>Exchange.getCandles()</code> before failing.</p>
+<p><strong>Behavior:</strong></p>
+<pre><code class="typescript"><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">attempts</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-4">attempts</span><span class="hl-1"> &lt; </span><span class="hl-8">CC_GET_CANDLES_RETRY_COUNT</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">getCandles</span><span class="hl-1">(...);</span><br/><span class="hl-1">  } </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">attempts</span><span class="hl-1">++;</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">attempts</span><span class="hl-1"> &gt;= </span><span class="hl-8">CC_GET_CANDLES_RETRY_COUNT</span><span class="hl-1">) </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-4">error</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">CC_GET_CANDLES_RETRY_DELAY_MS</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Case:</strong> Handles transient network errors, API rate limits, and temporary exchange downtime.</p>
+<p><strong>Test Configuration:</strong> <code>test/config/setup.mjs:98</code> sets this to <code>1</code> in tests for speed.</p>
+<hr>
+<a id="cc_get_candles_retry_delay_ms" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_RETRY_DELAY_MS<a href="#cc_get_candles_retry_delay_ms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>5000</code><br>
+<strong>Unit:</strong> Milliseconds (5000 = 5 seconds)<br>
+<strong>Purpose:</strong> Delay between retry attempts for <code>Exchange.getCandles()</code>.</p>
+<p><strong>Rationale:</strong> 5-second delay allows exchange APIs to recover from rate limiting or temporary errors without hammering the endpoint.</p>
+<p><strong>Test Configuration:</strong> <code>test/config/setup.mjs:99</code> sets this to <code>100</code> (100ms) in tests for speed.</p>
+<hr>
+<a id="cc_avg_price_candles_count" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_AVG_PRICE_CANDLES_COUNT<a href="#cc_avg_price_candles_count" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>5</code><br>
+<strong>Unit:</strong> Count (integer, candles)<br>
+<strong>Purpose:</strong> Number of 1-minute candles used for VWAP (Volume Weighted Average Price) calculation.</p>
+<p><strong>VWAP Calculation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Fetch last 5 1-minute candles</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">exchange</span><span class="hl-1">.</span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-4">since</span><span class="hl-1">, </span><span class="hl-6">5</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Calculate VWAP</span><br/><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">totalVolume</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">weightedSum</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candle</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">midPrice</span><span class="hl-1"> = (</span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1"> + </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1">) / </span><span class="hl-6">2</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">weightedSum</span><span class="hl-1"> += </span><span class="hl-4">midPrice</span><span class="hl-1"> * </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">volume</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalVolume</span><span class="hl-1"> += </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">volume</span><span class="hl-1">;</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">vwap</span><span class="hl-1"> = </span><span class="hl-4">totalVolume</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> </span><br/><span class="hl-1">  ? </span><span class="hl-4">weightedSum</span><span class="hl-1"> / </span><span class="hl-4">totalVolume</span><span class="hl-1"> </span><br/><span class="hl-1">  : </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">).</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">a</span><span class="hl-1">,</span><span class="hl-4">b</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">a</span><span class="hl-1">+</span><span class="hl-4">b</span><span class="hl-1">) / </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Fallback:</strong> If <code>totalVolume === 0</code>, uses simple average of close prices.</p>
+<p><strong>Test Coverage:</strong> <code>test/e2e/edge.test.mjs:148-283</code> tests VWAP calculation with zero volume.</p>
+<hr>
+<a id="anomaly-detection-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Anomaly Detection Parameters<a href="#anomaly-detection-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Parameters for detecting and rejecting incomplete or corrupted candle data from exchanges.</p>
+<a id="cc_get_candles_price_anomaly_threshold_factor" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR<a href="#cc_get_candles_price_anomaly_threshold_factor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>1000</code><br>
+<strong>Unit:</strong> Factor (multiplier)<br>
+<strong>Purpose:</strong> Maximum allowed deviation factor for price anomaly detection. Rejects candles with prices more than <code>1/factor</code> below the reference price.</p>
+<p><strong>Algorithm:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Calculate reference price (median or average)</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">prices</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">flatMap</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> [</span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">]);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">referencePrice</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt;= </span><span class="hl-8">CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</span><br/><span class="hl-1">  ? </span><span class="hl-0">median</span><span class="hl-1">(</span><span class="hl-4">prices</span><span class="hl-1">)</span><br/><span class="hl-1">  : </span><span class="hl-0">average</span><span class="hl-1">(</span><span class="hl-4">prices</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Calculate threshold</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">threshold</span><span class="hl-1"> = </span><span class="hl-4">referencePrice</span><span class="hl-1"> / </span><span class="hl-8">CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Validate each candle</span><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candle</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">open</span><span class="hl-1"> &lt; </span><span class="hl-4">threshold</span><span class="hl-1"> || </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1"> &lt; </span><span class="hl-4">threshold</span><span class="hl-1"> || </span><br/><span class="hl-1">      </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1"> &lt; </span><span class="hl-4">threshold</span><span class="hl-1"> || </span><span class="hl-4">candle</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1"> &lt; </span><span class="hl-4">threshold</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Anomalously low price detected`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Reasoning:</strong></p>
+<ul>
+<li>Incomplete candles from Binance API typically have prices near $0.01-$1</li>
+<li>Normal BTC price ranges: $20,000-$100,000</li>
+<li>Factor 1000 catches prices below $20-$100 when median is $20,000-$100,000</li>
+<li>Factor 100 would be too permissive (allows $200 when median is $20,000)</li>
+<li>Factor 10,000 might be too strict for low-cap altcoins</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Normal candles: BTC at $50,000</span><br/><span class="hl-5">// referencePrice = $50,000</span><br/><span class="hl-5">// threshold = $50,000 / 1000 = $50</span><br/><span class="hl-5">// Any price &lt; $50 is rejected</span><br/><br/><span class="hl-5">// Incomplete candle: open=$0.10, high=$0.12, low=$0.08, close=$0.10</span><br/><span class="hl-5">// All prices &lt; $50 → REJECTED</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Test Coverage:</strong> <code>test/e2e/sanitize.test.mjs:666-784</code> tests rejection of incomplete Binance candles with anomalous prices ($0.1 vs $42,000 median).</p>
+<hr>
+<a id="cc_get_candles_min_candles_for_median" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN<a href="#cc_get_candles_min_candles_for_median" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>5</code><br>
+<strong>Unit:</strong> Count (integer, candles)<br>
+<strong>Purpose:</strong> Minimum number of candles required for reliable median calculation. Below this threshold, uses simple average instead.</p>
+<p><strong>Statistical Reasoning:</strong></p>
+<ul>
+<li>Each candle provides 4 price points (OHLC)</li>
+<li>5 candles = 20 price points, sufficient for robust median calculation</li>
+<li>Below 5 candles, single anomaly can heavily skew median</li>
+<li>Statistical rule of thumb: minimum 7-10 data points for median stability</li>
+<li>Average is more stable than median for small datasets (n &lt; 20)</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt;= </span><span class="hl-6">5</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Use median (more robust to outliers)</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">prices</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">flatMap</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> [</span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">]);</span><br/><span class="hl-1">  </span><span class="hl-4">referencePrice</span><span class="hl-1"> = </span><span class="hl-0">median</span><span class="hl-1">(</span><span class="hl-4">prices</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">else</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Use average (more stable for small datasets)</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">prices</span><span class="hl-1"> = </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">flatMap</span><span class="hl-1">(</span><span class="hl-4">c</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> [</span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">open</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">high</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">low</span><span class="hl-1">, </span><span class="hl-4">c</span><span class="hl-1">.</span><span class="hl-4">close</span><span class="hl-1">]);</span><br/><span class="hl-1">  </span><span class="hl-4">referencePrice</span><span class="hl-1"> = </span><span class="hl-0">average</span><span class="hl-1">(</span><span class="hl-4">prices</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="reporting-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Reporting Parameters<a href="#reporting-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Parameters controlling markdown report generation and output formatting.</p>
+<a id="cc_report_show_signal_note" class="tsd-anchor"></a><h4 class="tsd-anchor-link">CC_REPORT_SHOW_SIGNAL_NOTE<a href="#cc_report_show_signal_note" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Default:</strong> <code>false</code><br>
+<strong>Type:</strong> Boolean<br>
+<strong>Purpose:</strong> Controls visibility of the &quot;Note&quot; column in markdown report tables.</p>
+<p><strong>Behavior:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// When CC_REPORT_SHOW_SIGNAL_NOTE = false (default)</span><br/><span class="hl-5">// Report columns: Symbol | Position | Entry | Exit | PNL | ...</span><br/><br/><span class="hl-5">// When CC_REPORT_SHOW_SIGNAL_NOTE = true</span><br/><span class="hl-5">// Report columns: Symbol | Position | Entry | Exit | PNL | Note | ...</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Rationale:</strong> Signal notes can be verbose and clutter reports. Default to hidden for cleaner output. Enable when debugging specific signals.</p>
+<p><strong>Use Case:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Enable notes for debugging</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({ </span><span class="hl-4">CC_REPORT_SHOW_SIGNAL_NOTE:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> });</span><br/><br/><span class="hl-5">// Signal with detailed note</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signal</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">priceTakeProfit:</span><span class="hl-1"> </span><span class="hl-6">43000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">priceStopLoss:</span><span class="hl-1"> </span><span class="hl-6">41000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;RSI oversold + MACD crossover at 2024-01-01 08:30:00&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="configuration-reference-table" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Reference Table<a href="#configuration-reference-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Type</th>
+<th>Category</th>
+<th>Validation Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_PERCENT_FEE</code></td>
+<td><code>0.1</code></td>
+<td>number</td>
+<td>Trading</td>
+<td>PNL calculation</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_SLIPPAGE</code></td>
+<td><code>0.1</code></td>
+<td>number</td>
+<td>Trading</td>
+<td>PNL calculation</td>
+</tr>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><code>0.5</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>Signal rejection if TP too close</td>
+</tr>
+<tr>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>0.5</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>Signal rejection if SL too close</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>20</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>Signal rejection if SL too far</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>1440</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>Signal rejection if lifetime excessive</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><code>120</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>Scheduled signal auto-cancel timeout</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_GENERATION_SECONDS</code></td>
+<td><code>180</code></td>
+<td>number</td>
+<td>Validation</td>
+<td>getSignal timeout (monitoring)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td><code>3</code></td>
+<td>number</td>
+<td>Data Fetching</td>
+<td>Number of retry attempts</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td><code>5000</code></td>
+<td>number</td>
+<td>Data Fetching</td>
+<td>Delay between retries</td>
+</tr>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><code>5</code></td>
+<td>number</td>
+<td>Data Fetching</td>
+<td>VWAP calculation window</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></td>
+<td><code>1000</code></td>
+<td>number</td>
+<td>Anomaly Detection</td>
+<td>Price anomaly rejection threshold</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</code></td>
+<td><code>5</code></td>
+<td>number</td>
+<td>Anomaly Detection</td>
+<td>Median vs average calculation cutoff</td>
+</tr>
+<tr>
+<td><code>CC_REPORT_SHOW_SIGNAL_NOTE</code></td>
+<td><code>false</code></td>
+<td>boolean</td>
+<td>Reporting</td>
+<td>Note column visibility</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="common-configuration-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Configuration Patterns<a href="#common-configuration-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="production-ready-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Production-Ready Configuration<a href="#production-ready-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Conservative production settings</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-5">// Higher fees for real exchange conditions</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.15</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.2</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Stricter profit requirements</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">1.0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Tighter risk controls</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">10</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Shorter signal lifetimes</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">720</span><span class="hl-1">,  </span><span class="hl-5">// 12 hours</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// More aggressive retry logic</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_RETRY_COUNT:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_RETRY_DELAY_MS:</span><span class="hl-1"> </span><span class="hl-6">10000</span><span class="hl-1">,  </span><span class="hl-5">// 10 seconds</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="aggressive-backtesting-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Aggressive Backtesting Configuration<a href="#aggressive-backtesting-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Optimistic backtesting (find theoretical max performance)</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.05</span><span class="hl-1">,  </span><span class="hl-5">// Lower fees</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.05</span><span class="hl-1">,  </span><span class="hl-5">// Lower slippage</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0.3</span><span class="hl-1">,  </span><span class="hl-5">// Allow smaller profits</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">30</span><span class="hl-1">,  </span><span class="hl-5">// Allow larger stops</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">10080</span><span class="hl-1">,  </span><span class="hl-5">// 7 days</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Warning:</strong> Aggressive settings may produce unrealistic results. Always validate strategies with production settings before live trading.</p>
+<hr>
+<a id="testing-configuration-fast-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testing Configuration (Fast Execution)<a href="#testing-configuration-fast-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Disable validations and speed up retries for tests</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">100</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">999999</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_RETRY_COUNT:</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1">,  </span><span class="hl-5">// No retries</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_RETRY_DELAY_MS:</span><span class="hl-1"> </span><span class="hl-6">100</span><span class="hl-1">,  </span><span class="hl-5">// Fast retry</span><br/><span class="hl-1">}, </span><span class="hl-7">true</span><span class="hl-1">);  </span><span class="hl-5">// Reset to defaults first</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="default_config-constant" class="tsd-anchor"></a><h2 class="tsd-anchor-link">DEFAULT_CONFIG Constant<a href="#default_config-constant" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>DEFAULT_CONFIG</code> object is a frozen (immutable) copy of <code>GLOBAL_CONFIG</code> created at initialization. Used for resetting configuration to original values.</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">DEFAULT_CONFIG</span><span class="hl-1"> = </span><span class="hl-4">Object</span><span class="hl-1">.</span><span class="hl-0">freeze</span><span class="hl-1">({...</span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Reset to defaults</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">GLOBAL_CONFIG</span><span class="hl-1">, </span><span class="hl-4">DEFAULT_CONFIG</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">Object</span><span class="hl-1">.</span><span class="hl-0">keys</span><span class="hl-1">(</span><span class="hl-8">DEFAULT_CONFIG</span><span class="hl-1">).</span><span class="hl-0">forEach</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">[</span><span class="hl-4">key</span><span class="hl-1">] = </span><span class="hl-8">DEFAULT_CONFIG</span><span class="hl-1">[</span><span class="hl-4">key</span><span class="hl-1">];</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Or use setConfig with reset flag</span><br/><span class="hl-0">setConfig</span><span class="hl-1">({}, </span><span class="hl-7">true</span><span class="hl-1">);  </span><span class="hl-5">// Empty config + reset = full default restoration</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="validation-enforcement-points" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Enforcement Points<a href="#validation-enforcement-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/53_global_config-parameters_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Configuration Enforcement Flow</strong></p>
+<p>Configuration parameters are enforced at three primary points: (1) validation layer during signal creation, (2) execution layer during PNL calculation, (3) data fetching layer during candle retrieval. Each layer reads directly from <code>GLOBAL_CONFIG</code> at execution time.</p>
+<hr>
+<a id="related-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Configuration<a href="#related-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>For additional configuration options, see:</p>
+<ul>
+<li><strong>Column Configuration</strong>: <a href="design_52_configuration-reference.html">Column Configuration</a> - Customize report column visibility and formatting</li>
+<li><strong>Logger Configuration</strong>: <a href="design_52_configuration-reference.html">Logger Configuration</a> - Configure logging output and levels</li>
+<li><strong>Strategy Configuration</strong>: <a href="design_25_strategy-development.html">Strategy Schema Definition</a> - Per-strategy settings (interval, callbacks, risk profiles)</li>
+<li><strong>Risk Configuration</strong>: <a href="design_31_risk-management.html">Risk Profiles &amp; Validation</a> - Custom validation rules and portfolio limits</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#global_config-parameters"><span>GLOBAL_<wbr/>CONFIG <wbr/>Parameters</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#configuration-architecture"><span>Configuration <wbr/>Architecture</span></a></li><li><a href="#accessing-and-modifying-configuration"><span>Accessing and <wbr/>Modifying <wbr/>Configuration</span></a></li><li><ul><li><a href="#reading-configuration"><span>Reading <wbr/>Configuration</span></a></li><li><a href="#modifying-configuration"><span>Modifying <wbr/>Configuration</span></a></li></ul></li><li><a href="#parameter-categories"><span>Parameter <wbr/>Categories</span></a></li><li><ul><li><a href="#trading-execution-parameters"><span>Trading <wbr/>Execution <wbr/>Parameters</span></a></li><li><a href="#signal-validation-parameters"><span>Signal <wbr/>Validation <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_min_takeprofit_distance_percent"><span>CC_<wbr/>MIN_<wbr/>TAKEPROFIT_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#cc_min_stoploss_distance_percent"><span>CC_<wbr/>MIN_<wbr/>STOPLOSS_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#cc_max_stoploss_distance_percent"><span>CC_<wbr/>MAX_<wbr/>STOPLOSS_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#cc_max_signal_lifetime_minutes"><span>CC_<wbr/>MAX_<wbr/>SIGNAL_<wbr/>LIFETIME_<wbr/>MINUTES</span></a></li><li><a href="#cc_schedule_await_minutes"><span>CC_<wbr/>SCHEDULE_<wbr/>AWAIT_<wbr/>MINUTES</span></a></li><li><a href="#cc_max_signal_generation_seconds"><span>CC_<wbr/>MAX_<wbr/>SIGNAL_<wbr/>GENERATION_<wbr/>SECONDS</span></a></li></ul></li><li><a href="#data-fetching-parameters"><span>Data <wbr/>Fetching <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_get_candles_retry_count"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>RETRY_<wbr/>COUNT</span></a></li><li><a href="#cc_get_candles_retry_delay_ms"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>RETRY_<wbr/>DELAY_<wbr/>MS</span></a></li><li><a href="#cc_avg_price_candles_count"><span>CC_<wbr/>AVG_<wbr/>PRICE_<wbr/>CANDLES_<wbr/>COUNT</span></a></li></ul></li><li><a href="#anomaly-detection-parameters"><span>Anomaly <wbr/>Detection <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_get_candles_price_anomaly_threshold_factor"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>PRICE_<wbr/>ANOMALY_<wbr/>THRESHOLD_<wbr/>FACTOR</span></a></li><li><a href="#cc_get_candles_min_candles_for_median"><span>CC_<wbr/>GET_<wbr/>CANDLES_<wbr/>MIN_<wbr/>CANDLES_<wbr/>FOR_<wbr/>MEDIAN</span></a></li></ul></li><li><a href="#reporting-parameters"><span>Reporting <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_report_show_signal_note"><span>CC_<wbr/>REPORT_<wbr/>SHOW_<wbr/>SIGNAL_<wbr/>NOTE</span></a></li></ul></li></ul></li><li><a href="#configuration-reference-table"><span>Configuration <wbr/>Reference <wbr/>Table</span></a></li><li><a href="#common-configuration-patterns"><span>Common <wbr/>Configuration <wbr/>Patterns</span></a></li><li><ul><li><a href="#production-ready-configuration"><span>Production-<wbr/>Ready <wbr/>Configuration</span></a></li><li><a href="#aggressive-backtesting-configuration"><span>Aggressive <wbr/>Backtesting <wbr/>Configuration</span></a></li><li><a href="#testing-configuration-fast-execution"><span>Testing <wbr/>Configuration (<wbr/>Fast <wbr/>Execution)</span></a></li></ul></li><li><a href="#default_config-constant"><span>DEFAULT_<wbr/>CONFIG <wbr/>Constant</span></a></li><li><a href="#validation-enforcement-points"><span>Validation <wbr/>Enforcement <wbr/>Points</span></a></li><li><a href="#related-configuration"><span>Related <wbr/>Configuration</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

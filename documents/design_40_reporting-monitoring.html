@@ -1,0 +1,550 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/40_reporting-monitoring | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_40_reporting-monitoring.html">design/40_reporting-monitoring</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="reporting--monitoring" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Reporting &amp; Monitoring<a href="#reporting--monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the reporting and monitoring capabilities of Backtest Kit. The system provides real-time event streaming, statistical analysis, and markdown report generation for all execution modes (Backtest, Live, Walker).</p>
+<p><strong>Core capabilities covered:</strong></p>
+<ul>
+<li>Event-driven architecture with 13+ specialized emitters</li>
+<li>8 markdown report services with automatic data aggregation</li>
+<li>Statistics calculation (Sharpe ratio, win rate, PNL, performance metrics)</li>
+<li>Public API for programmatic access to reports and data</li>
+<li>Column configuration for customizable report formatting</li>
+<li>File system persistence with organized directory structure</li>
+</ul>
+<p><strong>Related pages:</strong></p>
+<ul>
+<li>For strategy lifecycle callbacks, see <a href="design_25_strategy-development.html">Strategy Development</a></li>
+<li>For execution modes that generate events, see <a href="design_20_execution-modes.html">Execution Modes</a></li>
+<li>For risk validation that triggers risk events, see <a href="design_31_risk-management.html">Risk Management</a></li>
+</ul>
+<hr>
+<a id="event-driven-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event-Driven Architecture<a href="#event-driven-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a comprehensive event system using <code>functools-kit</code> <code>Subject</code> pattern. All execution activities emit events that can be subscribed to via listener functions or consumed internally by markdown services.</p>
+<a id="event-emitters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emitters<a href="#event-emitters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Event Emitter Catalog</strong></p>
+<table>
+<thead>
+<tr>
+<th>Emitter</th>
+<th>Type</th>
+<th>Payload</th>
+<th>Emission Trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>signalEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>All tick results</td>
+<td>Every strategy tick (all modes)</td>
+</tr>
+<tr>
+<td><code>signalBacktestEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>Backtest-only results</td>
+<td>Strategy tick in backtest mode</td>
+</tr>
+<tr>
+<td><code>signalLiveEmitter</code></td>
+<td><code>Subject&lt;IStrategyTickResult&gt;</code></td>
+<td>Live-only results</td>
+<td>Strategy tick in live mode</td>
+</tr>
+<tr>
+<td><code>progressBacktestEmitter</code></td>
+<td><code>Subject&lt;ProgressBacktestContract&gt;</code></td>
+<td>Frame progress</td>
+<td>Each timeframe processed</td>
+</tr>
+<tr>
+<td><code>progressWalkerEmitter</code></td>
+<td><code>Subject&lt;ProgressWalkerContract&gt;</code></td>
+<td>Strategy progress</td>
+<td>Walker iteration progress</td>
+</tr>
+<tr>
+<td><code>progressOptimizerEmitter</code></td>
+<td><code>Subject&lt;ProgressOptimizerContract&gt;</code></td>
+<td>Optimization progress</td>
+<td>Optimizer generation steps</td>
+</tr>
+<tr>
+<td><code>doneBacktestSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Completion context</td>
+<td>Backtest completes</td>
+</tr>
+<tr>
+<td><code>doneLiveSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Completion context</td>
+<td>Live trading stops</td>
+</tr>
+<tr>
+<td><code>doneWalkerSubject</code></td>
+<td><code>Subject&lt;DoneContract&gt;</code></td>
+<td>Completion context</td>
+<td>Walker completes</td>
+</tr>
+<tr>
+<td><code>performanceEmitter</code></td>
+<td><code>Subject&lt;PerformanceContract&gt;</code></td>
+<td>Timing metrics</td>
+<td>Operation completes</td>
+</tr>
+<tr>
+<td><code>partialProfitSubject</code></td>
+<td><code>Subject&lt;PartialProfitContract&gt;</code></td>
+<td>Profit milestone</td>
+<td>10%/20%/30%... profit reached</td>
+</tr>
+<tr>
+<td><code>partialLossSubject</code></td>
+<td><code>Subject&lt;PartialLossContract&gt;</code></td>
+<td>Loss milestone</td>
+<td>-10%/-20%/-30%... loss reached</td>
+</tr>
+<tr>
+<td><code>riskSubject</code></td>
+<td><code>Subject&lt;RiskContract&gt;</code></td>
+<td>Rejection details</td>
+<td>Risk validation fails</td>
+</tr>
+<tr>
+<td><code>walkerEmitter</code></td>
+<td><code>Subject&lt;WalkerContract&gt;</code></td>
+<td>Strategy result</td>
+<td>Strategy backtest completes</td>
+</tr>
+<tr>
+<td><code>walkerCompleteSubject</code></td>
+<td><code>Subject&lt;WalkerCompleteContract&gt;</code></td>
+<td>Final results</td>
+<td>All strategies tested</td>
+</tr>
+<tr>
+<td><code>walkerStopSubject</code></td>
+<td><code>Subject&lt;WalkerStopContract&gt;</code></td>
+<td>Stop event</td>
+<td>Walker cancelled</td>
+</tr>
+<tr>
+<td><code>errorEmitter</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Error object</td>
+<td>Recoverable error occurs</td>
+</tr>
+<tr>
+<td><code>exitEmitter</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Error object</td>
+<td>Fatal error occurs</td>
+</tr>
+<tr>
+<td><code>validationSubject</code></td>
+<td><code>Subject&lt;Error&gt;</code></td>
+<td>Error object</td>
+<td>Validation throws</td>
+</tr>
+</tbody>
+</table>
+<a id="event-listeners" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listeners<a href="#event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Public API provides typed listener functions with <code>queued</code> wrapper from <code>functools-kit</code>. The wrapper ensures sequential async processing even during high-frequency emissions.</p>
+<p><img src="../media/40_reporting-monitoring_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Listener Pattern Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenSignal</span><span class="hl-1">, </span><span class="hl-4">listenPerformance</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Subscribe to all signal events</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubSignal</span><span class="hl-1"> = </span><span class="hl-0">listenSignal</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`PNL: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">saveToDatabase</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">); </span><span class="hl-5">// Async operations are queued</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Subscribe to performance metrics</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubPerf</span><span class="hl-1"> = </span><span class="hl-0">listenPerformance</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">duration</span><span class="hl-1"> &gt; </span><span class="hl-6">1000</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`Slow operation: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2"> took </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">duration</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Cleanup</span><br/><span class="hl-0">unsubSignal</span><span class="hl-1">();</span><br/><span class="hl-0">unsubPerf</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="markdown-report-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Markdown Report Services<a href="#markdown-report-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Eight specialized markdown services subscribe to event emitters and accumulate data in memory. Each service provides <code>getData()</code>, <code>getReport()</code>, and <code>dump()</code> methods following a consistent Controller-View pattern.</p>
+<a id="service-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Architecture<a href="#service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_2.svg" alt="Mermaid Diagram"></p>
+<a id="service-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Responsibilities<a href="#service-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="backtestmarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">BacktestMarkdownService<a href="#backtestmarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Accumulates closed signals from backtest execution and generates performance reports.</p>
+<p><strong>Event Source:</strong> <code>signalBacktestEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>BacktestStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Only processes signals with <code>action === &quot;closed&quot;</code> or <code>action === &quot;cancelled&quot;</code></li>
+<li>Calculates Sharpe Ratio, win rate, total PNL, certainty ratio</li>
+<li>Safe math: all metrics return <code>null</code> if unsafe (NaN, Infinity)</li>
+<li>Expected yearly returns based on average trade duration</li>
+<li>Max 250 signals per symbol-strategy pair</li>
+</ul>
+<a id="livemarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">LiveMarkdownService<a href="#livemarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Tracks all tick events (idle, opened, active, closed) during live trading.</p>
+<p><strong>Event Source:</strong> <code>signalLiveEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>LiveStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Processes all tick actions: <code>idle</code>, <code>opened</code>, <code>active</code>, <code>closed</code></li>
+<li>Replaces last idle event if no opened/active events follow (deduplication)</li>
+<li>Replaces last active event with same <code>signalId</code> (update pattern)</li>
+<li>Calculates live trading statistics including real-time PNL tracking</li>
+<li>Max 250 events per symbol-strategy pair</li>
+</ul>
+<a id="walkermarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">WalkerMarkdownService<a href="#walkermarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Aggregates strategy comparison results and ranks strategies by optimization metric.</p>
+<p><strong>Event Source:</strong> <code>walkerEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${walkerName}</code></p>
+<p><strong>Data Model:</strong> <code>WalkerStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Accumulates results from each strategy backtest</li>
+<li>Tracks best strategy and best metric value</li>
+<li>Generates comparison table sorted by metric</li>
+<li>Generates consolidated PNL table across all strategies</li>
+<li>No event limit (unlimited strategies)</li>
+</ul>
+<a id="schedulemarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">ScheduleMarkdownService<a href="#schedulemarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Monitors scheduled signals and tracks activation vs cancellation rates.</p>
+<p><strong>Event Source:</strong> <code>signalEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>ScheduleStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Processes <code>scheduled</code>, <code>opened</code>, <code>cancelled</code> actions</li>
+<li>Only tracks opened signals if <code>scheduledAt !== pendingAt</code> (was actually scheduled)</li>
+<li>Calculates cancellation rate and activation rate</li>
+<li>Measures average wait time before activation or cancellation</li>
+<li>Max 250 events per symbol-strategy pair</li>
+</ul>
+<a id="heatmarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">HeatMarkdownService<a href="#heatmarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Generates portfolio-wide heatmap showing per-symbol performance aggregated across all strategies.</p>
+<p><strong>Event Source:</strong> <code>signalEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${strategyName}</code> (single storage per strategy)</p>
+<p><strong>Data Model:</strong> <code>HeatmapStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Aggregates closed signals by symbol</li>
+<li>Calculates per-symbol: Total PNL, Sharpe Ratio, Max Drawdown, Profit Factor</li>
+<li>Calculates portfolio-wide: Total PNL, weighted Sharpe Ratio</li>
+<li>Advanced metrics: Win/Loss streaks, Expectancy, Average Win/Loss</li>
+<li>Max 250 signals per symbol (within strategy)</li>
+</ul>
+<a id="performancemarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">PerformanceMarkdownService<a href="#performancemarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Profiles execution performance by collecting timing metrics for bottleneck analysis.</p>
+<p><strong>Event Source:</strong> <code>performanceEmitter</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>PerformanceStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Groups events by <code>metricType</code> (operation category)</li>
+<li>Calculates avg/min/max duration per metric</li>
+<li>Calculates percentiles (P50, P95, P99) for outlier detection</li>
+<li>Tracks wait times between consecutive events of same type</li>
+<li>Max 10000 events per symbol-strategy pair (higher limit for profiling)</li>
+</ul>
+<a id="partialmarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">PartialMarkdownService<a href="#partialmarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Tracks partial profit/loss milestones (10%, 20%, 30%...) for unrealized PNL monitoring.</p>
+<p><strong>Event Source:</strong> <code>partialProfitSubject</code>, <code>partialLossSubject</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>PartialStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Processes profit and loss milestone events</li>
+<li>Tracks which levels (10-100%) have been reached per signal</li>
+<li>Enables real-time unrealized PNL alerts</li>
+<li>Max 250 events per symbol-strategy pair</li>
+</ul>
+<a id="riskmarkdownservice" class="tsd-anchor"></a><h4 class="tsd-anchor-link">RiskMarkdownService<a href="#riskmarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><strong>Purpose:</strong> Records risk validation failures to analyze rejection patterns.</p>
+<p><strong>Event Source:</strong> <code>riskSubject</code></p>
+<p><strong>Storage Key:</strong> <code>${symbol}:${strategyName}</code></p>
+<p><strong>Data Model:</strong> <code>RiskStatisticsModel</code></p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li>Captures all signal rejections due to risk limits</li>
+<li>Aggregates rejections by symbol and by strategy</li>
+<li>Includes rejection reason from validation comment</li>
+<li>Max 250 events per symbol-strategy pair</li>
+</ul>
+<hr>
+<a id="statistics-models" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Statistics Models<a href="#statistics-models" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each markdown service produces a statistics model containing aggregated metrics and raw event data. All numeric fields use safe math: <code>null</code> is returned for NaN, Infinity, or unsafe values.</p>
+<a id="common-metrics-across-models" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Metrics Across Models<a href="#common-metrics-across-models" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_3.svg" alt="Mermaid Diagram"></p>
+<a id="backteststatisticsmodel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">BacktestStatisticsModel<a href="#backteststatisticsmodel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">BacktestStatisticsModel</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">signalList</span><span class="hl-1">: </span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1">[];      </span><span class="hl-5">// All closed signals</span><br/><span class="hl-1">  </span><span class="hl-4">totalSignals</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                         </span><span class="hl-5">// Count of closed signals</span><br/><span class="hl-1">  </span><span class="hl-4">winCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                             </span><span class="hl-5">// Signals with PNL &gt; 0</span><br/><span class="hl-1">  </span><span class="hl-4">lossCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                            </span><span class="hl-5">// Signals with PNL &lt; 0</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                       </span><span class="hl-5">// (winCount / totalSignals) * 100</span><br/><span class="hl-1">  </span><span class="hl-4">avgPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Average PNL percentage</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                      </span><span class="hl-5">// Sum of all PNL percentages</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Standard deviation of returns</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                   </span><span class="hl-5">// avgPnl / stdDev</span><br/><span class="hl-1">  </span><span class="hl-4">annualizedSharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;         </span><span class="hl-5">// sharpeRatio * sqrt(365)</span><br/><span class="hl-1">  </span><span class="hl-4">certaintyRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                </span><span class="hl-5">// avgWin / abs(avgLoss)</span><br/><span class="hl-1">  </span><span class="hl-4">expectedYearlyReturns</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;         </span><span class="hl-5">// avgPnl * (365 / avgDurationDays)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Calculation Details:</strong></p>
+<p><strong>Sharpe Ratio:</strong> Risk-adjusted return assuming zero risk-free rate. Formula: <code>avgPnl / stdDev</code>. Higher is better.</p>
+<p><strong>Annualized Sharpe Ratio:</strong> Scales Sharpe Ratio to yearly timeframe. Formula: <code>sharpeRatio * Math.sqrt(365)</code>. Industry-standard metric.</p>
+<p><strong>Certainty Ratio:</strong> Measures average win size relative to average loss size. Formula: <code>avgWin / Math.abs(avgLoss)</code>. Values &gt; 1.0 indicate wins larger than losses.</p>
+<p><strong>Expected Yearly Returns:</strong> Projects annual returns based on average trade duration. Formula: <code>avgPnl * (365 / avgDurationDays)</code>. Assumes consistent trading frequency.</p>
+<a id="livestatisticsmodel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">LiveStatisticsModel<a href="#livestatisticsmodel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">LiveStatisticsModel</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">eventList</span><span class="hl-1">: </span><span class="hl-13">TickEvent</span><span class="hl-1">[];                       </span><span class="hl-5">// All tick events (idle, opened, active, closed)</span><br/><span class="hl-1">  </span><span class="hl-4">totalEvents</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Total event count</span><br/><span class="hl-1">  </span><span class="hl-4">totalClosed</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Count of closed signals</span><br/><span class="hl-1">  </span><span class="hl-4">winCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                             </span><span class="hl-5">// Closed with PNL &gt; 0</span><br/><span class="hl-1">  </span><span class="hl-4">lossCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                            </span><span class="hl-5">// Closed with PNL &lt; 0</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                       </span><span class="hl-5">// (winCount / totalClosed) * 100</span><br/><span class="hl-1">  </span><span class="hl-4">avgPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Average PNL of closed signals</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                      </span><span class="hl-5">// Sum of PNL from closed signals</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Standard deviation</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                   </span><span class="hl-5">// avgPnl / stdDev</span><br/><span class="hl-1">  </span><span class="hl-4">annualizedSharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;         </span><span class="hl-5">// sharpeRatio * sqrt(365)</span><br/><span class="hl-1">  </span><span class="hl-4">certaintyRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                </span><span class="hl-5">// avgWin / abs(avgLoss)</span><br/><span class="hl-1">  </span><span class="hl-4">expectedYearlyReturns</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;         </span><span class="hl-5">// Projected annual returns</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Differences from Backtest:</strong></p>
+<ul>
+<li>Includes <code>totalEvents</code> (all tick types) vs <code>totalSignals</code> (closed only)</li>
+<li><code>eventList</code> contains all actions: <code>idle</code>, <code>opened</code>, <code>active</code>, <code>closed</code></li>
+<li>Statistics calculated only from closed events for consistency</li>
+</ul>
+<a id="walkerstatisticsmodel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">WalkerStatisticsModel<a href="#walkerstatisticsmodel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">WalkerStatisticsModel</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName</span><span class="hl-1">: </span><span class="hl-13">WalkerName</span><span class="hl-1">;                       </span><span class="hl-5">// Walker identifier</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                               </span><span class="hl-5">// Trading pair</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                         </span><span class="hl-5">// Exchange used</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                            </span><span class="hl-5">// Timeframe used</span><br/><span class="hl-1">  </span><span class="hl-4">metric</span><span class="hl-1">: </span><span class="hl-13">WalkerMetric</span><span class="hl-1">;                         </span><span class="hl-5">// Optimization metric</span><br/><span class="hl-1">  </span><span class="hl-4">totalStrategies</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                      </span><span class="hl-5">// Number of strategies tested</span><br/><span class="hl-1">  </span><span class="hl-4">bestStrategy</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;            </span><span class="hl-5">// Strategy with highest metric</span><br/><span class="hl-1">  </span><span class="hl-4">bestMetric</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                    </span><span class="hl-5">// Highest metric value</span><br/><span class="hl-1">  </span><span class="hl-4">bestStats</span><span class="hl-1">: </span><span class="hl-13">BacktestStatisticsModel</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;    </span><span class="hl-5">// Full stats for best strategy</span><br/><span class="hl-1">  </span><span class="hl-4">strategyResults</span><span class="hl-1">: </span><span class="hl-13">IStrategyResult</span><span class="hl-1">[];           </span><span class="hl-5">// Results for all strategies</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>IStrategyResult:</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IStrategyResult</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">;                   </span><span class="hl-5">// Strategy identifier</span><br/><span class="hl-1">  </span><span class="hl-4">stats</span><span class="hl-1">: </span><span class="hl-13">BacktestStatisticsModel</span><span class="hl-1">;               </span><span class="hl-5">// Full backtest statistics</span><br/><span class="hl-1">  </span><span class="hl-4">metricValue</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                   </span><span class="hl-5">// Value of optimization metric</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="heatmapstatisticsmodel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">HeatmapStatisticsModel<a href="#heatmapstatisticsmodel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">HeatmapStatisticsModel</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbols</span><span class="hl-1">: </span><span class="hl-13">IHeatmapRow</span><span class="hl-1">[];                       </span><span class="hl-5">// Per-symbol statistics</span><br/><span class="hl-1">  </span><span class="hl-4">totalSymbols</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                         </span><span class="hl-5">// Count of symbols</span><br/><span class="hl-1">  </span><span class="hl-4">portfolioTotalPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;             </span><span class="hl-5">// Sum of all symbol PNL</span><br/><span class="hl-1">  </span><span class="hl-4">portfolioSharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;          </span><span class="hl-5">// Weighted Sharpe Ratio</span><br/><span class="hl-1">  </span><span class="hl-4">portfolioTotalTrades</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                 </span><span class="hl-5">// Total trades across all symbols</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IHeatmapRow</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                               </span><span class="hl-5">// Trading pair</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                      </span><span class="hl-5">// Total PNL for this symbol</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                   </span><span class="hl-5">// Sharpe Ratio for this symbol</span><br/><span class="hl-1">  </span><span class="hl-4">maxDrawdown</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                   </span><span class="hl-5">// Maximum drawdown</span><br/><span class="hl-1">  </span><span class="hl-4">totalTrades</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Trade count</span><br/><span class="hl-1">  </span><span class="hl-4">winCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                             </span><span class="hl-5">// Winning trades</span><br/><span class="hl-1">  </span><span class="hl-4">lossCount</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                            </span><span class="hl-5">// Losing trades</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                       </span><span class="hl-5">// Win percentage</span><br/><span class="hl-1">  </span><span class="hl-4">avgPnl</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Average PNL</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Standard deviation</span><br/><span class="hl-1">  </span><span class="hl-4">profitFactor</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                  </span><span class="hl-5">// sumWins / sumLosses</span><br/><span class="hl-1">  </span><span class="hl-4">avgWin</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                        </span><span class="hl-5">// Average winning trade</span><br/><span class="hl-1">  </span><span class="hl-4">avgLoss</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                       </span><span class="hl-5">// Average losing trade</span><br/><span class="hl-1">  </span><span class="hl-4">maxWinStreak</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                         </span><span class="hl-5">// Longest winning streak</span><br/><span class="hl-1">  </span><span class="hl-4">maxLossStreak</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                        </span><span class="hl-5">// Longest losing streak</span><br/><span class="hl-1">  </span><span class="hl-4">expectancy</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">;                    </span><span class="hl-5">// Expected value per trade</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Advanced Metrics:</strong></p>
+<p><strong>Max Drawdown:</strong> Largest peak-to-trough decline. Calculated by tracking cumulative PNL and measuring largest drop from peak.</p>
+<p><strong>Profit Factor:</strong> Ratio of gross profit to gross loss. Formula: <code>sumWins / sumLosses</code>. Values &gt; 1.0 indicate profitability.</p>
+<p><strong>Expectancy:</strong> Expected value per trade. Formula: <code>(winRate * avgWin) + (lossRate * avgLoss)</code>. Positive values indicate edge.</p>
+<a id="performancestatisticsmodel" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PerformanceStatisticsModel<a href="#performancestatisticsmodel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">PerformanceStatisticsModel</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                         </span><span class="hl-5">// Strategy identifier</span><br/><span class="hl-1">  </span><span class="hl-4">totalEvents</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Total performance events</span><br/><span class="hl-1">  </span><span class="hl-4">totalDuration</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                        </span><span class="hl-5">// Sum of all durations (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">metricStats</span><span class="hl-1">: </span><span class="hl-13">Record</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-13">MetricStats</span><span class="hl-1">&gt;;     </span><span class="hl-5">// Stats grouped by metricType</span><br/><span class="hl-1">  </span><span class="hl-4">events</span><span class="hl-1">: </span><span class="hl-13">PerformanceContract</span><span class="hl-1">[];                </span><span class="hl-5">// Raw performance events</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">MetricStats</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">metricType</span><span class="hl-1">: </span><span class="hl-13">PerformanceMetricType</span><span class="hl-1">;            </span><span class="hl-5">// Operation category</span><br/><span class="hl-1">  </span><span class="hl-4">count</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                                </span><span class="hl-5">// Event count</span><br/><span class="hl-1">  </span><span class="hl-4">totalDuration</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                        </span><span class="hl-5">// Sum of durations (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">avgDuration</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Average duration (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">minDuration</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Fastest execution (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">maxDuration</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Slowest execution (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                               </span><span class="hl-5">// Duration volatility</span><br/><span class="hl-1">  </span><span class="hl-4">median</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                               </span><span class="hl-5">// 50th percentile (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">p95</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                                  </span><span class="hl-5">// 95th percentile (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">p99</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                                  </span><span class="hl-5">// 99th percentile (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">avgWaitTime</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Time between events (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">minWaitTime</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Shortest gap (ms)</span><br/><span class="hl-1">  </span><span class="hl-4">maxWaitTime</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;                          </span><span class="hl-5">// Longest gap (ms)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Percentile Metrics:</strong></p>
+<ul>
+<li><strong>Median (P50):</strong> Half of operations complete faster, half slower</li>
+<li><strong>P95:</strong> 95% of operations complete within this time</li>
+<li><strong>P99:</strong> 99% of operations complete within this time</li>
+</ul>
+<p>Used for identifying outliers and tail latency problems.</p>
+<hr>
+<a id="public-api-for-reports" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API for Reports<a href="#public-api-for-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides two access patterns: instance methods on execution classes (Backtest, Live, Walker) and static utility classes (Performance, Heat, Schedule, Partial, Risk).</p>
+<a id="execution-class-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Class Methods<a href="#execution-class-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Run backtest (execution generates events)</span><br/><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><br/><span class="hl-1">})) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Events are accumulated by BacktestMarkdownService</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Access statistics programmatically</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Sharpe Ratio: </span><span class="hl-7">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">sharpeRatio</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Win Rate: </span><span class="hl-7">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">winRate</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Generate markdown report</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">markdown</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Save to file system</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">); </span><span class="hl-5">// ./dump/backtest/my-strategy.md</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">); </span><span class="hl-5">// Custom directory</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="utility-classes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Utility Classes<a href="#utility-classes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Performance</span><span class="hl-1">, </span><span class="hl-4">Heat</span><span class="hl-1">, </span><span class="hl-4">Schedule</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Performance profiling</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">perfStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Total execution time: </span><span class="hl-7">${</span><span class="hl-4">perfStats</span><span class="hl-9">.</span><span class="hl-4">totalDuration</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> [</span><span class="hl-8">metricType</span><span class="hl-1">, </span><span class="hl-8">metric</span><span class="hl-1">] </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">Object</span><span class="hl-1">.</span><span class="hl-0">entries</span><span class="hl-1">(</span><span class="hl-4">perfStats</span><span class="hl-1">.</span><span class="hl-4">metricStats</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">metric</span><span class="hl-1">.</span><span class="hl-4">p99</span><span class="hl-1"> &gt; </span><span class="hl-6">1000</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`Slow operation: </span><span class="hl-7">${</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2"> P99=</span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">p99</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Portfolio heatmap (aggregated across all symbols)</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">heatStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Heat</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Portfolio PNL: </span><span class="hl-7">${</span><span class="hl-4">heatStats</span><span class="hl-9">.</span><span class="hl-4">portfolioTotalPnl</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-4">heatStats</span><span class="hl-1">.</span><span class="hl-4">symbols</span><span class="hl-1">.</span><span class="hl-0">forEach</span><span class="hl-1">(</span><span class="hl-4">row</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">: Sharpe=</span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">sharpeRatio</span><span class="hl-7">}</span><span class="hl-2">, Trades=</span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">totalTrades</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Scheduled signals report</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">schedStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Activation rate: </span><span class="hl-7">${</span><span class="hl-4">schedStats</span><span class="hl-9">.</span><span class="hl-4">activationRate</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Average wait time: </span><span class="hl-7">${</span><span class="hl-4">schedStats</span><span class="hl-9">.</span><span class="hl-4">avgActivationTime</span><span class="hl-7">}</span><span class="hl-2"> minutes`</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Dump all reports</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports/performance&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Heat</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports/heatmap&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports/schedule&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="column-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Column Configuration<a href="#column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Markdown reports use the <code>ColumnModel&lt;T&gt;</code> interface for customizable table formatting. Each markdown service has default columns defined in <code>COLUMN_CONFIG</code>, which can be overridden via method parameters.</p>
+<a id="columnmodel-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ColumnModel Interface<a href="#columnmodel-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ColumnModel</span><span class="hl-1">&lt;</span><span class="hl-13">T</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">object</span><span class="hl-1"> = </span><span class="hl-13">any</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">key</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                                  </span><span class="hl-5">// Unique column identifier</span><br/><span class="hl-1">  </span><span class="hl-4">label</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;                                </span><span class="hl-5">// Display header text</span><br/><span class="hl-1">  </span><span class="hl-0">format</span><span class="hl-1">: (</span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">T</span><span class="hl-1">, </span><span class="hl-4">index</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">string</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">isVisible</span><span class="hl-1">: () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">boolean</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">boolean</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Dynamic visibility control</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="column-configuration-system" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Column Configuration System<a href="#column-configuration-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/40_reporting-monitoring_6.svg" alt="Mermaid Diagram"></p>
+<a id="custom-column-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Column Example<a href="#custom-column-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">ColumnModel</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">IStrategyTickResultClosed</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Define custom columns for backtest report</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">customColumns</span><span class="hl-1">: </span><span class="hl-13">ColumnModel</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyTickResultClosed</span><span class="hl-1">&gt;[] = [</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;timestamp&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Close Time&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">closeTimestamp</span><span class="hl-1">).</span><span class="hl-0">toISOString</span><span class="hl-1">(),</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;pnl&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;PNL %&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pnl</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">sign</span><span class="hl-1"> = </span><span class="hl-4">pnl</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> ? </span><span class="hl-2">&quot;+&quot;</span><span class="hl-1"> : </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">sign</span><span class="hl-7">}${</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;reason&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Close Reason&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;duration&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Duration (min)&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">durationMs</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">closeTimestamp</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pendingAt</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">round</span><span class="hl-1">(</span><span class="hl-4">durationMs</span><span class="hl-1"> / </span><span class="hl-6">60000</span><span class="hl-1">).</span><span class="hl-0">toString</span><span class="hl-1">();</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;note&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Signal Note&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">note</span><span class="hl-1"> || </span><span class="hl-2">&quot;N/A&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-5">// Dynamic visibility: show only if any signal has a note</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1">; </span><span class="hl-5">// Could check database, environment variable, etc.</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">];</span><br/><br/><span class="hl-5">// Generate report with custom columns</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-4">customColumns</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Save report with custom columns</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports&quot;</span><span class="hl-1">, </span><span class="hl-4">customColumns</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="global-column-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Global Column Configuration<a href="#global-column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Default columns can be customized globally via <code>setColumns()</code>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setColumns</span><span class="hl-1">, </span><span class="hl-4">getColumns</span><span class="hl-1">, </span><span class="hl-4">getDefaultColumns</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">ColumnConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Get current configuration</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentConfig</span><span class="hl-1"> = </span><span class="hl-0">getColumns</span><span class="hl-1">();</span><br/><br/><span class="hl-5">// Get framework defaults</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">defaultConfig</span><span class="hl-1"> = </span><span class="hl-0">getDefaultColumns</span><span class="hl-1">();</span><br/><br/><span class="hl-5">// Set custom configuration</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">customConfig</span><span class="hl-1">: </span><span class="hl-13">Partial</span><span class="hl-1">&lt;</span><span class="hl-13">ColumnConfig</span><span class="hl-1">&gt; = {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest_columns:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-5">// Custom backtest columns</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><span class="hl-4">live_columns:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-5">// Custom live columns</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-0">setColumns</span><span class="hl-1">(</span><span class="hl-4">customConfig</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Reset to defaults</span><br/><span class="hl-0">setColumns</span><span class="hl-1">(</span><span class="hl-0">getDefaultColumns</span><span class="hl-1">());</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="report-storage-and-persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Storage and Persistence<a href="#report-storage-and-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="in-memory-storage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">In-Memory Storage<a href="#in-memory-storage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each markdown service uses a memoized <code>ReportStorage</code> instance per unique key. Storage is bounded by <code>MAX_EVENTS</code> constant (typically 250, except <code>PerformanceMarkdownService</code> which uses 10000).</p>
+<p><img src="../media/40_reporting-monitoring_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Storage Key Patterns:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Key Pattern</th>
+<th>Max Events</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BacktestMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>250</td>
+</tr>
+<tr>
+<td>LiveMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>250</td>
+</tr>
+<tr>
+<td>WalkerMarkdownService</td>
+<td><code>${walkerName}</code></td>
+<td>Unlimited</td>
+</tr>
+<tr>
+<td>ScheduleMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>250</td>
+</tr>
+<tr>
+<td>HeatMarkdownService</td>
+<td><code>${strategyName}</code> (single storage)</td>
+<td>250 per symbol</td>
+</tr>
+<tr>
+<td>PerformanceMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>10000</td>
+</tr>
+<tr>
+<td>PartialMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>250</td>
+</tr>
+<tr>
+<td>RiskMarkdownService</td>
+<td><code>${symbol}:${strategyName}</code></td>
+<td>250</td>
+</tr>
+</tbody>
+</table>
+<a id="file-system-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">File System Persistence<a href="#file-system-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>dump()</code> method on each service writes markdown reports to organized directories:</p>
+<p><strong>Default Paths:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Report Type</th>
+<th>Default Path</th>
+<th>Filename Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td><code>./dump/backtest/</code></td>
+<td><code>${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Live</td>
+<td><code>./dump/live/</code></td>
+<td><code>${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Walker</td>
+<td><code>./dump/walker/</code></td>
+<td><code>${walkerName}.md</code></td>
+</tr>
+<tr>
+<td>Schedule</td>
+<td><code>./dump/schedule/</code></td>
+<td><code>${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Heat</td>
+<td><code>./dump/heat/</code></td>
+<td><code>${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Performance</td>
+<td><code>./dump/performance/</code></td>
+<td><code>${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Partial</td>
+<td><code>./dump/partial/</code></td>
+<td><code>${symbol}_${strategyName}.md</code></td>
+</tr>
+<tr>
+<td>Risk</td>
+<td><code>./dump/risk/</code></td>
+<td><code>${symbol}_${strategyName}.md</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dump Implementation Pattern:</strong></p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">async</span><span class="hl-1"> </span><span class="hl-0">dump</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">StrategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1"> = </span><span class="hl-2">&quot;./dump/backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">: </span><span class="hl-4">Columns</span><span class="hl-1">[] = </span><span class="hl-8">COLUMN_CONFIG</span><span class="hl-1">.</span><span class="hl-4">backtest_columns</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  const </span><span class="hl-4">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">columns</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  try {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">dir</span><span class="hl-1"> = </span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">cwd</span><span class="hl-1">(), </span><span class="hl-4">path</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">mkdir</span><span class="hl-1">(</span><span class="hl-4">dir</span><span class="hl-1">, { </span><span class="hl-4">recursive:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> });  </span><span class="hl-5">// Create directory if not exists</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">filename</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">.md`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">filepath</span><span class="hl-1"> = </span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-4">dir</span><span class="hl-1">, </span><span class="hl-4">filename</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">writeFile</span><span class="hl-1">(</span><span class="hl-4">filepath</span><span class="hl-1">, </span><span class="hl-4">markdown</span><span class="hl-1">, </span><span class="hl-2">&quot;utf-8&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Backtest report saved: </span><span class="hl-7">${</span><span class="hl-4">filepath</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  } catch (error) {</span><br/><span class="hl-1">    console.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`Failed to save markdown report:`</span><span class="hl-1">, </span><span class="hl-4">error</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="clearing-accumulated-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Clearing Accumulated Data<a href="#clearing-accumulated-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services provide <code>clear()</code> methods to remove accumulated data from memory:</p>
+<pre><code class="typescript"><span class="hl-5">// Clear specific symbol-strategy pair</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Clear all data for a service</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">backtestMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span><br/><br/><span class="hl-5">// Clear walker data</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Clear all walkers</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">walkerMarkdownService</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Clearing is automatically invoked at the start of <code>Backtest.run()</code>, <code>Live.run()</code>, and <code>Walker.run()</code> to ensure fresh data accumulation.</p>
+<hr>
+<a id="report-format-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Format Examples<a href="#report-format-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Report Structure<a href="#backtest-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown"># Backtest Report: my-strategy
+
+| # | Signal ID | Symbol | Position | Open | TP | SL | Close | PNL % | Reason | Duration |
+|---|-----------|--------|----------|------|----|----|-------|-------|--------|----------|
+| 1 | abc-123   | BTCUSDT | LONG    | 50000 | 51000 | 49500 | 51000 | +1.80% | take_profit | 45 min |
+| 2 | abc-124   | BTCUSDT | SHORT   | 51000 | 50500 | 51500 | 50500 | +0.78% | take_profit | 30 min |
+
+**Total signals:** 2
+**Closed signals:** 2
+**Win rate:** 100.00% (2W / 0L) (higher is better)
+**Average PNL:** +1.29% (higher is better)
+**Total PNL:** +2.58% (higher is better)
+**Standard Deviation:** 0.510% (lower is better)
+**Sharpe Ratio:** 2.529 (higher is better)
+**Annualized Sharpe Ratio:** 48.320 (higher is better)
+**Certainty Ratio:** N/A (higher is better)
+**Expected Yearly Returns:** +12501.60% (higher is better)
+</code><button type="button">Copy</button></pre>
+
+<a id="live-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Report Structure<a href="#live-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown"># Live Trading Report: my-strategy
+
+| Timestamp | Action | Signal ID | Position | Price | TP | SL | PNL % | TP Progress | SL Risk |
+|-----------|--------|-----------|----------|-------|----|----|-------|-------------|---------|
+| 2024-01-15T10:30:00Z | opened | xyz-789 | LONG | 50000 | 51000 | 49500 | - | - | - |
+| 2024-01-15T10:45:00Z | active | xyz-789 | LONG | 50500 | 51000 | 49500 | - | 50% | 0% |
+| 2024-01-15T11:00:00Z | active | xyz-789 | LONG | 50800 | 51000 | 49500 | - | 80% | 0% |
+| 2024-01-15T11:15:00Z | closed | xyz-789 | LONG | 51000 | 51000 | 49500 | +1.80% | 100% | 0% |
+| 2024-01-15T11:30:00Z | idle | - | - | 51000 | - | - | - | - | - |
+
+**Total events:** 5
+**Closed signals:** 1
+**Win rate:** 100.00% (1W / 0L) (higher is better)
+**Average PNL:** +1.80% (higher is better)
+**Total PNL:** +1.80% (higher is better)
+...
+</code><button type="button">Copy</button></pre>
+
+<a id="walker-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Report Structure<a href="#walker-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown"># Walker Comparison Report: my-walker
+
+**Symbol:** BTCUSDT
+**Exchange:** binance
+**Frame:** 1d-backtest
+**Optimization Metric:** sharpeRatio
+**Strategies Tested:** 5
+
+## Best Strategy: strategy-a
+
+**Best sharpeRatio:** 2.53
+**Total Signals:** 100
+
+## Top Strategies Comparison
+
+| Rank | Strategy | Sharpe Ratio | Win Rate | Total PNL | Trades |
+|------|----------|--------------|----------|-----------|--------|
+| 1 | strategy-a | 2.53 | 65.0% | +125.5% | 100 |
+| 2 | strategy-b | 2.01 | 60.0% | +98.2% | 120 |
+| 3 | strategy-c | 1.85 | 58.5% | +87.3% | 95 |
+
+## All Signals (PNL Table)
+
+| Strategy | Signal ID | Symbol | Position | PNL % | Reason | Open Time | Close Time |
+|----------|-----------|--------|----------|-------|--------|-----------|------------|
+| strategy-a | abc-123 | BTCUSDT | LONG | +1.80% | take_profit | ... | ... |
+...
+</code><button type="button">Copy</button></pre>
+
+<a id="performance-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Report Structure<a href="#performance-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown"># Performance Report: my-strategy
+
+**Total events:** 1000
+**Total execution time:** 5432.12ms
+**Number of metric types:** 5
+
+## Time Distribution
+
+- **getCandles**: 45.2% (2455.32ms total)
+- **tick**: 30.1% (1635.05ms total)
+- **getSignal**: 15.6% (847.41ms total)
+- **checkRisk**: 5.8% (315.12ms total)
+- **getAveragePrice**: 3.3% (179.22ms total)
+
+## Detailed Metrics
+
+| Metric Type | Count | Avg (ms) | Min (ms) | Max (ms) | P95 (ms) | P99 (ms) | Std Dev |
+|-------------|-------|----------|----------|----------|----------|----------|---------|
+| getCandles | 100 | 24.55 | 10.23 | 150.45 | 45.32 | 98.12 | 18.45 |
+| tick | 1000 | 1.64 | 0.12 | 25.34 | 3.21 | 8.45 | 2.12 |
+...
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#reporting--monitoring"><span>Reporting &amp; <wbr/>Monitoring</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#event-driven-architecture"><span>Event-<wbr/>Driven <wbr/>Architecture</span></a></li><li><ul><li><a href="#event-emitters"><span>Event <wbr/>Emitters</span></a></li><li><a href="#event-listeners"><span>Event <wbr/>Listeners</span></a></li></ul></li><li><a href="#markdown-report-services"><span>Markdown <wbr/>Report <wbr/>Services</span></a></li><li><ul><li><a href="#service-architecture"><span>Service <wbr/>Architecture</span></a></li><li><a href="#service-responsibilities"><span>Service <wbr/>Responsibilities</span></a></li><li><ul><li><a href="#backtestmarkdownservice"><span>Backtest<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#livemarkdownservice"><span>Live<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#walkermarkdownservice"><span>Walker<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#schedulemarkdownservice"><span>Schedule<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#heatmarkdownservice"><span>Heat<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#performancemarkdownservice"><span>Performance<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#partialmarkdownservice"><span>Partial<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#riskmarkdownservice"><span>Risk<wbr/>Markdown<wbr/>Service</span></a></li></ul></li></ul></li><li><a href="#statistics-models"><span>Statistics <wbr/>Models</span></a></li><li><ul><li><a href="#common-metrics-across-models"><span>Common <wbr/>Metrics <wbr/>Across <wbr/>Models</span></a></li><li><a href="#backteststatisticsmodel"><span>Backtest<wbr/>Statistics<wbr/>Model</span></a></li><li><a href="#livestatisticsmodel"><span>Live<wbr/>Statistics<wbr/>Model</span></a></li><li><a href="#walkerstatisticsmodel"><span>Walker<wbr/>Statistics<wbr/>Model</span></a></li><li><a href="#heatmapstatisticsmodel"><span>Heatmap<wbr/>Statistics<wbr/>Model</span></a></li><li><a href="#performancestatisticsmodel"><span>Performance<wbr/>Statistics<wbr/>Model</span></a></li></ul></li><li><a href="#public-api-for-reports"><span>Public API for <wbr/>Reports</span></a></li><li><ul><li><a href="#execution-class-methods"><span>Execution <wbr/>Class <wbr/>Methods</span></a></li><li><a href="#utility-classes"><span>Utility <wbr/>Classes</span></a></li></ul></li><li><a href="#column-configuration"><span>Column <wbr/>Configuration</span></a></li><li><ul><li><a href="#columnmodel-interface"><span>Column<wbr/>Model <wbr/>Interface</span></a></li><li><a href="#column-configuration-system"><span>Column <wbr/>Configuration <wbr/>System</span></a></li><li><a href="#custom-column-example"><span>Custom <wbr/>Column <wbr/>Example</span></a></li><li><a href="#global-column-configuration"><span>Global <wbr/>Column <wbr/>Configuration</span></a></li></ul></li><li><a href="#report-storage-and-persistence"><span>Report <wbr/>Storage and <wbr/>Persistence</span></a></li><li><ul><li><a href="#in-memory-storage"><span>In-<wbr/>Memory <wbr/>Storage</span></a></li><li><a href="#file-system-persistence"><span>File <wbr/>System <wbr/>Persistence</span></a></li><li><a href="#clearing-accumulated-data"><span>Clearing <wbr/>Accumulated <wbr/>Data</span></a></li></ul></li><li><a href="#report-format-examples"><span>Report <wbr/>Format <wbr/>Examples</span></a></li><li><ul><li><a href="#backtest-report-structure"><span>Backtest <wbr/>Report <wbr/>Structure</span></a></li><li><a href="#live-report-structure"><span>Live <wbr/>Report <wbr/>Structure</span></a></li><li><a href="#walker-report-structure"><span>Walker <wbr/>Report <wbr/>Structure</span></a></li><li><a href="#performance-report-structure"><span>Performance <wbr/>Report <wbr/>Structure</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

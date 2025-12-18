@@ -1,0 +1,374 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/46_advanced-features | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_46_advanced-features.html">design/46_advanced-features</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="advanced-features" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Advanced Features<a href="#advanced-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents advanced capabilities in Backtest Kit that extend beyond basic strategy backtesting. These features enable AI-driven strategy development, automated code generation, crash-safe persistence, and custom storage backends.</p>
+<p><strong>Scope</strong>: This page covers:</p>
+<ul>
+<li>LLM-powered strategy generation using Ollama</li>
+<li>Optimizer system for data-driven strategy synthesis</li>
+<li>Template-based code generation</li>
+<li>Crash recovery mechanisms and persistence</li>
+<li>Custom persistence backend implementation</li>
+</ul>
+<p>For basic strategy development, see <a href="design_25_strategy-development.html">Strategy Development</a>. For risk management, see <a href="design_31_risk-management.html">Risk Management</a>. For execution modes, see <a href="design_20_execution-modes.html">Execution Modes</a>.</p>
+<hr>
+<a id="llm-powered-strategy-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LLM-Powered Strategy Generation<a href="#llm-powered-strategy-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtest Kit integrates with Large Language Models (specifically Ollama) to generate trading strategies from historical data. The framework provides utilities to build LLM conversation histories, format market data, and synthesize executable strategy code.</p>
+<a id="integration-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Integration Architecture<a href="#integration-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_0.svg" alt="Mermaid Diagram"></p>
+<a id="message-model-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Message Model Structure<a href="#message-model-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses a conversation-based approach with three message roles:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Purpose</th>
+<th>Example Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>system</code></td>
+<td>System instructions, context</td>
+<td>&quot;You are a trading strategy expert&quot;</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>User prompts, market data</td>
+<td>&quot;Analyze these 1h candles: ...&quot;</td>
+</tr>
+<tr>
+<td><code>assistant</code></td>
+<td>LLM responses</td>
+<td>&quot;Trend 1h analyzed&quot;</td>
+</tr>
+</tbody>
+</table>
+<p>Messages are accumulated as <code>MessageModel[]</code> arrays, where each message contains:</p>
+<ul>
+<li><code>role</code>: <code>&quot;assistant&quot; | &quot;system&quot; | &quot;user&quot;</code></li>
+<li><code>content</code>: String content of the message</li>
+</ul>
+<a id="data-source-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Source Configuration<a href="#data-source-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Data sources define how to fetch training data for the LLM. Each source must implement <code>IOptimizerSourceFn</code> with pagination support:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerFetchArgs</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-13">Date</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">limit</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;   </span><span class="hl-5">// Records per page (default: 25)</span><br/><span class="hl-1">  </span><span class="hl-4">offset</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;  </span><span class="hl-5">// Skip count for pagination</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSourceFn</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">IOptimizerData</span><span class="hl-1">&gt; = </span><br/><span class="hl-1">  (</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">IOptimizerFetchArgs</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Data</span><span class="hl-1">[] | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">[]&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Data must include unique <code>id</code> field for deduplication. The system automatically handles pagination using <code>iterateDocuments</code> and deduplicates using <code>distinctDocuments</code>.</p>
+<a id="custom-message-formatters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Message Formatters<a href="#custom-message-formatters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Sources can provide custom formatters for LLM messages:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSource</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">fetch</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSourceFn</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">user</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">Data</span><span class="hl-1">[], </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">string</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">assistant</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">Data</span><span class="hl-1">[], </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">string</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>If not provided, defaults to <code>OptimizerTemplateService.getUserMessage</code> and <code>getAssistantMessage</code>.</p>
+<hr>
+<a id="optimizer-system-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Optimizer System Architecture<a href="#optimizer-system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer system coordinates data collection, LLM interaction, and code generation through a multi-layer service architecture.</p>
+<a id="service-layer-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Layer Hierarchy<a href="#service-layer-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_1.svg" alt="Mermaid Diagram"></p>
+<a id="optimizer-schema-definition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Optimizer Schema Definition<a href="#optimizer-schema-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>An optimizer is configured via <code>IOptimizerSchema</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optimizerName</code></td>
+<td><code>string</code></td>
+<td>Unique identifier</td>
+</tr>
+<tr>
+<td><code>rangeTrain</code></td>
+<td><code>IOptimizerRange[]</code></td>
+<td>Training time periods</td>
+</tr>
+<tr>
+<td><code>rangeTest</code></td>
+<td><code>IOptimizerRange[]</code></td>
+<td>Testing time periods</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>Source[]</code></td>
+<td>Data source configurations</td>
+</tr>
+<tr>
+<td><code>getPrompt</code></td>
+<td><code>(symbol, messages) =&gt; string</code></td>
+<td>Synthesizes strategy from conversation</td>
+</tr>
+<tr>
+<td><code>template?</code></td>
+<td><code>Partial&lt;IOptimizerTemplate&gt;</code></td>
+<td>Custom code generators</td>
+</tr>
+<tr>
+<td><code>callbacks?</code></td>
+<td><code>IOptimizerCallbacks</code></td>
+<td>Lifecycle hooks</td>
+</tr>
+</tbody>
+</table>
+<p>Each <code>IOptimizerRange</code> defines:</p>
+<ul>
+<li><code>startDate</code>: Start of time range (inclusive)</li>
+<li><code>endDate</code>: End of time range (inclusive)</li>
+<li><code>note?</code>: Optional description</li>
+</ul>
+<a id="data-collection-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Collection Flow<a href="#data-collection-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_2.svg" alt="Mermaid Diagram"></p>
+<a id="progress-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Tracking<a href="#progress-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The optimizer emits progress events via <code>progressOptimizerEmitter</code>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ProgressOptimizerContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalSources</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;      </span><span class="hl-5">// rangeTrain.length × source.length</span><br/><span class="hl-1">  </span><span class="hl-4">processedSources</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;  </span><span class="hl-5">// Current count</span><br/><span class="hl-1">  </span><span class="hl-4">progress</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;          </span><span class="hl-5">// 0.0 to 1.0</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Events are emitted:</p>
+<ol>
+<li>At start of each source processing (processedSources = current)</li>
+<li>After all sources complete (progress = 1.0)</li>
+</ol>
+<p>Subscribe via <code>listenOptimizerProgress((event) =&gt; { ... })</code>.</p>
+<hr>
+<a id="code-generation--templates" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code Generation &amp; Templates<a href="#code-generation--templates" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The template system generates executable strategy code by assembling TypeScript/JavaScript components.</p>
+<a id="template-interface-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Template Interface Structure<a href="#template-interface-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>IOptimizerTemplate</code> defines 11 code generator methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getTopBanner</code></td>
+<td>Import statements, setup</td>
+<td>File header with dependencies</td>
+</tr>
+<tr>
+<td><code>getUserMessage</code></td>
+<td>String</td>
+<td>Default user message formatter</td>
+</tr>
+<tr>
+<td><code>getAssistantMessage</code></td>
+<td>String</td>
+<td>Default assistant message formatter</td>
+</tr>
+<tr>
+<td><code>getWalkerTemplate</code></td>
+<td><code>addWalker()</code> call</td>
+<td>Strategy comparison config</td>
+</tr>
+<tr>
+<td><code>getStrategyTemplate</code></td>
+<td><code>addStrategy()</code> call</td>
+<td>Strategy with LLM integration</td>
+</tr>
+<tr>
+<td><code>getExchangeTemplate</code></td>
+<td><code>addExchange()</code> call</td>
+<td>CCXT exchange config</td>
+</tr>
+<tr>
+<td><code>getFrameTemplate</code></td>
+<td><code>addFrame()</code> call</td>
+<td>Timeframe config</td>
+</tr>
+<tr>
+<td><code>getLauncherTemplate</code></td>
+<td><code>Walker.background()</code> call</td>
+<td>Execution launcher with listeners</td>
+</tr>
+<tr>
+<td><code>getJsonDumpTemplate</code></td>
+<td><code>dumpJson()</code> function</td>
+<td>Debug output helper</td>
+</tr>
+<tr>
+<td><code>getTextTemplate</code></td>
+<td><code>text()</code> function</td>
+<td>LLM text wrapper</td>
+</tr>
+<tr>
+<td><code>getJsonTemplate</code></td>
+<td><code>json()</code> function</td>
+<td>LLM JSON wrapper</td>
+</tr>
+</tbody>
+</table>
+<p>All methods are <code>async</code> and return <code>string | Promise&lt;string&gt;</code>.</p>
+<a id="generated-code-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generated Code Structure<a href="#generated-code-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_3.svg" alt="Mermaid Diagram"></p>
+<a id="strategy-template-composition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Template Composition<a href="#strategy-template-composition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getStrategyTemplate</code> method generates a complete strategy with:</p>
+<ol>
+<li><strong>Multi-timeframe data loading</strong>: Fetches 1m, 5m, 15m, 1h candles via <code>getCandles</code></li>
+<li><strong>Message building</strong>: Constructs user/assistant pairs for each timeframe</li>
+<li><strong>LLM invocation</strong>: Calls <code>json(messages)</code> with embedded strategy prompt</li>
+<li><strong>Debug output</strong>: Saves conversation to <code>./dump/strategy/{resultId}/</code></li>
+<li><strong>Signal return</strong>: Returns validated <code>ISignalDto</code> or <code>null</code></li>
+</ol>
+<p>The generated strategy includes automatic candle formatting, progressive timeframe analysis, and unique signal ID assignment.</p>
+<a id="template-customization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Template Customization<a href="#template-customization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Users can override any template method in <code>IOptimizerSchema.template</code>:</p>
+<pre><code class="typescript"><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;custom&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">  </span><span class="hl-4">template:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Override strategy generation</span><br/><span class="hl-1">    </span><span class="hl-0">getStrategyTemplate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">prompt</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`addStrategy({ /* custom */ });`</span><span class="hl-1">;</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-5">// Use defaults for other methods</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The system merges custom templates with defaults from <code>OptimizerTemplateService</code>.</p>
+<a id="security-code-injection-prevention" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Security: Code Injection Prevention<a href="#security-code-injection-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All template methods escape user-provided strings to prevent code injection:</p>
+<pre><code class="typescript"><span class="hl-5">// Example from getStrategyTemplate</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">escapedPrompt</span><span class="hl-1"> = </span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">plainPrompt</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/</span><span class="hl-12">\\</span><span class="hl-15">/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-12">\\\\</span><span class="hl-2">&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/`/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-12">\\</span><span class="hl-2">`&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/</span><span class="hl-12">\$</span><span class="hl-15">/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-12">\\</span><span class="hl-2">$&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Applied to: <code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code>, <code>interval</code>, <code>prompt</code>, etc.</p>
+<hr>
+<a id="crash-recovery--persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery &amp; Persistence<a href="#crash-recovery--persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtest Kit implements crash-safe persistence to recover state after system failures. This is critical for live trading where signals must not be lost or duplicated.</p>
+<a id="persistence-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Architecture<a href="#persistence-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_4.svg" alt="Mermaid Diagram"></p>
+<a id="persistbase-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PersistBase Interface<a href="#persistbase-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The abstract base class defines the persistence contract:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPersistBase</span><span class="hl-1">&lt;</span><span class="hl-13">Value</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">object</span><span class="hl-1"> = </span><span class="hl-13">any</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">directory</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;        </span><span class="hl-5">// Storage directory path</span><br/><span class="hl-1">  </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">extension</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;        </span><span class="hl-5">// File extension (default: &quot;.json&quot;)</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">, </span><span class="hl-4">value</span><span class="hl-1">: </span><span class="hl-13">Value</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">read</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">Value</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">delete</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">clear</span><span class="hl-1">(): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All operations are async. <code>waitForInit</code> ensures storage is ready before operations.</p>
+<a id="signal-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Persistence<a href="#signal-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Signals are persisted when opened and deleted when closed:</p>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Action</th>
+<th>Data Structure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onOpen</code></td>
+<td>Write <code>SignalData</code></td>
+<td><code>{ symbol, data: ISignalRow }</code></td>
+</tr>
+<tr>
+<td><code>onClose</code></td>
+<td>Delete <code>SignalData</code></td>
+<td>Delete file</td>
+</tr>
+<tr>
+<td><code>onSchedule</code></td>
+<td>No write</td>
+<td>Scheduled signals NOT persisted</td>
+</tr>
+<tr>
+<td><code>onCancel</code></td>
+<td>No action</td>
+<td>Never written</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key Design Decision</strong>: Only <strong>opened</strong> signals are persisted. Scheduled signals remain in memory. This prevents bloat and ensures only active positions are recovered.</p>
+<a id="partial-profitloss-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Profit/Loss Persistence<a href="#partial-profitloss-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Partial tracking persists milestone levels reached:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IPartialData</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">profitLevels</span><span class="hl-1">: </span><span class="hl-13">PartialLevel</span><span class="hl-1">[];  </span><span class="hl-5">// [10, 20, 30, ...]</span><br/><span class="hl-1">  </span><span class="hl-4">lossLevels</span><span class="hl-1">: </span><span class="hl-13">PartialLevel</span><span class="hl-1">[];    </span><span class="hl-5">// [10, 20, 30, ...]</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Stored by <code>signalId</code> to track which profit/loss milestones have been emitted. Prevents duplicate partial events after crashes.</p>
+<a id="risk-position-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Position Tracking<a href="#risk-position-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Active positions are tracked for portfolio-wide risk management:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">RiskData</span><span class="hl-1"> {</span><br/><span class="hl-1">  [</span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">]: {</span><br/><span class="hl-1">    </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-13">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">openTimestamp</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Stored by <code>symbol</code> to maintain cross-strategy position limits. Enables recovery of risk state after crashes.</p>
+<a id="atomic-write-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Atomic Write Implementation<a href="#atomic-write-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>File writes use a two-phase commit pattern:</p>
+<ol>
+<li><strong>Write to temporary file</strong>: <code>{entityId}.tmp.json</code></li>
+<li><strong>Atomic rename</strong>: <code>rename()</code> to <code>{entityId}.json</code></li>
+</ol>
+<p>This ensures:</p>
+<ul>
+<li>No partial writes visible to readers</li>
+<li>Crash during write leaves old file intact</li>
+<li>POSIX filesystem guarantees atomic rename</li>
+</ul>
+<a id="initialization-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Initialization Flow<a href="#initialization-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/46_advanced-features_5.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="custom-persistence-backends" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Custom Persistence Backends<a href="#custom-persistence-backends" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework supports custom persistence implementations for Redis, MongoDB, or other storage systems.</p>
+<a id="implementation-steps" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Steps<a href="#implementation-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To create a custom backend:</p>
+<ol>
+<li><strong>Extend PersistBase abstract class</strong></li>
+<li><strong>Implement required methods</strong>: <code>write</code>, <code>read</code>, <code>delete</code>, <code>clear</code>, <code>waitForInit</code></li>
+<li><strong>Inject into adapters</strong>: Create custom adapters extending the base adapters</li>
+</ol>
+<a id="example-redis-backend" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example: Redis Backend<a href="#example-redis-backend" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">PersistRedis</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">PersistBase</span><span class="hl-1">&lt;</span><span class="hl-13">any</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">client</span><span class="hl-1">: </span><span class="hl-13">RedisClient</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">directory</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">extension</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1"> = </span><span class="hl-2">&quot;.json&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">directory</span><span class="hl-1">, </span><span class="hl-4">extension</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1"> = </span><span class="hl-0">createRedisClient</span><span class="hl-1">();</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">write</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">, </span><span class="hl-4">value</span><span class="hl-1">: </span><span class="hl-13">any</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">key</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">directory</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">, </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">));</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">read</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">any</span><span class="hl-1"> | </span><span class="hl-13">null</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">key</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">directory</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">data</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1"> ? </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">parse</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">) : </span><span class="hl-7">null</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">delete</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">key</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">directory</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">del</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">clear</span><span class="hl-1">(): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pattern</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">directory</span><span class="hl-7">}</span><span class="hl-2">:*`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">keys</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">keys</span><span class="hl-1">(</span><span class="hl-4">pattern</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">keys</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">del</span><span class="hl-1">(...</span><span class="hl-4">keys</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-13">EntityId</span><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-4">isReady</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">.</span><span class="hl-0">connect</span><span class="hl-1">();</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="custom-adapter-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Adapter Example<a href="#custom-adapter-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">PersistSignalAdapterRedis</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">PersistSignalAdapter</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">() {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backend</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistRedis</span><span class="hl-1">(</span><span class="hl-2">&quot;./persist/signal&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">backend</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Inject into system</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">customAdapter</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistSignalAdapterRedis</span><span class="hl-1">();</span><br/><span class="hl-5">// Use in ClientStrategy initialization</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="storage-backend-requirements" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Backend Requirements<a href="#storage-backend-requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Any custom backend must guarantee:</p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Atomic writes</strong></td>
+<td>Prevent partial state visibility</td>
+</tr>
+<tr>
+<td><strong>Read-after-write consistency</strong></td>
+<td>Ensure state recovery accuracy</td>
+</tr>
+<tr>
+<td><strong>Durability</strong></td>
+<td>Survive process crashes</td>
+</tr>
+<tr>
+<td><strong>Per-entity isolation</strong></td>
+<td>No cross-contamination between symbols/strategies</td>
+</tr>
+<tr>
+<td><strong>Async initialization</strong></td>
+<td>Support connection pools, authentication</td>
+</tr>
+</tbody>
+</table>
+<a id="performance-considerations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The default file-based implementation provides:</p>
+<ul>
+<li><strong>Fast local reads</strong>: Direct filesystem access</li>
+<li><strong>Atomic guarantees</strong>: POSIX rename semantics</li>
+<li><strong>No external dependencies</strong>: Self-contained</li>
+<li><strong>Debuggable</strong>: JSON files human-readable</li>
+</ul>
+<p>For distributed systems, consider:</p>
+<ul>
+<li><strong>Redis</strong>: Fast in-memory cache with persistence</li>
+<li><strong>MongoDB</strong>: Document storage with transactions</li>
+<li><strong>PostgreSQL</strong>: JSONB columns with ACID guarantees</li>
+</ul>
+<p>Trade-offs:</p>
+<ul>
+<li>Network latency vs local filesystem speed</li>
+<li>External dependency vs self-contained</li>
+<li>Scalability vs simplicity</li>
+</ul>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Backtest Kit's advanced features enable:</p>
+<ol>
+<li><strong>AI-Driven Development</strong>: LLM integration for strategy synthesis from historical data</li>
+<li><strong>Automated Code Generation</strong>: Template system produces executable strategy files</li>
+<li><strong>Production Safety</strong>: Crash-safe persistence ensures no signal loss or duplication</li>
+<li><strong>Extensibility</strong>: Custom persistence backends for Redis, MongoDB, or other storage</li>
+</ol>
+<p>The optimizer system coordinates data collection, LLM interaction, and code generation through a layered service architecture. The template system assembles code components into executable strategies. The persistence layer provides crash recovery with atomic writes and async initialization.</p>
+<p>For optimizer usage examples, see <code>demo/optimization/</code> directory. For persistence patterns, see type definitions in <code>types.d.ts:1655-1843</code>. For template customization, see <code>IOptimizerTemplate interface</code>.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#advanced-features"><span>Advanced <wbr/>Features</span></a><ul><li><a href="#llm-powered-strategy-generation"><span>LLM-<wbr/>Powered <wbr/>Strategy <wbr/>Generation</span></a></li><li><ul><li><a href="#integration-architecture"><span>Integration <wbr/>Architecture</span></a></li><li><a href="#message-model-structure"><span>Message <wbr/>Model <wbr/>Structure</span></a></li><li><a href="#data-source-configuration"><span>Data <wbr/>Source <wbr/>Configuration</span></a></li><li><a href="#custom-message-formatters"><span>Custom <wbr/>Message <wbr/>Formatters</span></a></li></ul></li><li><a href="#optimizer-system-architecture"><span>Optimizer <wbr/>System <wbr/>Architecture</span></a></li><li><ul><li><a href="#service-layer-hierarchy"><span>Service <wbr/>Layer <wbr/>Hierarchy</span></a></li><li><a href="#optimizer-schema-definition"><span>Optimizer <wbr/>Schema <wbr/>Definition</span></a></li><li><a href="#data-collection-flow"><span>Data <wbr/>Collection <wbr/>Flow</span></a></li><li><a href="#progress-tracking"><span>Progress <wbr/>Tracking</span></a></li></ul></li><li><a href="#code-generation--templates"><span>Code <wbr/>Generation &amp; <wbr/>Templates</span></a></li><li><ul><li><a href="#template-interface-structure"><span>Template <wbr/>Interface <wbr/>Structure</span></a></li><li><a href="#generated-code-structure"><span>Generated <wbr/>Code <wbr/>Structure</span></a></li><li><a href="#strategy-template-composition"><span>Strategy <wbr/>Template <wbr/>Composition</span></a></li><li><a href="#template-customization"><span>Template <wbr/>Customization</span></a></li><li><a href="#security-code-injection-prevention"><span>Security: <wbr/>Code <wbr/>Injection <wbr/>Prevention</span></a></li></ul></li><li><a href="#crash-recovery--persistence"><span>Crash <wbr/>Recovery &amp; <wbr/>Persistence</span></a></li><li><ul><li><a href="#persistence-architecture"><span>Persistence <wbr/>Architecture</span></a></li><li><a href="#persistbase-interface"><span>Persist<wbr/>Base <wbr/>Interface</span></a></li><li><a href="#signal-persistence"><span>Signal <wbr/>Persistence</span></a></li><li><a href="#partial-profitloss-persistence"><span>Partial <wbr/>Profit/<wbr/>Loss <wbr/>Persistence</span></a></li><li><a href="#risk-position-tracking"><span>Risk <wbr/>Position <wbr/>Tracking</span></a></li><li><a href="#atomic-write-implementation"><span>Atomic <wbr/>Write <wbr/>Implementation</span></a></li><li><a href="#initialization-flow"><span>Initialization <wbr/>Flow</span></a></li></ul></li><li><a href="#custom-persistence-backends"><span>Custom <wbr/>Persistence <wbr/>Backends</span></a></li><li><ul><li><a href="#implementation-steps"><span>Implementation <wbr/>Steps</span></a></li><li><a href="#example-redis-backend"><span>Example: <wbr/>Redis <wbr/>Backend</span></a></li><li><a href="#custom-adapter-example"><span>Custom <wbr/>Adapter <wbr/>Example</span></a></li><li><a href="#storage-backend-requirements"><span>Storage <wbr/>Backend <wbr/>Requirements</span></a></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

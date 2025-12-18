@@ -1,0 +1,411 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/48_optimizer-system | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_48_optimizer-system.html">design/48_optimizer-system</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="optimizer-system" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Optimizer System<a href="#optimizer-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer System generates executable trading strategy code using Large Language Model (LLM) analysis of historical data. It collects data from configurable sources, builds conversation histories for LLM context, generates strategy logic via Ollama deepseek-v3.1:671b, and exports complete <code>.mjs</code> files with strategies, walker configurations, and test runners.</p>
+<p>This document covers data source configuration, pagination handling, template customization, and code generation. For LLM prompt engineering details, see <a href="design_46_advanced-features.html">LLM-Powered Strategy Generation</a>. For code template internals, see <a href="design_46_advanced-features.html">Code Generation &amp; Templates</a>.</p>
+<hr>
+<a id="system-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">System Overview<a href="#system-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer System operates in three phases:</p>
+<ol>
+<li><strong>Data Collection</strong>: Fetches records from multiple sources with automatic pagination and deduplication</li>
+<li><strong>Strategy Generation</strong>: Builds LLM conversation history and generates strategy prompts via <code>getPrompt()</code></li>
+<li><strong>Code Export</strong>: Assembles executable <code>.mjs</code> files using template methods</li>
+</ol>
+<p>The system supports multiple training ranges, custom message formatters, and template overrides for complete customization.</p>
+<p><strong>Key Components:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IOptimizerSchema</code></td>
+<td>User configuration with sources, ranges, and prompt generator</td>
+</tr>
+<tr>
+<td><code>ClientOptimizer</code></td>
+<td>Core implementation handling pagination and LLM conversation building</td>
+</tr>
+<tr>
+<td><code>OptimizerTemplateService</code></td>
+<td>Default templates for code generation (imports, helpers, strategies, walker)</td>
+</tr>
+<tr>
+<td><code>OptimizerConnectionService</code></td>
+<td>Memoized factory creating optimizer instances with merged templates</td>
+</tr>
+<tr>
+<td><code>OptimizerGlobalService</code></td>
+<td>Public entry point with validation</td>
+</tr>
+<tr>
+<td><code>Optimizer</code> class</td>
+<td>Static API exposing <code>getData()</code>, <code>getCode()</code>, <code>dump()</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="architecture-diagram" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Diagram<a href="#architecture-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/48_optimizer-system_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Architecture Notes:</strong></p>
+<ul>
+<li><strong>Memoization</strong>: <code>OptimizerConnectionService.getOptimizer()</code> caches instances by <code>optimizerName</code> (<code>src/lib/services/connection/OptimizerConnectionService.ts:59-113</code>)</li>
+<li><strong>Template Merging</strong>: Custom templates from schema override defaults from <code>OptimizerTemplateService</code> (<code>src/lib/services/connection/OptimizerConnectionService.ts:67-97</code>)</li>
+<li><strong>Validation</strong>: <code>OptimizerValidationService</code> maintains a <code>Map&lt;OptimizerName, IOptimizerSchema&gt;</code> for existence checks (<code>src/lib/services/validation/OptimizerValidationService.ts:15-34</code>)</li>
+<li><strong>Schema Storage</strong>: <code>OptimizerSchemaService</code> uses <code>ToolRegistry</code> for immutable schema management (<code>src/lib/services/schema/OptimizerSchemaService.ts:16-32</code>)</li>
+</ul>
+<hr>
+<a id="data-source-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Source Configuration<a href="#data-source-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Data sources provide training data for strategy generation. Each source is queried with pagination and deduplication.</p>
+<a id="source-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Source Types<a href="#source-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Function Source:</strong></p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSourceFn</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">IOptimizerData</span><span class="hl-1">&gt; = </span><br/><span class="hl-1">  (</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-13">IOptimizerFetchArgs</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">Data</span><span class="hl-1">[] | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">[]&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Object Source:</strong></p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">IOptimizerSource</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-13">IOptimizerData</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">fetch</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSourceFn</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">user</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">Data</span><span class="hl-1">[], </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">string</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">assistant</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-13">Data</span><span class="hl-1">[], </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-13">string</span><span class="hl-1"> | </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fetch</code></td>
+<td>Function</td>
+<td>Paginated query function receiving <code>{ symbol, startDate, endDate, limit, offset }</code></td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>String</td>
+<td>Identifier used in callbacks and logging</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>Function</td>
+<td>Custom formatter for user messages (optional, uses template default)</td>
+</tr>
+<tr>
+<td><code>assistant</code></td>
+<td>Function</td>
+<td>Custom formatter for assistant messages (optional, uses template default)</td>
+</tr>
+</tbody>
+</table>
+<a id="pagination-and-deduplication" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pagination and Deduplication<a href="#pagination-and-deduplication" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system automatically handles pagination using <code>functools-kit</code> utilities:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ITERATION_LIMIT</span><span class="hl-1"> = </span><span class="hl-6">25</span><span class="hl-1">; </span><span class="hl-5">// Records per page</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">iterator</span><span class="hl-1"> = </span><span class="hl-0">iterateDocuments</span><span class="hl-1">&lt;</span><span class="hl-13">Data</span><span class="hl-1">&gt;({</span><br/><span class="hl-1">  </span><span class="hl-4">limit:</span><span class="hl-1"> </span><span class="hl-8">ITERATION_LIMIT</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">createRequest</span><span class="hl-1">({ </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1"> }) {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">fetch</span><span class="hl-1">({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1"> });</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">distinct</span><span class="hl-1"> = </span><span class="hl-0">distinctDocuments</span><span class="hl-1">(</span><span class="hl-4">iterator</span><span class="hl-1">, (</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">allData</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">resolveDocuments</span><span class="hl-1">(</span><span class="hl-4">distinct</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Deduplication Key</strong>: All data must implement <code>IOptimizerData</code> with unique <code>id: string | number</code> (<code>src/interfaces/Optimizer.interface.ts:38-44</code>).</p>
+<hr>
+<a id="llm-conversation-building" class="tsd-anchor"></a><h2 class="tsd-anchor-link">LLM Conversation Building<a href="#llm-conversation-building" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The optimizer builds conversation history by iterating through training ranges and sources. Each source contributes a user/assistant message pair.</p>
+<a id="conversation-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Conversation Flow<a href="#conversation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/48_optimizer-system_1.svg" alt="Mermaid Diagram"></p>
+<a id="message-formatters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Message Formatters<a href="#message-formatters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Default formatters delegate to template methods:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">DEFAULT_USER_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">template</span><span class="hl-1">.</span><span class="hl-0">getUserMessage</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">);</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">DEFAULT_ASSISTANT_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">template</span><span class="hl-1">.</span><span class="hl-0">getAssistantMessage</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">);</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Default Template Output</strong> (<code>src/lib/services/template/OptimizerTemplateService.ts:77-110</code>):</p>
+<ul>
+<li>User: <code>&quot;Прочитай данные и скажи ОК\n\n&quot; + JSON.stringify(data)</code></li>
+<li>Assistant: <code>&quot;ОК&quot;</code></li>
+</ul>
+<hr>
+<a id="template-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Template System<a href="#template-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Templates generate executable code sections. Each method returns a string of TypeScript/JavaScript code.</p>
+<a id="template-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Template Interface<a href="#template-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Returns</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getTopBanner(symbol)</code></td>
+<td>Import statements, constants</td>
+<td>Shebang, Ollama/CCXT imports, WARN_KB constant</td>
+</tr>
+<tr>
+<td><code>getUserMessage(symbol, data, name)</code></td>
+<td>Message content string</td>
+<td>Default user message format for LLM</td>
+</tr>
+<tr>
+<td><code>getAssistantMessage(symbol, data, name)</code></td>
+<td>Message content string</td>
+<td>Default assistant response format</td>
+</tr>
+<tr>
+<td><code>getWalkerTemplate(walkerName, exchangeName, frameName, strategies[])</code></td>
+<td><code>addWalker()</code> call</td>
+<td>Walker configuration for strategy comparison</td>
+</tr>
+<tr>
+<td><code>getStrategyTemplate(strategyName, interval, prompt)</code></td>
+<td><code>addStrategy()</code> call</td>
+<td>Strategy with LLM-integrated getSignal()</td>
+</tr>
+<tr>
+<td><code>getExchangeTemplate(symbol, exchangeName)</code></td>
+<td><code>addExchange()</code> call</td>
+<td>CCXT Binance integration</td>
+</tr>
+<tr>
+<td><code>getFrameTemplate(symbol, frameName, interval, startDate, endDate)</code></td>
+<td><code>addFrame()</code> call</td>
+<td>Timeframe configuration</td>
+</tr>
+<tr>
+<td><code>getLauncherTemplate(symbol, walkerName)</code></td>
+<td><code>Walker.background()</code> call</td>
+<td>Event listeners and execution</td>
+</tr>
+<tr>
+<td><code>getTextTemplate(symbol)</code></td>
+<td><code>async text(messages)</code> function</td>
+<td>LLM text generation helper</td>
+</tr>
+<tr>
+<td><code>getJsonTemplate(symbol)</code></td>
+<td><code>async json(messages)</code> function</td>
+<td>LLM structured output with signal schema</td>
+</tr>
+<tr>
+<td><code>getJsonDumpTemplate(symbol)</code></td>
+<td><code>async dumpJson()</code> function</td>
+<td>Debug output to ./dump/strategy/{resultId}/</td>
+</tr>
+</tbody>
+</table>
+<a id="strategy-template-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Template Example<a href="#strategy-template-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The generated strategy uses multi-timeframe analysis:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;abc123_strategy-1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">messages</span><span class="hl-1"> = [];</span><br/><span class="hl-1">        </span><br/><span class="hl-1">        </span><span class="hl-5">// Load candles from multiple timeframes</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">microTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">30</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mainTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">shortTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mediumTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><br/><span class="hl-1">        </span><span class="hl-5">// Build conversation with 4 timeframe analysis messages</span><br/><span class="hl-1">        </span><span class="hl-4">messages</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">            { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;user&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;Проанализируй свечи 1h:</span><span class="hl-12">\n</span><span class="hl-2">...&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">            { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;assistant&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;Тренд 1h проанализирован&quot;</span><span class="hl-1"> }</span><br/><span class="hl-1">        );</span><br/><span class="hl-1">        </span><span class="hl-5">// ... (3 more timeframe pairs)</span><br/><span class="hl-1">        </span><br/><span class="hl-1">        </span><span class="hl-5">// Final message with strategy prompt</span><br/><span class="hl-1">        </span><span class="hl-4">messages</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">({</span><br/><span class="hl-1">            </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;user&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-4">content:</span><span class="hl-1"> [</span><br/><span class="hl-1">                </span><span class="hl-2">&quot;Проанализируй все таймфреймы и сгенерируй торговый сигнал...&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">strategy_prompt_from_getPrompt</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">                </span><span class="hl-2">&quot;Если сигналы противоречивы или тренд слабый то position: wait&quot;</span><br/><span class="hl-1">            ].</span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-2">&quot;</span><span class="hl-12">\n</span><span class="hl-2">&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">        });</span><br/><span class="hl-1">        </span><br/><span class="hl-1">        </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">json</span><span class="hl-1">(</span><span class="hl-4">messages</span><span class="hl-1">);</span><br/><span class="hl-1">        </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1"> = </span><span class="hl-0">uuid</span><span class="hl-1">();</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="code-generation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code Generation Pipeline<a href="#code-generation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>getCode()</code> method assembles all components into a single executable file.</p>
+<p><img src="../media/48_optimizer-system_2.svg" alt="Mermaid Diagram"></p>
+<a id="generated-file-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generated File Structure<a href="#generated-file-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The output <code>.mjs</code> file contains:</p>
+<ol>
+<li><strong>Shebang and Imports</strong>: <code>#!/usr/bin/env node</code>, Ollama, CCXT, backtest-kit</li>
+<li><strong>Helper Functions</strong>: <code>dumpJson()</code>, <code>text()</code>, <code>json()</code></li>
+<li><strong>Exchange Configuration</strong>: CCXT Binance with <code>fetchOHLCV()</code></li>
+<li><strong>Frame Configurations</strong>: N training frames + 1 test frame</li>
+<li><strong>Strategy Configurations</strong>: One per <code>rangeTrain</code> entry</li>
+<li><strong>Walker Configuration</strong>: Compares all strategies on test frame</li>
+<li><strong>Launcher Code</strong>: <code>Walker.background()</code> with event listeners</li>
+</ol>
+<p><strong>Naming Convention</strong>:</p>
+<ul>
+<li>Prefix: Random 7-character string (e.g., <code>abc123</code>)</li>
+<li>Exchange: <code>{prefix}_exchange</code></li>
+<li>Train frames: <code>{prefix}_train_frame-1</code>, <code>{prefix}_train_frame-2</code>, ...</li>
+<li>Test frame: <code>{prefix}_test_frame</code></li>
+<li>Strategies: <code>{prefix}_strategy-1</code>, <code>{prefix}_strategy-2</code>, ...</li>
+<li>Walker: <code>{prefix}_walker</code></li>
+</ul>
+<hr>
+<a id="public-api-usage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Usage<a href="#public-api-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration<a href="#registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addOptimizer</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-optimizer&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTrain:</span><span class="hl-1"> [</span><br/><span class="hl-1">    { </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01&quot;</span><span class="hl-1">), </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-31&quot;</span><span class="hl-1">) },</span><br/><span class="hl-1">    { </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-02-01&quot;</span><span class="hl-1">), </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-02-28&quot;</span><span class="hl-1">) }</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTest:</span><span class="hl-1"> { </span><br/><span class="hl-1">    </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-03-01&quot;</span><span class="hl-1">), </span><br/><span class="hl-1">    </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-03-31&quot;</span><span class="hl-1">) </span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-4">source:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">name:</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-results&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-0">fetch</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> ({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-5">// Query database with pagination</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">db</span><span class="hl-1">.</span><span class="hl-0">query</span><span class="hl-1">(</span><br/><span class="hl-1">          </span><span class="hl-2">&quot;SELECT * FROM results WHERE symbol = ? AND date &gt;= ? AND date &lt;= ? LIMIT ? OFFSET ?&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">          [</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1">]</span><br/><span class="hl-1">        );</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-0">user</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`Analyze </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> backtest results for </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-12">\n</span><span class="hl-7">${</span><span class="hl-8">JSON</span><span class="hl-9">.</span><span class="hl-0">stringify</span><span class="hl-9">(</span><span class="hl-4">data</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">;</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-0">assistant</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`Analyzed </span><span class="hl-7">${</span><span class="hl-4">data</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> results. Key patterns identified.`</span><span class="hl-1">;</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><span class="hl-0">getPrompt</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Call LLM to generate strategy description</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ollama</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Ollama</span><span class="hl-1">({ </span><span class="hl-4">host:</span><span class="hl-1"> </span><span class="hl-2">&quot;https://ollama.com&quot;</span><span class="hl-1"> });</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">response</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">ollama</span><span class="hl-1">.</span><span class="hl-0">chat</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">model:</span><span class="hl-1"> </span><span class="hl-2">&quot;deepseek-v3.1:671b&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">messages</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">response</span><span class="hl-1">.</span><span class="hl-4">message</span><span class="hl-1">.</span><span class="hl-4">content</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution<a href="#execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Optimizer</span><span class="hl-1">, </span><span class="hl-4">listenOptimizerProgress</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Monitor progress</span><br/><span class="hl-0">listenOptimizerProgress</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-9">(</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">progress</span><span class="hl-9"> </span><span class="hl-1">*</span><span class="hl-9"> </span><span class="hl-6">100</span><span class="hl-9">).</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">% - </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">processedSources</span><span class="hl-7">}</span><span class="hl-2">/</span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">totalSources</span><span class="hl-7">}</span><span class="hl-2"> sources`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generate strategy data</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategies</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Optimizer</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-optimizer&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generate code</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">code</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Optimizer</span><span class="hl-1">.</span><span class="hl-0">getCode</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-optimizer&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Save to file</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Optimizer</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-optimizer&quot;</span><br/><span class="hl-1">}, </span><span class="hl-2">&quot;./output&quot;</span><span class="hl-1">);</span><br/><span class="hl-5">// Creates: ./output/my-optimizer_BTCUSDT.mjs</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="configuration-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Reference<a href="#configuration-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="ioptimizerschema" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IOptimizerSchema<a href="#ioptimizerschema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>optimizerName</code></td>
+<td><code>string</code></td>
+<td>Yes</td>
+<td>Unique identifier for this optimizer</td>
+</tr>
+<tr>
+<td><code>rangeTrain</code></td>
+<td><code>IOptimizerRange[]</code></td>
+<td>Yes</td>
+<td>Training time ranges (≥1 required)</td>
+</tr>
+<tr>
+<td><code>rangeTest</code></td>
+<td><code>IOptimizerRange</code></td>
+<td>Yes</td>
+<td>Testing time range for generated walker</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>Source[]</code></td>
+<td>Yes</td>
+<td>Data sources (≥1 required)</td>
+</tr>
+<tr>
+<td><code>getPrompt</code></td>
+<td><code>Function</code></td>
+<td>Yes</td>
+<td>Generates strategy prompt from conversation history</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td><code>Partial&lt;IOptimizerTemplate&gt;</code></td>
+<td>No</td>
+<td>Custom template method overrides</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td><code>Partial&lt;IOptimizerCallbacks&gt;</code></td>
+<td>No</td>
+<td>Lifecycle event hooks</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>No</td>
+<td>Documentation string</td>
+</tr>
+</tbody>
+</table>
+<a id="ioptimizerrange" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IOptimizerRange<a href="#ioptimizerrange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Yes</td>
+<td>Start of time range (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>Yes</td>
+<td>End of time range (inclusive)</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string</code></td>
+<td>No</td>
+<td>Description of this range</td>
+</tr>
+</tbody>
+</table>
+<a id="ioptimizercallbacks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IOptimizerCallbacks<a href="#ioptimizercallbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Parameters</th>
+<th>Trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onData</code></td>
+<td><code>(symbol, strategyData[])</code></td>
+<td>After all strategies generated</td>
+</tr>
+<tr>
+<td><code>onCode</code></td>
+<td><code>(symbol, code)</code></td>
+<td>After code generation complete</td>
+</tr>
+<tr>
+<td><code>onDump</code></td>
+<td><code>(symbol, filepath)</code></td>
+<td>After file written to disk</td>
+</tr>
+<tr>
+<td><code>onSourceData</code></td>
+<td><code>(symbol, sourceName, data[], startDate, endDate)</code></td>
+<td>After each source fetch</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="progress-tracking" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Progress Tracking<a href="#progress-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The optimizer emits <code>ProgressOptimizerContract</code> events during data collection:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-13">ProgressOptimizerContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalSources</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;       </span><span class="hl-5">// rangeTrain.length × source.length</span><br/><span class="hl-1">  </span><span class="hl-4">processedSources</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;   </span><span class="hl-5">// Counter incremented after each source</span><br/><span class="hl-1">  </span><span class="hl-4">progress</span><span class="hl-1">: </span><span class="hl-13">number</span><span class="hl-1">;           </span><span class="hl-5">// processedSources / totalSources (0.0 - 1.0)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Emission Points</strong>:</p>
+<ol>
+<li>At start of each source processing (before <code>fetch()</code> call)</li>
+<li>After all sources complete (progress = 1.0)</li>
+</ol>
+<p>Events are emitted via <code>progressOptimizerEmitter</code> (<code>src/config/emitters.ts:80</code>) and accessible through <code>listenOptimizerProgress()</code> (<code>src/function/event.ts:514-557</code>).</p>
+<hr>
+<a id="service-layer-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Layer Details<a href="#service-layer-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="optimizerconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerConnectionService<a href="#optimizerconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Creates memoized <code>ClientOptimizer</code> instances with merged templates:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">getOptimizer</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">optimizerName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">optimizerName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">OptimizerName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">schema</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerSchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">rawTemplate</span><span class="hl-1"> = </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">template</span><span class="hl-1"> || {};</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Merge custom template with defaults</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">template</span><span class="hl-1">: </span><span class="hl-13">IOptimizerTemplate</span><span class="hl-1"> = {</span><br/><span class="hl-1">      </span><span class="hl-4">getTopBanner:</span><span class="hl-1"> </span><span class="hl-4">rawTemplate</span><span class="hl-1">.</span><span class="hl-4">getTopBanner</span><span class="hl-1"> || </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getTopBanner</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">getExchangeTemplate:</span><span class="hl-1"> </span><span class="hl-4">rawTemplate</span><span class="hl-1">.</span><span class="hl-4">getExchangeTemplate</span><span class="hl-1"> || </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getExchangeTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-5">// ... (all 11 template methods)</span><br/><span class="hl-1">    };</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ClientOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">optimizerName</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">getPrompt:</span><span class="hl-1"> </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">getPrompt</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">rangeTrain:</span><span class="hl-1"> </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">rangeTrain</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">rangeTest:</span><span class="hl-1"> </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">rangeTest</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">source:</span><span class="hl-1"> </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">source</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">template</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">callbacks:</span><span class="hl-1"> </span><span class="hl-4">schema</span><span class="hl-1">.</span><span class="hl-4">callbacks</span><br/><span class="hl-1">    }, </span><span class="hl-8">COMMIT_PROGRESS_FN</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Points</strong>:</p>
+<ul>
+<li>One <code>ClientOptimizer</code> instance per <code>optimizerName</code></li>
+<li>Template methods use custom implementation or default</li>
+<li>Progress emitted via <code>COMMIT_PROGRESS_FN</code> callback</li>
+</ul>
+<a id="optimizervalidationservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerValidationService<a href="#optimizervalidationservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Maintains registry and validates optimizer existence:</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">_optimizerMap</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Map</span><span class="hl-1">&lt;</span><span class="hl-13">OptimizerName</span><span class="hl-1">, </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1">&gt;();</span><br/><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">addOptimizer</span><span class="hl-1"> = (</span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">OptimizerName</span><span class="hl-1">, </span><span class="hl-4">optimizerSchema</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1">): </span><span class="hl-13">void</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">_optimizerMap</span><span class="hl-1">.</span><span class="hl-0">has</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer </span><span class="hl-7">${</span><span class="hl-4">optimizerName</span><span class="hl-7">}</span><span class="hl-2"> already exist`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">_optimizerMap</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">, </span><span class="hl-4">optimizerSchema</span><span class="hl-1">);</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">validate</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">optimizerName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">optimizerName</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">optimizerName</span><span class="hl-1">: </span><span class="hl-13">OptimizerName</span><span class="hl-1">, </span><span class="hl-4">source</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">): </span><span class="hl-13">void</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">optimizer</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">_optimizerMap</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">optimizer</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer </span><span class="hl-7">${</span><span class="hl-4">optimizerName</span><span class="hl-7">}</span><span class="hl-2"> not found source=</span><span class="hl-7">${</span><span class="hl-4">source</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="optimizerschemaservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerSchemaService<a href="#optimizerschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Uses <code>ToolRegistry</code> for immutable schema storage:</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">_registry</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ToolRegistry</span><span class="hl-1">&lt;</span><span class="hl-13">Record</span><span class="hl-1">&lt;</span><span class="hl-13">OptimizerName</span><span class="hl-1">, </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1">&gt;&gt;(</span><span class="hl-2">&quot;optimizerSchema&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">register</span><span class="hl-1"> = (</span><span class="hl-4">key</span><span class="hl-1">: </span><span class="hl-13">OptimizerName</span><span class="hl-1">, </span><span class="hl-4">value</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">validateShallow</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">); </span><span class="hl-5">// Check required fields</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">_registry</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">_registry</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">, </span><span class="hl-4">value</span><span class="hl-1">);</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-0">validateShallow</span><span class="hl-1"> = (</span><span class="hl-4">optimizerSchema</span><span class="hl-1">: </span><span class="hl-13">IOptimizerSchema</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">typeof</span><span class="hl-1"> </span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">optimizerName</span><span class="hl-1"> !== </span><span class="hl-2">&quot;string&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer template validation failed: missing optimizerName`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">Array</span><span class="hl-1">.</span><span class="hl-0">isArray</span><span class="hl-1">(</span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">rangeTrain</span><span class="hl-1">) || </span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">rangeTrain</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> === </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer template validation failed: rangeTrain must be a non-empty array`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">Array</span><span class="hl-1">.</span><span class="hl-0">isArray</span><span class="hl-1">(</span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">source</span><span class="hl-1">) || </span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">source</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> === </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer template validation failed: source must be a non-empty array`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">typeof</span><span class="hl-1"> </span><span class="hl-4">optimizerSchema</span><span class="hl-1">.</span><span class="hl-4">getPrompt</span><span class="hl-1"> !== </span><span class="hl-2">&quot;function&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`optimizer template validation failed: getPrompt must be a function`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system throws errors at multiple levels:</p>
+<p><strong>Schema Validation</strong> (throws immediately on <code>addOptimizer()</code>):</p>
+<ul>
+<li>Missing <code>optimizerName</code></li>
+<li>Empty <code>rangeTrain</code> array</li>
+<li>Empty <code>source</code> array</li>
+<li>Missing <code>getPrompt</code> function</li>
+</ul>
+<p><strong>Runtime Validation</strong> (throws on API calls):</p>
+<ul>
+<li>Optimizer not found (<code>OptimizerValidationService.validate()</code>)</li>
+<li>Source fetch errors (propagated from <code>fetch()</code> function)</li>
+<li>LLM errors (propagated from <code>getPrompt()</code>)</li>
+<li>File write errors (propagated from <code>dump()</code>)</li>
+</ul>
+<p><strong>Pagination Errors</strong>:</p>
+<ul>
+<li>Invalid <code>limit</code> or <code>offset</code> (handled by <code>iterateDocuments</code>)</li>
+<li>Duplicate IDs ignored via <code>distinctDocuments</code></li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#optimizer-system"><span>Optimizer <wbr/>System</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#system-overview"><span>System <wbr/>Overview</span></a></li><li><a href="#architecture-diagram"><span>Architecture <wbr/>Diagram</span></a></li><li><a href="#data-source-configuration"><span>Data <wbr/>Source <wbr/>Configuration</span></a></li><li><ul><li><a href="#source-types"><span>Source <wbr/>Types</span></a></li><li><a href="#pagination-and-deduplication"><span>Pagination and <wbr/>Deduplication</span></a></li></ul></li><li><a href="#llm-conversation-building"><span>LLM <wbr/>Conversation <wbr/>Building</span></a></li><li><ul><li><a href="#conversation-flow"><span>Conversation <wbr/>Flow</span></a></li><li><a href="#message-formatters"><span>Message <wbr/>Formatters</span></a></li></ul></li><li><a href="#template-system"><span>Template <wbr/>System</span></a></li><li><ul><li><a href="#template-interface"><span>Template <wbr/>Interface</span></a></li><li><a href="#strategy-template-example"><span>Strategy <wbr/>Template <wbr/>Example</span></a></li></ul></li><li><a href="#code-generation-pipeline"><span>Code <wbr/>Generation <wbr/>Pipeline</span></a></li><li><ul><li><a href="#generated-file-structure"><span>Generated <wbr/>File <wbr/>Structure</span></a></li></ul></li><li><a href="#public-api-usage"><span>Public API <wbr/>Usage</span></a></li><li><ul><li><a href="#registration"><span>Registration</span></a></li><li><a href="#execution"><span>Execution</span></a></li></ul></li><li><a href="#configuration-reference"><span>Configuration <wbr/>Reference</span></a></li><li><ul><li><a href="#ioptimizerschema"><span>IOptimizer<wbr/>Schema</span></a></li><li><a href="#ioptimizerrange"><span>IOptimizer<wbr/>Range</span></a></li><li><a href="#ioptimizercallbacks"><span>IOptimizer<wbr/>Callbacks</span></a></li></ul></li><li><a href="#progress-tracking"><span>Progress <wbr/>Tracking</span></a></li><li><a href="#service-layer-details"><span>Service <wbr/>Layer <wbr/>Details</span></a></li><li><ul><li><a href="#optimizerconnectionservice"><span>Optimizer<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#optimizervalidationservice"><span>Optimizer<wbr/>Validation<wbr/>Service</span></a></li><li><a href="#optimizerschemaservice"><span>Optimizer<wbr/>Schema<wbr/>Service</span></a></li></ul></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

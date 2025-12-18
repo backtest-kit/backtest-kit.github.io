@@ -1,0 +1,421 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/13_vwap-pricing-data-handling | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_13_vwap-pricing-data-handling.html">design/13_vwap-pricing-data-handling</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="vwap-pricing--data-handling" class="tsd-anchor"></a><h1 class="tsd-anchor-link">VWAP Pricing &amp; Data Handling<a href="#vwap-pricing--data-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page explains how Backtest Kit calculates Volume Weighted Average Price (VWAP) for realistic entry and exit prices, manages candle data buffers, detects price anomalies from exchange APIs, and implements fallback mechanisms for edge cases. This system ensures that backtests simulate real-world execution conditions with slippage and market depth.</p>
+<p>For information about how VWAP integrates with the time execution engine and signal lifecycle, see <a href="design_08_core-concepts.html">Time Execution Engine</a>. For exchange configuration and the <code>getCandles</code> contract, see <a href="design_36_exchanges-data-sources.html">Exchange Configuration</a>.</p>
+<hr>
+<a id="vwap-calculation-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">VWAP Calculation Overview<a href="#vwap-calculation-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>VWAP (Volume Weighted Average Price) is used to simulate realistic order execution prices. Instead of using a single candle's close price, the system calculates a volume-weighted average across multiple recent candles to account for market depth and order book dynamics.</p>
+<p><strong>Why VWAP?</strong></p>
+<ul>
+<li><strong>Realism</strong>: Simulates market impact of large orders</li>
+<li><strong>Slippage</strong>: Accounts for price movement during order execution</li>
+<li><strong>Reproducibility</strong>: Deterministic calculation across backtest and live modes</li>
+<li><strong>Bias Prevention</strong>: Prevents cherry-picking best prices from individual candles</li>
+</ul>
+<a id="vwap-formula" class="tsd-anchor"></a><h3 class="tsd-anchor-link">VWAP Formula<a href="#vwap-formula" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-8">VWAP</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">price_i</span><span class="hl-1"> × </span><span class="hl-4">volume_i</span><span class="hl-1">) / </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">volume_i</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p>Where <code>price_i</code> is typically the candle's close price and <code>volume_i</code> is the trading volume for that candle.</p>
+<p><strong>Fallback for Zero Volume</strong>:</p>
+<pre><code><span class="hl-4">Simple</span><span class="hl-1"> </span><span class="hl-4">Average</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">price_i</span><span class="hl-1">) / </span><span class="hl-4">n</span>
+</code><button>Copy</button></pre>
+
+<p>When all candles have zero volume (low-liquidity assets), the system falls back to a simple arithmetic mean.</p>
+<hr>
+<a id="candle-buffer-management" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Candle Buffer Management<a href="#candle-buffer-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system maintains a configurable buffer of recent candles for VWAP calculation. By default, <strong>5 candles</strong> are used, representing the last 5 minutes of data when using a 1-minute interval.</p>
+<a id="buffer-size-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Buffer Size Configuration<a href="#buffer-size-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td>5</td>
+<td>Number of candles for VWAP calculation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Buffer Behavior</strong>:</p>
+<ol>
+<li>Each call to <code>getAveragePrice()</code> fetches the last N candles</li>
+<li>Candles are requested from the exchange via <code>getCandles()</code> method</li>
+<li>VWAP is calculated across all returned candles</li>
+<li>Buffer size is constant regardless of market volatility</li>
+</ol>
+<a id="temporal-context-guarantee" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Temporal Context Guarantee<a href="#temporal-context-guarantee" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getCandles()</code> function is time-aware via <code>AsyncLocalStorage</code> context propagation. In backtest mode, it <strong>always</strong> returns candles up to the current simulation timestamp, preventing look-ahead bias.</p>
+<p><img src="../media/13_vwap-pricing-data-handling_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Candle Buffer Data Flow</strong></p>
+<hr>
+<a id="data-validation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Validation Pipeline<a href="#data-validation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Candle data undergoes multi-stage validation to detect incomplete or anomalous data from exchange APIs. This is critical because exchanges like Binance occasionally return candles with prices near zero (e.g., $0.01) when data is incomplete.</p>
+<a id="validation-stages" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Stages<a href="#validation-stages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/13_vwap-pricing-data-handling_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Candle Validation Pipeline</strong></p>
+<hr>
+<a id="anomaly-detection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Anomaly Detection<a href="#anomaly-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system detects incomplete or corrupted candle data using a <strong>median-based threshold</strong>. If any candle's price is more than 1000× lower than the median price, it's flagged as anomalous.</p>
+<a id="price-anomaly-threshold" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Anomaly Threshold<a href="#price-anomaly-threshold" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></td>
+<td>1000</td>
+<td>Maximum deviation factor for anomaly detection</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</code></td>
+<td>5</td>
+<td>Minimum candles required for reliable median calculation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Detection Algorithm</strong>:</p>
+<ol>
+<li><strong>Collect all price points</strong> from candles (open, high, low, close)</li>
+<li><strong>Calculate median price</strong> (if ≥5 candles) or average (if &lt;5 candles)</li>
+<li><strong>Check each candle</strong>: If any price &lt; <code>median / 1000</code>, flag as anomaly</li>
+<li><strong>Reject batch</strong>: If anomaly detected, trigger retry logic</li>
+</ol>
+<a id="example-scenario" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example Scenario<a href="#example-scenario" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-8">BTC</span><span class="hl-1"> </span><span class="hl-4">median</span><span class="hl-1"> </span><span class="hl-10">price</span><span class="hl-1">: </span><span class="hl-4">$50</span><span class="hl-1">,</span><span class="hl-6">000</span><br/><span class="hl-4">Anomaly</span><span class="hl-1"> </span><span class="hl-10">threshold</span><span class="hl-1">: </span><span class="hl-4">$50</span><span class="hl-1">,</span><span class="hl-6">000</span><span class="hl-1"> / </span><span class="hl-6">1000</span><span class="hl-1"> = </span><span class="hl-4">$50</span><br/><span class="hl-4">Incomplete</span><span class="hl-1"> </span><span class="hl-10">candle</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1"> = </span><span class="hl-4">$0</span><span class="hl-1">.</span><span class="hl-6">01</span><br/><br/><span class="hl-10">Result</span><span class="hl-1">: </span><span class="hl-4">Anomaly</span><span class="hl-1"> </span><span class="hl-4">detected</span><span class="hl-1"> → </span><span class="hl-4">Retry</span><span class="hl-1"> </span><span class="hl-4">fetch</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Why 1000× Factor?</strong></p>
+<p>From the configuration comments:</p>
+<ul>
+<li>Incomplete candles from Binance typically have prices near $0.01-$1</li>
+<li>Normal BTC price range: $20,000-$100,000</li>
+<li>Factor 1000 catches anomalies below $20-$100 when median is $20,000-$100,000</li>
+<li>Factor 100 would be too permissive (allows $200 when median is $20,000)</li>
+<li>Factor 10,000 might be too strict for low-cap altcoins</li>
+</ul>
+<a id="median-vs-average" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Median vs Average<a href="#median-vs-average" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Dataset Size</th>
+<th>Method Used</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 5 candles</td>
+<td>Simple Average</td>
+<td>Median unstable with small datasets</td>
+</tr>
+<tr>
+<td>≥ 5 candles</td>
+<td>Median</td>
+<td>More robust against outliers (anomalies)</td>
+</tr>
+</tbody>
+</table>
+<p>With 5 candles × 4 price points (OHLC) = <strong>20 data points</strong>, the median is statistically reliable.</p>
+<hr>
+<a id="retry-logic" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Retry Logic<a href="#retry-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system implements exponential backoff retry logic for <code>getCandles()</code> calls to handle transient network failures or rate limits.</p>
+<a id="retry-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Retry Configuration<a href="#retry-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td>3</td>
+<td>Maximum number of retry attempts</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td>5000</td>
+<td>Delay between retries (5 seconds)</td>
+</tr>
+</tbody>
+</table>
+<a id="retry-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Retry Flow<a href="#retry-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/13_vwap-pricing-data-handling_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Retry State Machine</strong></p>
+<p><strong>Retry Trigger Conditions</strong>:</p>
+<ol>
+<li>Network error (timeout, connection refused)</li>
+<li>Exchange API error (rate limit, 500 error)</li>
+<li>Anomaly detection failure (price &lt; threshold)</li>
+<li>Empty candle array returned</li>
+</ol>
+<p><strong>No Retry Conditions</strong>:</p>
+<ul>
+<li>Zero volume candles (valid, triggers fallback)</li>
+<li>Small dataset (&lt;5 candles, uses average)</li>
+<li>Valid data on first attempt</li>
+</ul>
+<hr>
+<a id="fallback-mechanisms" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Fallback Mechanisms<a href="#fallback-mechanisms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system implements multiple fallback strategies to handle edge cases where normal VWAP calculation is impossible.</p>
+<a id="zero-volume-fallback" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Zero Volume Fallback<a href="#zero-volume-fallback" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When all candles in the buffer have <code>volume = 0</code> (low-liquidity assets), the VWAP denominator becomes zero. The system automatically falls back to a <strong>simple arithmetic mean</strong> of close prices.</p>
+<p><strong>Example from Tests</strong>:</p>
+<pre><code class="javascript"><span class="hl-5">// Test case: test/e2e/edge.test.mjs:148-283</span><br/><span class="hl-5">// All candles have volume=0</span><br/><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">open:</span><span class="hl-1"> </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">close:</span><span class="hl-1"> </span><span class="hl-6">42000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">volume:</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1">,  </span><span class="hl-5">// Zero volume!</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// System uses fallback: (42000 + 42000 + ...) / n</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">price</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getAveragePrice</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">);</span><br/><span class="hl-5">// Returns: 42000 (simple average)</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="small-dataset-fallback" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Small Dataset Fallback<a href="#small-dataset-fallback" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When fewer than 5 candles are available (e.g., newly listed asset, beginning of timeframe), the system uses <strong>simple average</strong> instead of median for anomaly detection.</p>
+<table>
+<thead>
+<tr>
+<th>Candles Available</th>
+<th>Anomaly Detection Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>&lt; 5 candles</td>
+<td>Simple average of prices</td>
+</tr>
+<tr>
+<td>≥ 5 candles</td>
+<td>Median of prices (more robust)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rationale</strong>: Median requires minimum 7-10 data points for statistical stability. With &lt;5 candles (20 price points), average is more stable.</p>
+<hr>
+<a id="integration-with-signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Signal Lifecycle<a href="#integration-with-signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>VWAP pricing is used at critical points in the signal lifecycle to ensure realistic execution simulation:</p>
+<a id="entry-price-scheduled-→-opened" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Entry Price (Scheduled → Opened)<a href="#entry-price-scheduled-→-opened" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a scheduled signal activates (price reaches <code>priceOpen</code>), the system calculates VWAP to determine the <strong>actual entry price</strong>, which may differ from <code>priceOpen</code> due to:</p>
+<ul>
+<li>Volume-weighted slippage</li>
+<li>Market depth simulation</li>
+<li>Order book pressure</li>
+</ul>
+<a id="exit-price-opened-→-closed" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exit Price (Opened → Closed)<a href="#exit-price-opened-→-closed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When a signal closes (TP/SL/time), VWAP is recalculated to determine the <strong>actual exit price</strong>. This accounts for:</p>
+<ul>
+<li>Exit order execution slippage</li>
+<li>Market conditions at close time</li>
+<li>Volume at exit point</li>
+</ul>
+<a id="price-discovery-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Discovery Flow<a href="#price-discovery-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/13_vwap-pricing-data-handling_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: VWAP Price Discovery Sequence</strong></p>
+<hr>
+<a id="configuration-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Reference<a href="#configuration-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All VWAP and data handling parameters are defined in <code>GLOBAL_CONFIG</code>.</p>
+<a id="complete-parameter-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Complete Parameter Table<a href="#complete-parameter-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td><code>number</code></td>
+<td>5</td>
+<td>Number of candles for VWAP calculation</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_COUNT</code></td>
+<td><code>number</code></td>
+<td>3</td>
+<td>Maximum retry attempts for failed requests</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_RETRY_DELAY_MS</code></td>
+<td><code>number</code></td>
+<td>5000</td>
+<td>Delay between retries (milliseconds)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR</code></td>
+<td><code>number</code></td>
+<td>1000</td>
+<td>Price deviation threshold (median/factor)</td>
+</tr>
+<tr>
+<td><code>CC_GET_CANDLES_MIN_CANDLES_FOR_MEDIAN</code></td>
+<td><code>number</code></td>
+<td>5</td>
+<td>Minimum candles for median calculation</td>
+</tr>
+</tbody>
+</table>
+<a id="customizing-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Customizing Configuration<a href="#customizing-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_AVG_PRICE_CANDLES_COUNT:</span><span class="hl-1"> </span><span class="hl-6">10</span><span class="hl-1">,  </span><span class="hl-5">// Use 10 candles for VWAP</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_RETRY_COUNT:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,   </span><span class="hl-5">// More retries for unstable connection</span><br/><span class="hl-1">  </span><span class="hl-4">CC_GET_CANDLES_PRICE_ANOMALY_THRESHOLD_FACTOR:</span><span class="hl-1"> </span><span class="hl-6">500</span><span class="hl-1">,  </span><span class="hl-5">// Stricter anomaly detection</span><br/><span class="hl-1">}, </span><span class="hl-7">true</span><span class="hl-1">);  </span><span class="hl-5">// true = replace all config</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Warning</strong>: Changing <code>CC_AVG_PRICE_CANDLES_COUNT</code> affects execution realism. Larger buffers smooth out price volatility but may miss short-term opportunities. Smaller buffers are more responsive but may be affected by single-candle anomalies.</p>
+<hr>
+<a id="vwap-vs-simple-pricing-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">VWAP vs Simple Pricing Comparison<a href="#vwap-vs-simple-pricing-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="impact-on-backtest-results" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Impact on Backtest Results<a href="#impact-on-backtest-results" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Pricing Method</th>
+<th>Pros</th>
+<th>Cons</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Single Candle Close</strong></td>
+<td>Fast, simple</td>
+<td>Unrealistic, cherry-picks prices</td>
+<td>Not recommended</td>
+</tr>
+<tr>
+<td><strong>VWAP (5 candles)</strong></td>
+<td>Realistic slippage, accounts for volume</td>
+<td>Slightly more complex</td>
+<td><strong>Default, recommended</strong></td>
+</tr>
+<tr>
+<td><strong>VWAP (20+ candles)</strong></td>
+<td>Smooths volatility, reduces noise</td>
+<td>May miss short-term signals</td>
+<td>Low-frequency strategies</td>
+</tr>
+</tbody>
+</table>
+<a id="example-price-difference" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example: Price Difference<a href="#example-price-difference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1">=</span><span class="hl-6">42000</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">=</span><span class="hl-6">100</span><br/><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-6">2</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1">=</span><span class="hl-6">42010</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">=</span><span class="hl-6">200</span><br/><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-6">3</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1">=</span><span class="hl-6">42020</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">=</span><span class="hl-6">150</span><br/><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-6">4</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1">=</span><span class="hl-6">42030</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">=</span><span class="hl-6">50</span><br/><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">: </span><span class="hl-4">close</span><span class="hl-1">=</span><span class="hl-6">42040</span><span class="hl-1">, </span><span class="hl-4">volume</span><span class="hl-1">=</span><span class="hl-6">100</span><br/><br/><span class="hl-4">Simple</span><span class="hl-1"> </span><span class="hl-10">Average</span><span class="hl-1">: (</span><span class="hl-6">42000</span><span class="hl-1"> + </span><span class="hl-6">42010</span><span class="hl-1"> + </span><span class="hl-6">42020</span><span class="hl-1"> + </span><span class="hl-6">42030</span><span class="hl-1"> + </span><span class="hl-6">42040</span><span class="hl-1">) / </span><span class="hl-6">5</span><span class="hl-1"> = </span><span class="hl-6">42020</span><br/><br/><span class="hl-10">VWAP</span><span class="hl-1">: (</span><span class="hl-6">42000</span><span class="hl-1">×</span><span class="hl-6">100</span><span class="hl-1"> + </span><span class="hl-6">42010</span><span class="hl-1">×</span><span class="hl-6">200</span><span class="hl-1"> + </span><span class="hl-6">42020</span><span class="hl-1">×</span><span class="hl-6">150</span><span class="hl-1"> + </span><span class="hl-6">42030</span><span class="hl-1">×</span><span class="hl-6">50</span><span class="hl-1"> + </span><span class="hl-6">42040</span><span class="hl-1">×</span><span class="hl-6">100</span><span class="hl-1">) / (</span><span class="hl-6">100</span><span class="hl-1">+</span><span class="hl-6">200</span><span class="hl-1">+</span><span class="hl-6">150</span><span class="hl-1">+</span><span class="hl-6">50</span><span class="hl-1">+</span><span class="hl-6">100</span><span class="hl-1">)</span><br/><span class="hl-1">    = </span><span class="hl-6">25</span><span class="hl-1">,</span><span class="hl-6">217</span><span class="hl-1">,</span><span class="hl-6">000</span><span class="hl-1"> / </span><span class="hl-6">600</span><br/><span class="hl-1">    = </span><span class="hl-6">42</span><span class="hl-1">,</span><span class="hl-6">028.33</span><br/><br/><span class="hl-10">Difference</span><span class="hl-1">: </span><span class="hl-6">8.33</span><span class="hl-1"> </span><span class="hl-0">points</span><span class="hl-1"> (</span><span class="hl-6">0.02</span><span class="hl-1">%)</span>
+</code><button>Copy</button></pre>
+
+<p>Over hundreds of trades, this difference compounds significantly.</p>
+<hr>
+<a id="anomaly-detection-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Anomaly Detection Examples<a href="#anomaly-detection-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="case-study-binance-incomplete-candles" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Case Study: Binance Incomplete Candles<a href="#case-study-binance-incomplete-candles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Problem</strong>: Binance API occasionally returns incomplete candles with prices near $0.01 when data is still being aggregated.</p>
+<p><strong>Without Anomaly Detection</strong>:</p>
+<pre><code><span class="hl-10">Signal</span><span class="hl-1">: </span><span class="hl-8">LONG</span><span class="hl-1"> </span><span class="hl-4">at</span><span class="hl-1"> </span><span class="hl-4">priceOpen</span><span class="hl-1">=</span><span class="hl-4">$42</span><span class="hl-1">,</span><span class="hl-6">000</span><span class="hl-1">, </span><span class="hl-8">TP</span><span class="hl-1">=</span><span class="hl-4">$43</span><span class="hl-1">,</span><span class="hl-6">000</span><br/><span class="hl-8">VWAP</span><span class="hl-1"> </span><span class="hl-4">calculation</span><span class="hl-1"> </span><span class="hl-4">includes</span><span class="hl-1"> </span><span class="hl-4">anomalous</span><span class="hl-1"> </span><span class="hl-10">candle</span><span class="hl-1">: </span><span class="hl-4">$0</span><span class="hl-1">.</span><span class="hl-6">01</span><br/><span class="hl-4">Calculated</span><span class="hl-1"> </span><span class="hl-10">VWAP</span><span class="hl-1">: </span><span class="hl-4">$8</span><span class="hl-1">,</span><span class="hl-6">400</span><span class="hl-1"> (</span><span class="hl-4">average</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> [</span><span class="hl-4">$42k</span><span class="hl-1">, </span><span class="hl-4">$42k</span><span class="hl-1">, </span><span class="hl-4">$0</span><span class="hl-1">.</span><span class="hl-6">01</span><span class="hl-1">, </span><span class="hl-4">$42k</span><span class="hl-1">, </span><span class="hl-4">$42k</span><span class="hl-1">])</span><br/><span class="hl-10">Result</span><span class="hl-1">: </span><span class="hl-4">Signal</span><span class="hl-1"> </span><span class="hl-4">immediately</span><span class="hl-1"> </span><span class="hl-4">triggers</span><span class="hl-1"> </span><span class="hl-0">TP</span><span class="hl-1"> (</span><span class="hl-4">thinks</span><span class="hl-1"> </span><span class="hl-4">price</span><span class="hl-1"> </span><span class="hl-4">jumped</span><span class="hl-1"> </span><span class="hl-4">to</span><span class="hl-1"> </span><span class="hl-4">$43k</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p><strong>With Anomaly Detection</strong>:</p>
+<pre><code><span class="hl-4">Median</span><span class="hl-1"> </span><span class="hl-10">price</span><span class="hl-1">: </span><span class="hl-4">$42</span><span class="hl-1">,</span><span class="hl-6">000</span><br/><span class="hl-4">Anomaly</span><span class="hl-1"> </span><span class="hl-10">threshold</span><span class="hl-1">: </span><span class="hl-4">$42</span><span class="hl-1">,</span><span class="hl-6">000</span><span class="hl-1"> / </span><span class="hl-6">1000</span><span class="hl-1"> = </span><span class="hl-4">$42</span><br/><span class="hl-4">Candle</span><span class="hl-1"> </span><span class="hl-3">with</span><span class="hl-1"> </span><span class="hl-4">$0</span><span class="hl-1">.</span><span class="hl-6">01</span><span class="hl-1"> </span><span class="hl-10">detected</span><span class="hl-1">: </span><span class="hl-4">$0</span><span class="hl-1">.</span><span class="hl-6">01</span><span class="hl-1"> &lt; </span><span class="hl-4">$42</span><span class="hl-1"> → </span><span class="hl-4">Anomaly</span><span class="hl-1">!</span><br/><span class="hl-10">Action</span><span class="hl-1">: </span><span class="hl-4">Retry</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">() (</span><span class="hl-4">up</span><span class="hl-1"> </span><span class="hl-4">to</span><span class="hl-1"> </span><span class="hl-6">3</span><span class="hl-1"> </span><span class="hl-4">attempts</span><span class="hl-1">)</span><br/><span class="hl-10">Result</span><span class="hl-1">: </span><span class="hl-4">Fetch</span><span class="hl-1"> </span><span class="hl-4">valid</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">calculate</span><span class="hl-1"> </span><span class="hl-4">correct</span><span class="hl-1"> </span><span class="hl-8">VWAP</span><span class="hl-1">=</span><span class="hl-4">$42</span><span class="hl-1">,</span><span class="hl-6">015</span>
+</code><button>Copy</button></pre>
+
+<a id="test-coverage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Test Coverage<a href="#test-coverage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The test suite includes comprehensive anomaly detection coverage:</p>
+<p><strong>Test File</strong>: <code>test/e2e/edge.test.mjs:148-283</code></p>
+<ul>
+<li>Zero volume handling</li>
+<li>Large profit scenarios (&gt;100%)</li>
+<li>Price skip scenarios (scheduled signal cancellation)</li>
+</ul>
+<p><strong>Test File</strong>: <code>test/e2e/sanitize.test.mjs</code></p>
+<ul>
+<li>Negative price rejection</li>
+<li>NaN/Infinity price rejection</li>
+<li>Extreme price validation</li>
+</ul>
+<hr>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="optimization-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Optimization Strategies<a href="#optimization-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Candle Count</strong>: Default 5 candles balances realism vs. API call overhead</li>
+<li><strong>Retry Logic</strong>: 3 retries with 5s delay prevents excessive API calls</li>
+<li><strong>Median Calculation</strong>: O(n log n) complexity, fast for small datasets</li>
+<li><strong>Volume Check</strong>: Early detection of zero-volume edge case avoids division by zero</li>
+</ol>
+<a id="memory-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Usage<a href="#memory-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Per Symbol</strong>: 5 candles × ~200 bytes/candle = ~1KB per VWAP calculation</li>
+<li><strong>No Persistent Cache</strong>: Candles are fetched fresh on each call (prevents stale data)</li>
+<li><strong>Temporal Context</strong>: Leverages <code>AsyncLocalStorage</code> for zero-copy context propagation</li>
+</ul>
+<a id="api-call-frequency" class="tsd-anchor"></a><h3 class="tsd-anchor-link">API Call Frequency<a href="#api-call-frequency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Backtest Mode</strong>: One <code>getCandles()</code> call per signal generation (throttled by <code>interval</code>)</li>
+<li><strong>Live Mode</strong>: One <code>getCandles()</code> call per tick (~1 minute with default config)</li>
+<li><strong>Retry Impact</strong>: Failed calls trigger 3× more requests, mitigated by 5s delay</li>
+</ul>
+<hr>
+<a id="edge-cases-and-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Edge Cases and Error Handling<a href="#edge-cases-and-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="comprehensive-edge-case-matrix" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comprehensive Edge Case Matrix<a href="#comprehensive-edge-case-matrix" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Detection</th>
+<th>Handling</th>
+<th>Test Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Zero volume</strong></td>
+<td>Volume sum = 0</td>
+<td>Fallback to simple average</td>
+<td><code>test/e2e/edge.test.mjs:148-283</code></td>
+</tr>
+<tr>
+<td><strong>Negative prices</strong></td>
+<td>price &lt; 0</td>
+<td>Reject signal, log error</td>
+<td><code>test/e2e/sanitize.test.mjs:351-443</code></td>
+</tr>
+<tr>
+<td><strong>NaN prices</strong></td>
+<td>!isFinite(price)</td>
+<td>Reject signal, log error</td>
+<td><code>test/e2e/sanitize.test.mjs:455-542</code></td>
+</tr>
+<tr>
+<td><strong>Anomalous prices</strong></td>
+<td>price &lt; median/1000</td>
+<td>Retry fetch (3×)</td>
+<td>Config + retry logic</td>
+</tr>
+<tr>
+<td><strong>Empty candle array</strong></td>
+<td>candles.length = 0</td>
+<td>Retry or throw error</td>
+<td>Retry logic</td>
+</tr>
+<tr>
+<td><strong>Incomplete candles</strong></td>
+<td>Missing OHLC fields</td>
+<td>Validate schema, retry</td>
+<td>Exchange validation</td>
+</tr>
+<tr>
+<td><strong>API timeout</strong></td>
+<td>Network error</td>
+<td>Retry with backoff</td>
+<td>Retry logic</td>
+</tr>
+<tr>
+<td><strong>Rate limit</strong></td>
+<td>429 HTTP error</td>
+<td>Retry with 5s delay</td>
+<td>Retry logic</td>
+</tr>
+</tbody>
+</table>
+<a id="error-propagation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Propagation<a href="#error-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/13_vwap-pricing-data-handling_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Error Propagation Path</strong></p>
+<p><strong>Critical Principle</strong>: Anomalies in candle data <strong>never</strong> cause signal execution. They either retry or fail the signal entirely, preventing trades based on bad data.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>VWAP Pricing &amp; Data Handling in Backtest Kit provides:</p>
+<ol>
+<li><strong>Realistic Execution</strong>: Volume-weighted pricing simulates market depth</li>
+<li><strong>Robust Validation</strong>: Multi-stage anomaly detection prevents bad data</li>
+<li><strong>Fallback Mechanisms</strong>: Zero-volume and small-dataset edge cases handled</li>
+<li><strong>Retry Logic</strong>: Transient failures don't crash backtests</li>
+<li><strong>Configuration</strong>: Tunable parameters for different asset classes</li>
+<li><strong>Test Coverage</strong>: Comprehensive edge case testing ensures reliability</li>
+</ol>
+<p><strong>Key Takeaway</strong>: The system prioritizes <strong>data integrity</strong> over speed. If data cannot be validated, the signal is rejected rather than executed with potentially incorrect prices.</p>
+<p>For implementation details of the <code>getCandles</code> interface, see <a href="design_36_exchanges-data-sources.html">Exchange Configuration</a>. For how VWAP integrates with signal pricing, see <a href="design_08_core-concepts.html">Signals &amp; Signal Lifecycle</a>.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#vwap-pricing--data-handling"><span>VWAP <wbr/>Pricing &amp; <wbr/>Data <wbr/>Handling</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#vwap-calculation-overview"><span>VWAP <wbr/>Calculation <wbr/>Overview</span></a></li><li><ul><li><a href="#vwap-formula"><span>VWAP <wbr/>Formula</span></a></li></ul></li><li><a href="#candle-buffer-management"><span>Candle <wbr/>Buffer <wbr/>Management</span></a></li><li><ul><li><a href="#buffer-size-configuration"><span>Buffer <wbr/>Size <wbr/>Configuration</span></a></li><li><a href="#temporal-context-guarantee"><span>Temporal <wbr/>Context <wbr/>Guarantee</span></a></li></ul></li><li><a href="#data-validation-pipeline"><span>Data <wbr/>Validation <wbr/>Pipeline</span></a></li><li><ul><li><a href="#validation-stages"><span>Validation <wbr/>Stages</span></a></li></ul></li><li><a href="#anomaly-detection"><span>Anomaly <wbr/>Detection</span></a></li><li><ul><li><a href="#price-anomaly-threshold"><span>Price <wbr/>Anomaly <wbr/>Threshold</span></a></li><li><a href="#example-scenario"><span>Example <wbr/>Scenario</span></a></li><li><a href="#median-vs-average"><span>Median vs <wbr/>Average</span></a></li></ul></li><li><a href="#retry-logic"><span>Retry <wbr/>Logic</span></a></li><li><ul><li><a href="#retry-configuration"><span>Retry <wbr/>Configuration</span></a></li><li><a href="#retry-flow"><span>Retry <wbr/>Flow</span></a></li></ul></li><li><a href="#fallback-mechanisms"><span>Fallback <wbr/>Mechanisms</span></a></li><li><ul><li><a href="#zero-volume-fallback"><span>Zero <wbr/>Volume <wbr/>Fallback</span></a></li><li><a href="#small-dataset-fallback"><span>Small <wbr/>Dataset <wbr/>Fallback</span></a></li></ul></li><li><a href="#integration-with-signal-lifecycle"><span>Integration with <wbr/>Signal <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#entry-price-scheduled-→-opened"><span>Entry <wbr/>Price (<wbr/>Scheduled → <wbr/>Opened)</span></a></li><li><a href="#exit-price-opened-→-closed"><span>Exit <wbr/>Price (<wbr/>Opened → <wbr/>Closed)</span></a></li><li><a href="#price-discovery-flow"><span>Price <wbr/>Discovery <wbr/>Flow</span></a></li></ul></li><li><a href="#configuration-reference"><span>Configuration <wbr/>Reference</span></a></li><li><ul><li><a href="#complete-parameter-table"><span>Complete <wbr/>Parameter <wbr/>Table</span></a></li><li><a href="#customizing-configuration"><span>Customizing <wbr/>Configuration</span></a></li></ul></li><li><a href="#vwap-vs-simple-pricing-comparison"><span>VWAP vs <wbr/>Simple <wbr/>Pricing <wbr/>Comparison</span></a></li><li><ul><li><a href="#impact-on-backtest-results"><span>Impact on <wbr/>Backtest <wbr/>Results</span></a></li><li><a href="#example-price-difference"><span>Example: <wbr/>Price <wbr/>Difference</span></a></li></ul></li><li><a href="#anomaly-detection-examples"><span>Anomaly <wbr/>Detection <wbr/>Examples</span></a></li><li><ul><li><a href="#case-study-binance-incomplete-candles"><span>Case <wbr/>Study: <wbr/>Binance <wbr/>Incomplete <wbr/>Candles</span></a></li><li><a href="#test-coverage"><span>Test <wbr/>Coverage</span></a></li></ul></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#optimization-strategies"><span>Optimization <wbr/>Strategies</span></a></li><li><a href="#memory-usage"><span>Memory <wbr/>Usage</span></a></li><li><a href="#api-call-frequency"><span>API <wbr/>Call <wbr/>Frequency</span></a></li></ul></li><li><a href="#edge-cases-and-error-handling"><span>Edge <wbr/>Cases and <wbr/>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#comprehensive-edge-case-matrix"><span>Comprehensive <wbr/>Edge <wbr/>Case <wbr/>Matrix</span></a></li><li><a href="#error-propagation"><span>Error <wbr/>Propagation</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

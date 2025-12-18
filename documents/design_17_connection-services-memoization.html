@@ -1,0 +1,333 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/17_connection-services-memoization | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_17_connection-services-memoization.html">design/17_connection-services-memoization</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="connection-services--memoization" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Connection Services &amp; Memoization<a href="#connection-services--memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Connection Services implement a <strong>memoized factory pattern</strong> that sits between the Core Services layer and the Client Layer. They cache client instances (ClientStrategy, ClientExchange, etc.) by unique keys and route method calls to the appropriate cached instance. This architecture prevents redundant instantiation, ensures proper initialization, and centralizes event emission after operations complete.</p>
+<p>For information about the Client Layer implementations that Connection Services instantiate, see <a href="design_14_architecture-deep-dive.html">Client Layer</a>. For the overall service architecture and dependency injection, see <a href="design_14_architecture-deep-dive.html">Service Layer &amp; Dependency Injection</a>.</p>
+<hr>
+<a id="connection-services-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Connection Services Overview<a href="#connection-services-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework defines six connection services, each responsible for managing a specific domain client:</p>
+<table>
+<thead>
+<tr>
+<th>Connection Service</th>
+<th>Client Managed</th>
+<th>Cache Key</th>
+<th>Primary Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>StrategyConnectionService</code></td>
+<td><code>ClientStrategy</code></td>
+<td><code>symbol:strategyName</code></td>
+<td>Routes strategy execution (tick, backtest, signal monitoring)</td>
+</tr>
+<tr>
+<td><code>ExchangeConnectionService</code></td>
+<td><code>ClientExchange</code></td>
+<td><code>exchangeName</code></td>
+<td>Routes data fetching (candles, VWAP, price formatting)</td>
+</tr>
+<tr>
+<td><code>FrameConnectionService</code></td>
+<td><code>ClientFrame</code></td>
+<td><code>frameName</code></td>
+<td>Routes timeframe generation for backtesting</td>
+</tr>
+<tr>
+<td><code>RiskConnectionService</code></td>
+<td><code>ClientRisk</code></td>
+<td><code>riskName</code></td>
+<td>Routes risk validation and position tracking</td>
+</tr>
+<tr>
+<td><code>PartialConnectionService</code></td>
+<td><code>ClientPartial</code></td>
+<td>(singleton)</td>
+<td>Routes partial profit/loss monitoring</td>
+</tr>
+<tr>
+<td><code>OptimizerConnectionService</code></td>
+<td><code>ClientOptimizer</code></td>
+<td><code>optimizerName</code></td>
+<td>Routes LLM-based strategy generation</td>
+</tr>
+</tbody>
+</table>
+<p>All connection services follow the same pattern:</p>
+<ol>
+<li><strong>Schema Lookup</strong>: Retrieve configuration from corresponding SchemaService</li>
+<li><strong>Memoization</strong>: Cache client instances using <code>functools-kit</code> <code>memoize()</code></li>
+<li><strong>Routing</strong>: Delegate method calls to cached client</li>
+<li><strong>Event Emission</strong>: Broadcast results to event system</li>
+</ol>
+<hr>
+<a id="memoization-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memoization Pattern<a href="#memoization-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Connection Services use <strong>memoization</strong> to prevent creating duplicate client instances for the same context. The <code>memoize()</code> function from <code>functools-kit</code> caches function results based on a computed cache key.</p>
+<p><img src="../media/17_connection-services-memoization_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Memoization Benefits:</strong></p>
+<ol>
+<li><strong>Performance</strong>: Avoid re-instantiating clients with complex initialization</li>
+<li><strong>State Preservation</strong>: Maintain client internal state across calls (e.g., <code>_pendingSignal</code>, <code>_lastSignalTimestamp</code>)</li>
+<li><strong>Memory Efficiency</strong>: Single instance per unique key instead of creating instances per call</li>
+<li><strong>Consistency</strong>: Same client instance guarantees consistent behavior for a given context</li>
+</ol>
+<p><strong>Cache Key Strategy:</strong></p>
+<ul>
+<li><strong>StrategyConnectionService</strong>: <code>${symbol}:${strategyName}</code> (one instance per symbol-strategy pair)</li>
+<li><strong>ExchangeConnectionService</strong>: <code>exchangeName</code> (one instance per exchange)</li>
+<li><strong>FrameConnectionService</strong>: <code>frameName</code> (one instance per timeframe configuration)</li>
+<li><strong>RiskConnectionService</strong>: <code>riskName</code> (one instance per risk profile)</li>
+</ul>
+<hr>
+<a id="strategyconnectionservice-deep-dive" class="tsd-anchor"></a><h2 class="tsd-anchor-link">StrategyConnectionService Deep Dive<a href="#strategyconnectionservice-deep-dive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>StrategyConnectionService</code> is the most complex connection service, demonstrating all key patterns used across connection services.</p>
+<a id="architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Architecture<a href="#architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/17_connection-services-memoization_1.svg" alt="Mermaid Diagram"></p>
+<a id="key-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Methods<a href="#key-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><a id="getstrategy-memoized-factory" class="tsd-anchor"></a><h4 class="tsd-anchor-link">getStrategy (Memoized Factory)<a href="#getstrategy-memoized-factory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>The private <code>getStrategy</code> method is the core of the memoization pattern:</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">getStrategy</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-8">riskName</span><span class="hl-1"> = </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-8">riskList</span><span class="hl-1"> = [],</span><br/><span class="hl-1">      </span><span class="hl-8">getSignal</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-8">interval</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-8">callbacks</span><span class="hl-1">,</span><br/><span class="hl-1">    } = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ClientStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">interval</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">execution:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">method:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">partial:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">partialConnectionService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">exchange:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">exchangeConnectionService</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">risk:</span><span class="hl-1"> </span><span class="hl-0">GET_RISK_FN</span><span class="hl-1">({ </span><span class="hl-4">riskName</span><span class="hl-1">, </span><span class="hl-4">riskList</span><span class="hl-1"> }, </span><span class="hl-7">this</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">riskName</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">getSignal</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">callbacks</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation Details:</strong></p>
+<ol>
+<li><strong>Cache Key Function</strong>: First parameter to <code>memoize()</code> computes <code>symbol:strategyName</code> string</li>
+<li><strong>Factory Function</strong>: Second parameter creates <code>ClientStrategy</code> with injected dependencies</li>
+<li><strong>Schema Lookup</strong>: Retrieves strategy configuration via <code>strategySchemaService.get()</code></li>
+<li><strong>Dependency Injection</strong>: Passes all required services to ClientStrategy constructor</li>
+<li><strong>Risk Merging</strong>: Uses <code>GET_RISK_FN</code> to handle single <code>riskName</code> or multiple <code>riskList</code> profiles</li>
+</ol>
+<a id="tick-live-execution-router" class="tsd-anchor"></a><h4 class="tsd-anchor-link">tick (Live Execution Router)<a href="#tick-live-execution-router" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Routes live trading ticks to the appropriate ClientStrategy instance:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyTickResult</span><span class="hl-1">&gt; </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;strategyConnectionService tick&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategy</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">getStrategy</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">waitForInit</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tick</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalLiveEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">tick</span><span class="hl-1">;</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Execution Flow:</strong></p>
+<ol>
+<li><strong>Logging</strong>: Records method invocation for debugging</li>
+<li><strong>Retrieval</strong>: Gets cached ClientStrategy via <code>getStrategy()</code></li>
+<li><strong>Initialization</strong>: Ensures strategy is ready via <code>waitForInit()</code> (restores persisted signals in live mode)</li>
+<li><strong>Delegation</strong>: Calls <code>strategy.tick()</code> to execute business logic</li>
+<li><strong>Event Emission</strong>: Broadcasts result to mode-specific and global emitters</li>
+<li><strong>Return</strong>: Passes result back to caller</li>
+</ol>
+<a id="backtest-backtest-router" class="tsd-anchor"></a><h4 class="tsd-anchor-link">backtest (Backtest Router)<a href="#backtest-backtest-router" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Routes backtest execution to the appropriate ClientStrategy instance:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">backtest</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">candles</span><span class="hl-1">: </span><span class="hl-13">ICandleData</span><span class="hl-1">[]</span><br/><span class="hl-1">): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">IStrategyBacktestResult</span><span class="hl-1">&gt; </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;strategyConnectionService backtest&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">candleCount:</span><span class="hl-1"> </span><span class="hl-4">candles</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategy</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">getStrategy</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">waitForInit</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tick</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">strategy</span><span class="hl-1">.</span><span class="hl-0">backtest</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">tick</span><span class="hl-1">;</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Differences from tick():</strong></p>
+<ul>
+<li>Accepts <code>candles</code> array for fast backtesting</li>
+<li>Only emits to <code>signalBacktestEmitter</code> and <code>signalEmitter</code> (no live emitter)</li>
+<li>Returns <code>IStrategyBacktestResult</code> (always closed or cancelled, never idle/active)</li>
+</ul>
+<a id="clear-cache-management" class="tsd-anchor"></a><h4 class="tsd-anchor-link">clear (Cache Management)<a href="#clear-cache-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Clears cached ClientStrategy instances to force re-initialization:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">clear</span><span class="hl-1"> = </span><span class="hl-0">async</span><span class="hl-1"> (</span><span class="hl-4">ctx</span><span class="hl-1">?: {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">}): </span><span class="hl-13">Promise</span><span class="hl-1">&lt;</span><span class="hl-13">void</span><span class="hl-1">&gt; </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;strategyConnectionService clear&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">ctx</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">ctx</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">key</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">ctx</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">ctx</span><span class="hl-9">.</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">getStrategy</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">);</span><br/><span class="hl-1">  } </span><span class="hl-3">else</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">getStrategy</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li><strong>Specific Clear</strong>: <code>clear({ symbol, strategyName })</code> removes single instance</li>
+<li><strong>Global Clear</strong>: <code>clear()</code> removes all cached instances</li>
+<li><strong>Reset State</strong>: Forces fresh ClientStrategy on next call (useful for testing)</li>
+<li><strong>Memory Management</strong>: Release resources for strategies no longer needed</li>
+</ul>
+<hr>
+<a id="other-connection-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Other Connection Services<a href="#other-connection-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="exchangeconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ExchangeConnectionService<a href="#exchangeconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Manages <code>ClientExchange</code> instances for fetching market data.</p>
+<p><strong>Cache Key:</strong> <code>exchangeName</code></p>
+<p><strong>Routed Methods:</strong></p>
+<ul>
+<li><code>getCandles(symbol, interval, since, limit)</code> - Fetch historical candle data</li>
+<li><code>getAveragePrice(symbol)</code> - Calculate VWAP from last 5 1m candles</li>
+<li><code>formatPrice(symbol, price)</code> - Format price for exchange</li>
+<li><code>formatQuantity(symbol, quantity)</code> - Format quantity for exchange</li>
+</ul>
+<p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Uses <code>CANDLES_BUFFER_SIZE</code> to maintain rolling window of recent candles</li>
+<li>Detects anomalous prices using median calculation</li>
+<li>Retries failed requests with <code>retry()</code> from <code>functools-kit</code></li>
+<li>Validates candle completeness (detects missing timestamps)</li>
+</ul>
+<a id="frameconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">FrameConnectionService<a href="#frameconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Manages <code>ClientFrame</code> instances for timeframe generation.</p>
+<p><strong>Cache Key:</strong> <code>frameName</code></p>
+<p><strong>Routed Methods:</strong></p>
+<ul>
+<li><code>getTimeframes()</code> - Generate array of timestamps from startDate to endDate at specified interval</li>
+</ul>
+<p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Returns immutable array of Date objects</li>
+<li>Validates that endDate &gt; startDate</li>
+<li>Ensures interval divides evenly into total duration</li>
+</ul>
+<a id="riskconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">RiskConnectionService<a href="#riskconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Manages <code>ClientRisk</code> instances for risk validation.</p>
+<p><strong>Cache Key:</strong> <code>riskName</code></p>
+<p><strong>Routed Methods:</strong></p>
+<ul>
+<li><code>checkSignal(args)</code> - Validate signal against risk limits and custom validations</li>
+<li><code>addSignal(symbol, context)</code> - Track new active position</li>
+<li><code>removeSignal(symbol, context)</code> - Remove closed position</li>
+</ul>
+<p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Maintains global state of active positions across all strategies</li>
+<li>Executes custom validation functions from <code>IRiskSchema.validations</code></li>
+<li>Supports <code>MergeRisk</code> for combining multiple risk profiles</li>
+<li>Uses <code>RiskGlobalService</code> for portfolio-wide tracking</li>
+</ul>
+<a id="partialconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PartialConnectionService<a href="#partialconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Manages a singleton <code>ClientPartial</code> instance for partial profit/loss tracking.</p>
+<p><strong>Cache Key:</strong> None (singleton pattern)</p>
+<p><strong>Routed Methods:</strong></p>
+<ul>
+<li><code>profit(symbol, signal, currentPrice, percentTp, backtest, when)</code> - Track profit milestones</li>
+<li><code>loss(symbol, signal, currentPrice, percentSl, backtest, when)</code> - Track loss milestones</li>
+<li><code>clear(symbol, signal, currentPrice, backtest)</code> - Reset tracking on signal close</li>
+</ul>
+<p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Emits <code>partialProfitSubject</code> and <code>partialLossSubject</code> events</li>
+<li>Tracks 10%, 20%, 30%... milestones</li>
+<li>Prevents duplicate emissions for same milestone</li>
+<li>Used by <code>ClientStrategy.tick()</code> to monitor unrealized P&amp;L</li>
+</ul>
+<a id="optimizerconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerConnectionService<a href="#optimizerconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Manages <code>ClientOptimizer</code> instances for LLM-based strategy generation.</p>
+<p><strong>Cache Key:</strong> <code>optimizerName</code></p>
+<p><strong>Routed Methods:</strong></p>
+<ul>
+<li><code>getData(symbol)</code> - Fetch training data from all sources</li>
+<li><code>getCode(symbol, data)</code> - Generate strategy code using LLM</li>
+<li><code>dump(symbol, code)</code> - Write generated code to file</li>
+</ul>
+<p><strong>Implementation Notes:</strong></p>
+<ul>
+<li>Integrates with Ollama for LLM inference</li>
+<li>Uses <code>OptimizerTemplateService</code> for code generation templates</li>
+<li>Manages conversation history across multiple data sources</li>
+<li>Emits progress events during data collection</li>
+</ul>
+<hr>
+<a id="cache-management-and-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cache Management and Lifecycle<a href="#cache-management-and-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cache-lifecycle" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cache Lifecycle<a href="#cache-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/17_connection-services-memoization_2.svg" alt="Mermaid Diagram"></p>
+<a id="memory-implications" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Implications<a href="#memory-implications" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Per-Symbol-Strategy Caching:</strong></p>
+<p>For a backtest with 100 symbols and 5 strategies:</p>
+<ul>
+<li>Without memoization: 100 × 5 × iterations = thousands of ClientStrategy instantiations</li>
+<li>With memoization: 100 × 5 = 500 cached instances, reused across all iterations</li>
+</ul>
+<p><strong>Memory Trade-offs:</strong></p>
+<ul>
+<li><strong>Cached State</strong>: Each ClientStrategy stores <code>_pendingSignal</code>, <code>_scheduledSignal</code>, <code>_lastSignalTimestamp</code></li>
+<li><strong>Service References</strong>: Shared references to injected services (not duplicated)</li>
+<li><strong>Client Methods</strong>: Prototype methods, not duplicated per instance</li>
+</ul>
+<p><strong>Clearing Strategy:</strong></p>
+<ul>
+<li><strong>After Backtest</strong>: No clear needed, let garbage collection handle it</li>
+<li><strong>Long-Running Live</strong>: Call <code>clear()</code> periodically to release unused strategies</li>
+<li><strong>Testing</strong>: Call <code>clear()</code> between tests to ensure clean state</li>
+</ul>
+<hr>
+<a id="integration-with-service-layer" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Service Layer<a href="#integration-with-service-layer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="dependency-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Flow<a href="#dependency-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/17_connection-services-memoization_3.svg" alt="Mermaid Diagram"></p>
+<a id="dependency-injection-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Injection Pattern<a href="#dependency-injection-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection Services are injected into Core Services via the DI container:</p>
+<pre><code class="typescript"><span class="hl-5">// Core Services depend on Connection Services</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-13">StrategyCoreService</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">strategyConnectionService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-13">StrategyConnectionService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">    </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Routes calls to connection service</span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-13">string</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-13">StrategyName</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyConnectionService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Injection Flow:</strong></p>
+<ol>
+<li><code>provide()</code> registers factory functions in <code>src/lib/core/provide.ts:66-72</code></li>
+<li><code>inject()</code> retrieves services lazily via TYPES symbols</li>
+<li>Connection Services inject other services (Schema, Context, etc.)</li>
+<li>Clients receive fully-configured dependencies via constructor</li>
+</ol>
+<hr>
+<a id="comparison-connection-vs-core-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Comparison: Connection vs Core Services<a href="#comparison-connection-vs-core-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Connection Services</th>
+<th>Core Services</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Purpose</strong></td>
+<td>Route &amp; cache client instances</td>
+<td>Orchestrate business logic</td>
+</tr>
+<tr>
+<td><strong>State</strong></td>
+<td>Stateless (delegates to clients)</td>
+<td>Stateless (delegates to connections)</td>
+</tr>
+<tr>
+<td><strong>Caching</strong></td>
+<td>Memoize client instances</td>
+<td>No caching</td>
+</tr>
+<tr>
+<td><strong>Dependencies</strong></td>
+<td>Schema, Context, Logger</td>
+<td>Connection, Context, Schema</td>
+</tr>
+<tr>
+<td><strong>Event Emission</strong></td>
+<td>After client operations</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><strong>Examples</strong></td>
+<td>StrategyConnectionService</td>
+<td>StrategyCoreService</td>
+</tr>
+<tr>
+<td><strong>Method Pattern</strong></td>
+<td><code>getClient()</code> + <code>client.method()</code></td>
+<td><code>connectionService.method()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Layering Rationale:</strong></p>
+<ul>
+<li><strong>Core Services</strong>: High-level orchestration (e.g., iterate through timeframes)</li>
+<li><strong>Connection Services</strong>: Instance routing and caching</li>
+<li><strong>Client Layer</strong>: Pure business logic (e.g., signal validation)</li>
+</ul>
+<p>This separation enables:</p>
+<ul>
+<li>Testing clients in isolation</li>
+<li>Swapping caching strategies without changing business logic</li>
+<li>Centralizing event emission logic</li>
+</ul>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Connection Services implement a <strong>memoized factory pattern</strong> that:</p>
+<ol>
+<li><strong>Cache client instances</strong> by unique keys (symbol:strategy, exchangeName, etc.)</li>
+<li><strong>Route method calls</strong> to the appropriate cached client</li>
+<li><strong>Inject dependencies</strong> from Schema and Context services</li>
+<li><strong>Ensure initialization</strong> via <code>waitForInit()</code> before operations</li>
+<li><strong>Emit events</strong> after operations complete</li>
+</ol>
+<p>The memoization strategy prevents redundant instantiation, preserves client state across calls, and centralizes event emission. This architecture sits between the Core Services (orchestration) and Client Layer (business logic), providing clean separation of concerns and efficient resource management.</p>
+<p><strong>Key Takeaways:</strong></p>
+<ul>
+<li>Use <code>memoize()</code> from <code>functools-kit</code> with computed cache keys</li>
+<li>StrategyConnectionService is the most complex, demonstrating all patterns</li>
+<li>Cache management via <code>clear()</code> enables testing and memory control</li>
+<li>Connection Services are stateless routers, not stateful coordinators</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#connection-services--memoization"><span>Connection <wbr/>Services &amp; <wbr/>Memoization</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#connection-services-overview"><span>Connection <wbr/>Services <wbr/>Overview</span></a></li><li><a href="#memoization-pattern"><span>Memoization <wbr/>Pattern</span></a></li><li><a href="#strategyconnectionservice-deep-dive"><span>Strategy<wbr/>Connection<wbr/>Service <wbr/>Deep <wbr/>Dive</span></a></li><li><ul><li><a href="#architecture"><span>Architecture</span></a></li><li><a href="#key-methods"><span>Key <wbr/>Methods</span></a></li><li><ul><li><a href="#getstrategy-memoized-factory"><span>get<wbr/>Strategy (<wbr/>Memoized <wbr/>Factory)</span></a></li><li><a href="#tick-live-execution-router"><span>tick (<wbr/>Live <wbr/>Execution <wbr/>Router)</span></a></li><li><a href="#backtest-backtest-router"><span>backtest (<wbr/>Backtest <wbr/>Router)</span></a></li><li><a href="#clear-cache-management"><span>clear (<wbr/>Cache <wbr/>Management)</span></a></li></ul></li></ul></li><li><a href="#other-connection-services"><span>Other <wbr/>Connection <wbr/>Services</span></a></li><li><ul><li><a href="#exchangeconnectionservice"><span>Exchange<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#frameconnectionservice"><span>Frame<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#riskconnectionservice"><span>Risk<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#partialconnectionservice"><span>Partial<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#optimizerconnectionservice"><span>Optimizer<wbr/>Connection<wbr/>Service</span></a></li></ul></li><li><a href="#cache-management-and-lifecycle"><span>Cache <wbr/>Management and <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#cache-lifecycle"><span>Cache <wbr/>Lifecycle</span></a></li><li><a href="#memory-implications"><span>Memory <wbr/>Implications</span></a></li></ul></li><li><a href="#integration-with-service-layer"><span>Integration with <wbr/>Service <wbr/>Layer</span></a></li><li><ul><li><a href="#dependency-flow"><span>Dependency <wbr/>Flow</span></a></li><li><a href="#dependency-injection-pattern"><span>Dependency <wbr/>Injection <wbr/>Pattern</span></a></li></ul></li><li><a href="#comparison-connection-vs-core-services"><span>Comparison: <wbr/>Connection vs <wbr/>Core <wbr/>Services</span></a></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
