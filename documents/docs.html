@@ -22,6 +22,8 @@
 <li><a href="docs_class_ConstantUtils.html">ConstantUtils</a></li>
 <li><a href="docs_class_RiskMarkdownService.html">RiskMarkdownService</a></li>
 <li><a href="docs_class_RiskUtils.html">RiskUtils</a></li>
+<li><a href="docs_class_ExchangeUtils.html">ExchangeUtils</a></li>
+<li><a href="docs_class_CacheUtils.html">CacheUtils</a></li>
 <li><a href="docs_class_LoggerService.html">LoggerService</a></li>
 <li><a href="docs_class_ClientExchange.html">ClientExchange</a></li>
 <li><a href="docs_class_ExchangeConnectionService.html">ExchangeConnectionService</a></li>
@@ -71,6 +73,7 @@
 <li><a href="docs_class_ColumnValidationService.html">ColumnValidationService</a></li>
 </ul>
 <a id="enums" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Enums<a href="#enums" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Functions<a href="#functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><a href="docs_function_validate.html">validate</a></li>
 <li><a href="docs_function_setLogger.html">setLogger</a></li>
 <li><a href="docs_function_setConfig.html">setConfig</a></li>
 <li><a href="docs_function_getConfig.html">getConfig</a></li>
@@ -120,6 +123,7 @@
 <li><a href="docs_function_listenPartialLossOnce.html">listenPartialLossOnce</a></li>
 <li><a href="docs_function_listenRisk.html">listenRisk</a></li>
 <li><a href="docs_function_listenRiskOnce.html">listenRiskOnce</a></li>
+<li><a href="docs_function_hasTradeContext.html">hasTradeContext</a></li>
 <li><a href="docs_function_getCandles.html">getCandles</a></li>
 <li><a href="docs_function_getAveragePrice.html">getAveragePrice</a></li>
 <li><a href="docs_function_formatPrice.html">formatPrice</a></li>
@@ -129,8 +133,9 @@
 <li><a href="docs_function_dumpSignal.html">dumpSignal</a></li>
 </ul>
 <a id="interfaces" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Interfaces<a href="#interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
-<li><a href="docs_interface_IExecutionContext.html">IExecutionContext</a></li>
+<li><a href="docs_interface_ValidateArgs.html">ValidateArgs</a></li>
 <li><a href="docs_interface_ILogger.html">ILogger</a></li>
+<li><a href="docs_interface_IExecutionContext.html">IExecutionContext</a></li>
 <li><a href="docs_interface_ICandleData.html">ICandleData</a></li>
 <li><a href="docs_interface_IExchangeParams.html">IExchangeParams</a></li>
 <li><a href="docs_interface_IExchangeCallbacks.html">IExchangeCallbacks</a></li>
@@ -165,25 +170,11 @@
 <li><a href="docs_interface_IStrategyTickResultClosed.html">IStrategyTickResultClosed</a></li>
 <li><a href="docs_interface_IStrategyTickResultCancelled.html">IStrategyTickResultCancelled</a></li>
 <li><a href="docs_interface_BacktestStatisticsModel.html">BacktestStatisticsModel</a></li>
+<li><a href="docs_interface_WalkerCompleteContract.html">WalkerCompleteContract</a></li>
 <li><a href="docs_interface_IWalkerSchema.html">IWalkerSchema</a></li>
 <li><a href="docs_interface_IWalkerCallbacks.html">IWalkerCallbacks</a></li>
 <li><a href="docs_interface_IWalkerStrategyResult.html">IWalkerStrategyResult</a></li>
 <li><a href="docs_interface_IWalkerResults.html">IWalkerResults</a></li>
-<li><a href="docs_interface_WalkerCompleteContract.html">WalkerCompleteContract</a></li>
-<li><a href="docs_interface_SignalData_1.html">SignalData$1</a></li>
-<li><a href="docs_interface_IStrategyResult.html">IStrategyResult</a></li>
-<li><a href="docs_interface_WalkerStatisticsModel.html">WalkerStatisticsModel</a></li>
-<li><a href="docs_interface_ScheduledEvent.html">ScheduledEvent</a></li>
-<li><a href="docs_interface_ScheduleStatisticsModel.html">ScheduleStatisticsModel</a></li>
-<li><a href="docs_interface_RiskEvent.html">RiskEvent</a></li>
-<li><a href="docs_interface_RiskStatisticsModel.html">RiskStatisticsModel</a></li>
-<li><a href="docs_interface_PerformanceContract.html">PerformanceContract</a></li>
-<li><a href="docs_interface_MetricStats.html">MetricStats</a></li>
-<li><a href="docs_interface_PerformanceStatisticsModel.html">PerformanceStatisticsModel</a></li>
-<li><a href="docs_interface_PartialEvent.html">PartialEvent</a></li>
-<li><a href="docs_interface_PartialStatisticsModel.html">PartialStatisticsModel</a></li>
-<li><a href="docs_interface_TickEvent.html">TickEvent</a></li>
-<li><a href="docs_interface_LiveStatisticsModel.html">LiveStatisticsModel</a></li>
 <li><a href="docs_interface_ISizingCalculateParamsBase.html">ISizingCalculateParamsBase</a></li>
 <li><a href="docs_interface_IPositionSizeFixedPercentageParams.html">IPositionSizeFixedPercentageParams</a></li>
 <li><a href="docs_interface_IPositionSizeKellyParams.html">IPositionSizeKellyParams</a></li>
@@ -217,18 +208,36 @@
 <li><a href="docs_interface_ProgressBacktestContract.html">ProgressBacktestContract</a></li>
 <li><a href="docs_interface_ProgressWalkerContract.html">ProgressWalkerContract</a></li>
 <li><a href="docs_interface_ProgressOptimizerContract.html">ProgressOptimizerContract</a></li>
+<li><a href="docs_interface_PerformanceContract.html">PerformanceContract</a></li>
 <li><a href="docs_interface_WalkerContract.html">WalkerContract</a></li>
 <li><a href="docs_interface_PartialProfitContract.html">PartialProfitContract</a></li>
 <li><a href="docs_interface_PartialLossContract.html">PartialLossContract</a></li>
 <li><a href="docs_interface_RiskContract.html">RiskContract</a></li>
 <li><a href="docs_interface_IHeatmapRow.html">IHeatmapRow</a></li>
 <li><a href="docs_interface_ColumnModel.html">ColumnModel</a></li>
+<li><a href="docs_interface_TickEvent.html">TickEvent</a></li>
+<li><a href="docs_interface_LiveStatisticsModel.html">LiveStatisticsModel</a></li>
 <li><a href="docs_interface_HeatmapStatisticsModel.html">HeatmapStatisticsModel</a></li>
+<li><a href="docs_interface_ScheduledEvent.html">ScheduledEvent</a></li>
+<li><a href="docs_interface_ScheduleStatisticsModel.html">ScheduleStatisticsModel</a></li>
+<li><a href="docs_interface_MetricStats.html">MetricStats</a></li>
+<li><a href="docs_interface_PerformanceStatisticsModel.html">PerformanceStatisticsModel</a></li>
+<li><a href="docs_interface_SignalData_1.html">SignalData$1</a></li>
+<li><a href="docs_interface_IStrategyResult.html">IStrategyResult</a></li>
+<li><a href="docs_interface_WalkerStatisticsModel.html">WalkerStatisticsModel</a></li>
+<li><a href="docs_interface_PartialEvent.html">PartialEvent</a></li>
+<li><a href="docs_interface_PartialStatisticsModel.html">PartialStatisticsModel</a></li>
+<li><a href="docs_interface_RiskEvent.html">RiskEvent</a></li>
+<li><a href="docs_interface_RiskStatisticsModel.html">RiskStatisticsModel</a></li>
 <li><a href="docs_interface_IEntity.html">IEntity</a></li>
 <li><a href="docs_interface_IPersistBase.html">IPersistBase</a></li>
 <li><a href="docs_interface_WalkerStopContract.html">WalkerStopContract</a></li>
 </ul>
 <a id="types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Types<a href="#types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><a href="docs_type_Enum.html">Enum</a></li>
+<li><a href="docs_type_Args.html">Args</a></li>
+<li><a href="docs_type_GlobalConfig.html">GlobalConfig</a></li>
+<li><a href="docs_type_ColumnConfig.html">ColumnConfig</a></li>
 <li><a href="docs_type_TExecutionContextService.html">TExecutionContextService</a></li>
 <li><a href="docs_type_CandleInterval.html">CandleInterval</a></li>
 <li><a href="docs_type_ExchangeName.html">ExchangeName</a></li>
@@ -243,9 +252,6 @@
 <li><a href="docs_type_StrategyName.html">StrategyName</a></li>
 <li><a href="docs_type_WalkerMetric.html">WalkerMetric</a></li>
 <li><a href="docs_type_WalkerName.html">WalkerName</a></li>
-<li><a href="docs_type_PerformanceMetricType.html">PerformanceMetricType</a></li>
-<li><a href="docs_type_GlobalConfig.html">GlobalConfig</a></li>
-<li><a href="docs_type_ColumnConfig.html">ColumnConfig</a></li>
 <li><a href="docs_type_ISizingCalculateParams.html">ISizingCalculateParams</a></li>
 <li><a href="docs_type_ISizingParams.html">ISizingParams</a></li>
 <li><a href="docs_type_ISizingSchema.html">ISizingSchema</a></li>
@@ -254,6 +260,7 @@
 <li><a href="docs_type_RowId.html">RowId</a></li>
 <li><a href="docs_type_Source.html">Source</a></li>
 <li><a href="docs_type_OptimizerName.html">OptimizerName</a></li>
+<li><a href="docs_type_PerformanceMetricType.html">PerformanceMetricType</a></li>
 <li><a href="docs_type_SignalData.html">SignalData</a></li>
 <li><a href="docs_type_TPersistBase.html">TPersistBase</a></li>
 <li><a href="docs_type_TPersistBaseCtor.html">TPersistBaseCtor</a></li>
@@ -270,6 +277,7 @@
 <li><a href="docs_type_Columns_2.html">Columns$2</a></li>
 <li><a href="docs_type_Columns_1.html">Columns$1</a></li>
 <li><a href="docs_type_Columns.html">Columns</a></li>
+<li><a href="docs_type_Function.html">Function</a></li>
 <li><a href="docs_type_RiskMap.html">RiskMap</a></li>
 <li><a href="docs_type_TOptimizer.html">TOptimizer</a></li>
 <li><a href="docs_type_ResultId.html">ResultId</a></li>
