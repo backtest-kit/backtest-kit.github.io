@@ -1,0 +1,390 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/52_signal_persistence | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_52_signal_persistence.html">design/52_signal_persistence</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-persistence" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal Persistence<a href="#signal-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal persistence is the crash recovery system that enables production-grade live trading in backtest-kit. This system ensures that active trading positions and scheduled limit orders are never lost, even during catastrophic failures (process crashes, power loss, SIGKILL, OOM errors).</p>
+<p>This page documents the persistence layer specifically for signal state management. For risk position persistence, see <a href="design_70_position_tracking.html">12.3</a>. For partial profit/loss state persistence, see <a href="design_38_clientpartial.html">6.6</a>. For the overall signal lifecycle state machine, see <a href="design_49_signal_states.html">8.1</a>.</p>
+<p><strong>Key Characteristics:</strong></p>
+<ul>
+<li><strong>Atomic Writes</strong>: All-or-nothing file operations prevent partial writes during crashes</li>
+<li><strong>Dual Domain</strong>: Separate persistence for pending signals (active positions) and scheduled signals (limit orders)</li>
+<li><strong>Selective Persistence</strong>: Only live mode persists to disk; backtest mode skips I/O for performance</li>
+<li><strong>Automatic Recovery</strong>: State is restored on initialization via <code>waitForInit()</code></li>
+</ul>
+<hr>
+<a id="persistence-architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence Architecture Overview<a href="#persistence-architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The signal persistence system operates across two independent domains to maintain crash safety:</p>
+<p><img src="../media/52_Signal_Persistence_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="file-structure-and-storage-locations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">File Structure and Storage Locations<a href="#file-structure-and-storage-locations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal persistence uses a hierarchical directory structure to isolate signals by strategy and symbol:</p>
+<table>
+<thead>
+<tr>
+<th>Persistence Domain</th>
+<th>Base Directory</th>
+<th>File Pattern</th>
+<th>Entity Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pending Signals</td>
+<td><code>./dump/data/signal/</code></td>
+<td><code>{symbol}_{strategyName}/{symbol}.json</code></td>
+<td><code>ISignalRow | null</code></td>
+</tr>
+<tr>
+<td>Scheduled Signals</td>
+<td><code>./dump/data/schedule/</code></td>
+<td><code>{symbol}_{strategyName}/{symbol}.json</code></td>
+<td><code>IScheduledSignalRow | null</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example File Paths:</strong></p>
+<pre><code><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">data</span><span class="hl-1">/</span><span class="hl-4">signal</span><span class="hl-1">/</span><span class="hl-4">BTCUSDT_trend</span><span class="hl-1">-</span><span class="hl-4">following</span><span class="hl-1">/</span><span class="hl-8">BTCUSDT</span><span class="hl-1">.</span><span class="hl-4">json</span><br/><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">data</span><span class="hl-1">/</span><span class="hl-4">schedule</span><span class="hl-1">/</span><span class="hl-4">ETHUSDT_breakout</span><span class="hl-1">-</span><span class="hl-4">strategy</span><span class="hl-1">/</span><span class="hl-8">ETHUSDT</span><span class="hl-1">.</span><span class="hl-4">json</span>
+</code><button>Copy</button></pre>
+
+<p><strong>File Contents Structure:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Pending signal file (signal/BTCUSDT_trend-following/BTCUSDT.json)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;id&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;abc123&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;position&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceOpen&quot;</span><span class="hl-1">: </span><span class="hl-6">50000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceTakeProfit&quot;</span><span class="hl-1">: </span><span class="hl-6">52000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceStopLoss&quot;</span><span class="hl-1">: </span><span class="hl-6">48000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;minuteEstimatedTime&quot;</span><span class="hl-1">: </span><span class="hl-6">120</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;symbol&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;exchangeName&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;strategyName&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;trend-following&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;scheduledAt&quot;</span><span class="hl-1">: </span><span class="hl-6">1704067200000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;pendingAt&quot;</span><span class="hl-1">: </span><span class="hl-6">1704067200000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;_isScheduled&quot;</span><span class="hl-1">: </span><span class="hl-7">false</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Scheduled signal file (schedule/BTCUSDT_breakout-strategy/BTCUSDT.json)</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;id&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;def456&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;position&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceOpen&quot;</span><span class="hl-1">: </span><span class="hl-6">51000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceTakeProfit&quot;</span><span class="hl-1">: </span><span class="hl-6">49000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;priceStopLoss&quot;</span><span class="hl-1">: </span><span class="hl-6">52000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;minuteEstimatedTime&quot;</span><span class="hl-1">: </span><span class="hl-6">180</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;symbol&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;exchangeName&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;strategyName&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;breakout-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;scheduledAt&quot;</span><span class="hl-1">: </span><span class="hl-6">1704070800000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;pendingAt&quot;</span><span class="hl-1">: </span><span class="hl-6">1704070800000</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;_isScheduled&quot;</span><span class="hl-1">: </span><span class="hl-7">true</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="atomic-write-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Atomic Write Pattern<a href="#atomic-write-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The persistence layer uses an atomic write pattern to guarantee crash-safe operations. This pattern ensures that files are never left in a partially-written state:</p>
+<p><img src="../media/52_Signal_Persistence_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Atomic Write Guarantees:</strong></p>
+<ol>
+<li><strong>No Partial Writes</strong>: File is fully written to <code>.tmp</code> before rename</li>
+<li><strong>All-or-Nothing</strong>: OS rename operation is atomic at filesystem level</li>
+<li><strong>Crash Safety</strong>: If process crashes during write, either old file or new file exists (never corrupted)</li>
+<li><strong>No Data Loss</strong>: <code>fsync()</code> ensures data is flushed to disk before rename</li>
+</ol>
+<hr>
+<a id="persistence-lifecycle-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence Lifecycle Integration<a href="#persistence-lifecycle-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal persistence is tightly integrated with the <code>ClientStrategy</code> state machine. Writes occur automatically after state transitions:</p>
+<p><img src="../media/52_Signal_Persistence_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Persistence Trigger Points:</strong></p>
+<table>
+<thead>
+<tr>
+<th>State Transition</th>
+<th>Method Called</th>
+<th>Persistence Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Idle → Scheduled</code></td>
+<td><code>setScheduledSignal(signal)</code></td>
+<td>Write scheduled signal to <code>schedule/{strategy}/{symbol}.json</code></td>
+</tr>
+<tr>
+<td><code>Idle → Pending</code></td>
+<td><code>setPendingSignal(signal)</code></td>
+<td>Write pending signal to <code>signal/{strategy}/{symbol}.json</code></td>
+</tr>
+<tr>
+<td><code>Scheduled → Pending</code></td>
+<td><code>setScheduledSignal(null)</code> + <code>setPendingSignal(signal)</code></td>
+<td>Clear schedule file, write signal file</td>
+</tr>
+<tr>
+<td><code>Scheduled → Idle</code></td>
+<td><code>setScheduledSignal(null)</code></td>
+<td>Write <code>null</code> to schedule file</td>
+</tr>
+<tr>
+<td><code>Pending → Closed</code></td>
+<td><code>setPendingSignal(null)</code></td>
+<td>Write <code>null</code> to signal file</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="recovery-and-initialization-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Recovery and Initialization Flow<a href="#recovery-and-initialization-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When a live trading process restarts after a crash, the <code>waitForInit()</code> method restores signal state from disk:</p>
+<p><img src="../media/52_Signal_Persistence_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Validation During Initialization:</strong></p>
+<p>The <code>PersistBase</code> class performs automatic validation and cleanup during <code>waitForInit()</code>:</p>
+<ol>
+<li><strong>Directory Creation</strong>: <code>mkdir(directory, { recursive: true })</code> ensures storage directories exist</li>
+<li><strong>File Validation</strong>: Each JSON file is parsed and validated</li>
+<li><strong>Corrupted File Cleanup</strong>: Invalid files are automatically deleted with retry logic (5 attempts, 1-second delay)</li>
+<li><strong>Schema Mismatch Check</strong>: Restored signals must match <code>exchangeName</code> and <code>strategyName</code></li>
+</ol>
+<hr>
+<a id="persistsignaladapter-and-persistscheduleadapter" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PersistSignalAdapter and PersistScheduleAdapter<a href="#persistsignaladapter-and-persistscheduleadapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>These singleton utility classes provide the high-level API for signal persistence:</p>
+<a id="persistsignaladapter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PersistSignalAdapter<a href="#persistsignaladapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose:</strong> Manages persistence for pending signals (active positions).</p>
+<p><strong>Key Methods:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>readSignalData</code></td>
+<td><code>(symbol: string, strategy: StrategyName) =&gt; Promise&lt;ISignalRow | null&gt;</code></td>
+<td>Reads pending signal from disk. Returns <code>null</code> if no signal exists.</td>
+</tr>
+<tr>
+<td><code>writeSignalData</code></td>
+<td><code>(signal: ISignalRow | null, symbol: string, strategy: StrategyName) =&gt; Promise&lt;void&gt;</code></td>
+<td>Writes pending signal to disk using atomic writes. Pass <code>null</code> to clear.</td>
+</tr>
+<tr>
+<td><code>usePersistSignalAdapter</code></td>
+<td><code>(Ctor: TPersistBaseCtor) =&gt; void</code></td>
+<td>Registers custom persistence backend (e.g., Redis, MongoDB).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation Details:</strong></p>
+<ul>
+<li><strong>Memoized Storage</strong>: One <code>PersistBase</code> instance per <code>symbol:strategyName</code> combination</li>
+<li><strong>Base Directory</strong>: <code>./dump/data/signal/</code></li>
+<li><strong>Entity Name</strong>: <code>{symbol}_{strategyName}</code></li>
+<li><strong>File Name</strong>: <code>{symbol}.json</code></li>
+</ul>
+<a id="persistscheduleadapter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PersistScheduleAdapter<a href="#persistscheduleadapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose:</strong> Manages persistence for scheduled signals (limit orders awaiting activation).</p>
+<p><strong>Key Methods:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>readScheduleData</code></td>
+<td><code>(symbol: string, strategy: StrategyName) =&gt; Promise&lt;IScheduledSignalRow | null&gt;</code></td>
+<td>Reads scheduled signal from disk. Returns <code>null</code> if no scheduled signal exists.</td>
+</tr>
+<tr>
+<td><code>writeScheduleData</code></td>
+<td><code>(signal: IScheduledSignalRow | null, symbol: string, strategy: StrategyName) =&gt; Promise&lt;void&gt;</code></td>
+<td>Writes scheduled signal to disk using atomic writes. Pass <code>null</code> to clear.</td>
+</tr>
+<tr>
+<td><code>usePersistScheduleAdapter</code></td>
+<td><code>(Ctor: TPersistBaseCtor) =&gt; void</code></td>
+<td>Registers custom persistence backend (e.g., Redis, MongoDB).</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation Details:</strong></p>
+<ul>
+<li><strong>Memoized Storage</strong>: One <code>PersistBase</code> instance per <code>symbol:strategyName</code> combination</li>
+<li><strong>Base Directory</strong>: <code>./dump/data/schedule/</code></li>
+<li><strong>Entity Name</strong>: <code>{symbol}_{strategyName}</code></li>
+<li><strong>File Name</strong>: <code>{symbol}.json</code></li>
+</ul>
+<hr>
+<a id="clientstrategy-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientStrategy Integration<a href="#clientstrategy-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>ClientStrategy</code> class integrates signal persistence through two private methods:</p>
+<a id="setpendingsignal" class="tsd-anchor"></a><h3 class="tsd-anchor-link">setPendingSignal()<a href="#setpendingsignal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Method signature (conceptual)</span><br/><span class="hl-4">async</span><span class="hl-1"> </span><span class="hl-0">setPendingSignal</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-4">ISignalRow</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>Updates in-memory <code>_pendingSignal</code> state</li>
+<li>If live mode: calls <code>PersistSignalAdapter.writeSignalData(signal, symbol, strategy)</code></li>
+<li>If backtest mode: skips disk write</li>
+<li>Invokes <code>callbacks.onWrite(symbol, signal, backtest)</code> for testing</li>
+</ol>
+<p><strong>Called By:</strong></p>
+<ul>
+<li><code>OPEN_NEW_PENDING_SIGNAL_FN()</code> - When immediate signal opens</li>
+<li><code>ACTIVATE_SCHEDULED_SIGNAL_FN()</code> - When scheduled signal activates</li>
+<li><code>CLOSE_PENDING_SIGNAL_FN()</code> - When signal closes (writes <code>null</code>)</li>
+</ul>
+<a id="setscheduledsignal" class="tsd-anchor"></a><h3 class="tsd-anchor-link">setScheduledSignal()<a href="#setscheduledsignal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Method signature (conceptual)</span><br/><span class="hl-4">async</span><span class="hl-1"> </span><span class="hl-0">setScheduledSignal</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-4">IScheduledSignalRow</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Behavior:</strong></p>
+<ol>
+<li>Updates in-memory <code>_scheduledSignal</code> state</li>
+<li>If live mode: calls <code>PersistScheduleAdapter.writeScheduleData(signal, symbol, strategy)</code></li>
+<li>If backtest mode: skips disk write</li>
+<li>Invokes <code>callbacks.onWrite(symbol, signal, backtest)</code> for testing</li>
+</ol>
+<p><strong>Called By:</strong></p>
+<ul>
+<li><code>GET_SIGNAL_FN()</code> - When scheduled signal is generated</li>
+<li><code>ACTIVATE_SCHEDULED_SIGNAL_FN()</code> - Clears scheduled signal (writes <code>null</code>) before activation</li>
+<li><code>CANCEL_SCHEDULED_SIGNAL_BY_STOPLOSS_FN()</code> - Clears scheduled signal on cancellation</li>
+<li><code>CHECK_SCHEDULED_SIGNAL_TIMEOUT_FN()</code> - Clears scheduled signal on timeout</li>
+</ul>
+<hr>
+<a id="backtest-vs-live-mode-differences" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest vs Live Mode Differences<a href="#backtest-vs-live-mode-differences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal persistence behavior differs dramatically between execution modes:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Backtest Mode</th>
+<th>Live Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Persistence Enabled</strong></td>
+<td>❌ No</td>
+<td>✅ Yes</td>
+</tr>
+<tr>
+<td><strong>Reason</strong></td>
+<td>Performance optimization</td>
+<td>Crash recovery</td>
+</tr>
+<tr>
+<td><strong>State Storage</strong></td>
+<td>In-memory only</td>
+<td>File system</td>
+</tr>
+<tr>
+<td><strong>waitForInit()</strong></td>
+<td>Skips disk reads</td>
+<td>Restores from disk</td>
+</tr>
+<tr>
+<td><strong>setPendingSignal()</strong></td>
+<td>Updates memory only</td>
+<td>Writes to disk</td>
+</tr>
+<tr>
+<td><strong>setScheduledSignal()</strong></td>
+<td>Updates memory only</td>
+<td>Writes to disk</td>
+</tr>
+<tr>
+<td><strong>File I/O</strong></td>
+<td>Zero disk operations</td>
+<td>Every state change</td>
+</tr>
+<tr>
+<td><strong>Crash Recovery</strong></td>
+<td>Not applicable (fast execution)</td>
+<td>Full state restoration</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Determination Logic:</strong></p>
+<p>The <code>backtest</code> flag is propagated through <code>ExecutionContextService</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// In Live mode</span><br/><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1"> = </span><span class="hl-7">false</span><span class="hl-1">; </span><span class="hl-5">// Persistence enabled</span><br/><br/><span class="hl-5">// In Backtest mode</span><br/><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1"> = </span><span class="hl-7">true</span><span class="hl-1">;  </span><span class="hl-5">// Persistence disabled</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Conditional Persistence Check:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Inside setPendingSignal() and setScheduledSignal()</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Skip persistence in backtest mode</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Continue with disk write in live mode</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">writeSignalData</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategy</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="custom-persistence-backends" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Custom Persistence Backends<a href="#custom-persistence-backends" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The persistence layer supports custom adapters for alternative storage systems (Redis, MongoDB, S3, etc.):</p>
+<p><img src="../media/52_Signal_Persistence_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Custom Adapter Example:</strong></p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">PersistBase</span><span class="hl-1">, </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">, </span><span class="hl-4">EntityId</span><span class="hl-1">, </span><span class="hl-4">IEntity</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">Redis</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;ioredis&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">RedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">redis</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Redis</span><span class="hl-1">();</span><br/><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">readValue</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IEntity</span><span class="hl-1">&gt;(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">data</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">entityName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Entity </span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">entityName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2"> not found`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">parse</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-3">as</span><span class="hl-1"> </span><span class="hl-11">T</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">writeValue</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IEntity</span><span class="hl-1">&gt;(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">, </span><span class="hl-4">entity</span><span class="hl-1">: </span><span class="hl-11">T</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">serialized</span><span class="hl-1"> = </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-4">entity</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">entityName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">, </span><span class="hl-4">serialized</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">hasValue</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">boolean</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">exists</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1">.</span><span class="hl-0">exists</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">entityName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">exists</span><span class="hl-1"> === </span><span class="hl-6">1</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Register custom backend</span><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Now all signal persistence uses Redis instead of file system</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="error-handling-and-retry-logic" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling and Retry Logic<a href="#error-handling-and-retry-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The persistence layer includes robust error handling for file system operations:</p>
+<a id="automatic-cleanup-on-corruption" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Automatic Cleanup on Corruption<a href="#automatic-cleanup-on-corruption" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>During <code>waitForInit()</code>, the <code>PersistBase</code> class validates all JSON files:</p>
+<pre><code class="typescript"><span class="hl-3">for</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">key</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">keys</span><span class="hl-1">()) {</span><br/><span class="hl-1">  </span><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">readValue</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">); </span><span class="hl-5">// Attempt to parse JSON</span><br/><span class="hl-1">  } </span><span class="hl-3">catch</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">filePath</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">_getFilePath</span><span class="hl-1">(</span><span class="hl-4">key</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`Invalid document found: </span><span class="hl-7">${</span><span class="hl-4">filePath</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Retry deletion up to 5 times with 1-second delay</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">deleted</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">retry</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">fs</span><span class="hl-1">.</span><span class="hl-0">unlink</span><span class="hl-1">(</span><span class="hl-4">filePath</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-8">BASE_UNLINK_RETRY_COUNT</span><span class="hl-1">,    </span><span class="hl-5">// 5</span><br/><span class="hl-1">      </span><span class="hl-8">BASE_UNLINK_RETRY_DELAY</span><span class="hl-1">     </span><span class="hl-5">// 1000ms</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">deleted</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">error</span><span class="hl-1">(</span><span class="hl-2">`Failed to remove corrupted file: </span><span class="hl-7">${</span><span class="hl-4">filePath</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Retry Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Constant</th>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BASE_UNLINK_RETRY_COUNT</code></td>
+<td>5</td>
+<td>Maximum deletion attempts</td>
+</tr>
+<tr>
+<td><code>BASE_UNLINK_RETRY_DELAY</code></td>
+<td>1000ms</td>
+<td>Delay between attempts</td>
+</tr>
+</tbody>
+</table>
+<a id="file-system-error-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">File System Error Handling<a href="#file-system-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All file operations include error handling with descriptive messages:</p>
+<pre><code class="typescript"><span class="hl-5">// Read operation</span><br/><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">fileContent</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">fs</span><span class="hl-1">.</span><span class="hl-0">readFile</span><span class="hl-1">(</span><span class="hl-4">filePath</span><span class="hl-1">, </span><span class="hl-2">&#39;utf-8&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">parse</span><span class="hl-1">(</span><span class="hl-4">fileContent</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">?.</span><span class="hl-4">code</span><span class="hl-1"> === </span><span class="hl-2">&#39;ENOENT&#39;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Entity </span><span class="hl-7">${</span><span class="hl-7">this</span><span class="hl-9">.</span><span class="hl-4">entityName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">entityId</span><span class="hl-7">}</span><span class="hl-2"> not found`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Failed to read entity: </span><span class="hl-7">${</span><span class="hl-0">getErrorMessage</span><span class="hl-9">(</span><span class="hl-4">error</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Write operation</span><br/><span class="hl-3">try</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">serialized</span><span class="hl-1"> = </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-4">entity</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">writeFileAtomic</span><span class="hl-1">(</span><span class="hl-4">filePath</span><span class="hl-1">, </span><span class="hl-4">serialized</span><span class="hl-1">, </span><span class="hl-2">&#39;utf-8&#39;</span><span class="hl-1">);</span><br/><span class="hl-1">} </span><span class="hl-3">catch</span><span class="hl-1"> (</span><span class="hl-4">error</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Failed to write entity: </span><span class="hl-7">${</span><span class="hl-0">getErrorMessage</span><span class="hl-9">(</span><span class="hl-4">error</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Signal persistence is optimized for live trading scenarios:</p>
+<a id="memoization-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization Strategy<a href="#memoization-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both <code>PersistSignalAdapter</code> and <code>PersistScheduleAdapter</code> use memoization to cache <code>PersistBase</code> instances:</p>
+<pre><code class="typescript"><span class="hl-5">// One PersistBase instance per symbol:strategy combination</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">getSignalStorage</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategy</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistBase</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">_</span><span class="hl-7">${</span><span class="hl-4">strategy</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">, </span><span class="hl-2">&#39;./dump/data/signal/&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Avoids recreating file handles for repeated operations</li>
+<li>Reuses validated directory paths</li>
+<li>Reduces initialization overhead</li>
+</ul>
+<a id="directory-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Directory Isolation<a href="#directory-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each strategy-symbol combination has its own directory to prevent I/O contention:</p>
+<pre><code><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">data</span><span class="hl-1">/</span><span class="hl-4">signal</span><span class="hl-1">/</span><span class="hl-4">BTCUSDT_strategy</span><span class="hl-1">-</span><span class="hl-4">a</span><span class="hl-1">/</span><span class="hl-8">BTCUSDT</span><span class="hl-1">.</span><span class="hl-4">json</span><br/><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">data</span><span class="hl-1">/</span><span class="hl-4">signal</span><span class="hl-1">/</span><span class="hl-4">BTCUSDT_strategy</span><span class="hl-1">-</span><span class="hl-4">b</span><span class="hl-1">/</span><span class="hl-8">BTCUSDT</span><span class="hl-1">.</span><span class="hl-4">json</span><br/><span class="hl-1">./</span><span class="hl-4">dump</span><span class="hl-1">/</span><span class="hl-4">data</span><span class="hl-1">/</span><span class="hl-4">signal</span><span class="hl-1">/</span><span class="hl-4">ETHUSDT_strategy</span><span class="hl-1">-</span><span class="hl-4">a</span><span class="hl-1">/</span><span class="hl-8">ETHUSDT</span><span class="hl-1">.</span><span class="hl-4">json</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Parallel writes don't block each other</li>
+<li>Cleanup is strategy-isolated</li>
+<li>File system caching is more effective</li>
+</ul>
+<a id="backtest-mode-optimization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Mode Optimization<a href="#backtest-mode-optimization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Backtest mode completely bypasses persistence for maximum performance:</p>
+<pre><code class="typescript"><span class="hl-5">// Inside setPendingSignal()</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">backtest</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Zero disk I/O in backtest mode</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Impact:</strong> Backtests run 100x+ faster without persistence overhead.</p>
+<hr>
+<a id="testing-persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing Persistence<a href="#testing-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system includes callbacks for testing persistence behavior:</p>
+<a id="onwrite-callback" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onWrite Callback<a href="#onwrite-callback" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IStrategyCallbacks</code> interface includes an <code>onWrite</code> callback that fires after every persistence operation:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&#39;test-strategy&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&#39;1m&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-5">/* ... */</span><span class="hl-1"> },</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onWrite</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Signal persisted: </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-5">// data can be ISignalRow, IScheduledSignalRow, or null</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use Cases:</strong></p>
+<ul>
+<li>Verifying persistence operations in tests</li>
+<li>Debugging live trading state changes</li>
+<li>Monitoring disk write frequency</li>
+</ul>
+<a id="test-coverage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Test Coverage<a href="#test-coverage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The test suite includes comprehensive persistence tests:</p>
+<p><strong>File:</strong> <code>test/e2e/persist.test.mjs</code> (referenced in <a href="">test/index.mjs:11</a>)</p>
+<p><strong>Test Scenarios:</strong></p>
+<ol>
+<li>Signal persistence after state changes</li>
+<li>Scheduled signal persistence</li>
+<li>Recovery after simulated crashes</li>
+<li>Backtest mode skips persistence</li>
+<li>Null writes clear state</li>
+<li>Directory creation and validation</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-persistence"><span>Signal <wbr/>Persistence</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#persistence-architecture-overview"><span>Persistence <wbr/>Architecture <wbr/>Overview</span></a></li><li><a href="#file-structure-and-storage-locations"><span>File <wbr/>Structure and <wbr/>Storage <wbr/>Locations</span></a></li><li><a href="#atomic-write-pattern"><span>Atomic <wbr/>Write <wbr/>Pattern</span></a></li><li><a href="#persistence-lifecycle-integration"><span>Persistence <wbr/>Lifecycle <wbr/>Integration</span></a></li><li><a href="#recovery-and-initialization-flow"><span>Recovery and <wbr/>Initialization <wbr/>Flow</span></a></li><li><a href="#persistsignaladapter-and-persistscheduleadapter"><span>Persist<wbr/>Signal<wbr/>Adapter and <wbr/>Persist<wbr/>Schedule<wbr/>Adapter</span></a></li><li><ul><li><a href="#persistsignaladapter"><span>Persist<wbr/>Signal<wbr/>Adapter</span></a></li><li><a href="#persistscheduleadapter"><span>Persist<wbr/>Schedule<wbr/>Adapter</span></a></li></ul></li><li><a href="#clientstrategy-integration"><span>Client<wbr/>Strategy <wbr/>Integration</span></a></li><li><ul><li><a href="#setpendingsignal"><span>set<wbr/>Pending<wbr/>Signal()</span></a></li><li><a href="#setscheduledsignal"><span>set<wbr/>Scheduled<wbr/>Signal()</span></a></li></ul></li><li><a href="#backtest-vs-live-mode-differences"><span>Backtest vs <wbr/>Live <wbr/>Mode <wbr/>Differences</span></a></li><li><a href="#custom-persistence-backends"><span>Custom <wbr/>Persistence <wbr/>Backends</span></a></li><li><a href="#error-handling-and-retry-logic"><span>Error <wbr/>Handling and <wbr/>Retry <wbr/>Logic</span></a></li><li><ul><li><a href="#automatic-cleanup-on-corruption"><span>Automatic <wbr/>Cleanup on <wbr/>Corruption</span></a></li><li><a href="#file-system-error-handling"><span>File <wbr/>System <wbr/>Error <wbr/>Handling</span></a></li></ul></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#memoization-strategy"><span>Memoization <wbr/>Strategy</span></a></li><li><a href="#directory-isolation"><span>Directory <wbr/>Isolation</span></a></li><li><a href="#backtest-mode-optimization"><span>Backtest <wbr/>Mode <wbr/>Optimization</span></a></li></ul></li><li><a href="#testing-persistence"><span>Testing <wbr/>Persistence</span></a></li><li><ul><li><a href="#onwrite-callback"><span>on<wbr/>Write <wbr/>Callback</span></a></li><li><a href="#test-coverage"><span>Test <wbr/>Coverage</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,297 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/95_training_vs_testing_ranges | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_95_training_vs_testing_ranges.html">design/95_training_vs_testing_ranges</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="training-vs-testing-ranges" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Training vs Testing Ranges<a href="#training-vs-testing-ranges" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document explains the training and testing range architecture in the Optimizer system. Training ranges (<code>rangeTrain</code>) define multiple historical periods used to generate strategy variants, while the testing range (<code>rangeTest</code>) defines a single held-out period for evaluating which strategy performs best. This approach enables automated strategy discovery across different market conditions without overfitting to a single historical period.</p>
+<p>For information about the broader Optimizer architecture and data collection pipeline, see <a href="design_91_optimizer_architecture.html">Optimizer Architecture</a>. For details on LLM integration and strategy prompting, see <a href="design_93_llm_integration.html">LLM Integration</a>. For code generation mechanics, see <a href="design_94_strategy_code_generation.html">Strategy Code Generation</a>.</p>
+<a id="conceptual-model" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Conceptual Model<a href="#conceptual-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer uses a train/test split philosophy analogous to machine learning:</p>
+<p><img src="../media/95_Training_vs_Testing_Ranges_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Insight</strong>: Each training range represents a distinct market regime. By generating strategies from multiple regimes, the system produces diverse trading logic. The testing range acts as a held-out validation set to identify which strategy generalizes best to unseen market conditions.</p>
+<a id="training-ranges-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Training Ranges Configuration<a href="#training-ranges-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Training ranges are defined via the <code>rangeTrain</code> array in <code>IOptimizerSchema</code>. Each range corresponds to one generated strategy variant.</p>
+<a id="schema-definition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Definition<a href="#schema-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rangeTrain</code></td>
+<td><code>IOptimizerRange[]</code></td>
+<td>Array of training periods, each generates one strategy</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Start date of training period (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>End date of training period (inclusive)</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string?</code></td>
+<td>Optional description of market conditions</td>
+</tr>
+</tbody>
+</table>
+<a id="data-collection-per-training-range" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Collection Per Training Range<a href="#data-collection-per-training-range" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For each training range, the Optimizer:</p>
+<ol>
+<li><strong>Fetches data</strong> from all configured sources within the date boundaries</li>
+<li><strong>Builds LLM conversation</strong> history by formatting fetched data into user/assistant messages</li>
+<li><strong>Generates strategy prompt</strong> by calling <code>getPrompt()</code> with the complete conversation history</li>
+<li><strong>Creates strategy variant</strong> with unique name derived from range index</li>
+</ol>
+<p><img src="../media/95_Training_vs_Testing_Ranges_1.svg" alt="Mermaid Diagram"></p>
+<a id="training-range-iteration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Training Range Iteration<a href="#training-range-iteration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The core iteration logic processes each training range sequentially:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientOptimizer.ts lines 104-198</span><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">startDate</span><span class="hl-1">, </span><span class="hl-8">endDate</span><span class="hl-1"> } </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">rangeTrain</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">messageList</span><span class="hl-1">: </span><span class="hl-11">MessageModel</span><span class="hl-1">[] = [];</span><br/><span class="hl-1">  </span><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">source</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">source</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch data within training range dates</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">data</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">RESOLVE_PAGINATION_FN</span><span class="hl-1">(</span><span class="hl-4">source</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">endDate</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">    </span><span class="hl-5">// Build conversation history</span><br/><span class="hl-1">    </span><span class="hl-4">messageList</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;user&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-4">userContent</span><span class="hl-1"> },</span><br/><span class="hl-1">      { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;assistant&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-4">assistantContent</span><span class="hl-1"> }</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Generate strategy prompt from conversation</span><br/><span class="hl-1">  </span><span class="hl-4">strategyList</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">({</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">name</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">messages:</span><span class="hl-1"> </span><span class="hl-4">messageList</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategy:</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-0">getPrompt</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messageList</span><span class="hl-1">),</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Progress Tracking</strong>: The Optimizer emits progress events as <code>processedSources / totalSources</code> where <code>totalSources = rangeTrain.length * source.length</code>. This enables real-time monitoring via <code>listenOptimizerProgress</code>.</p>
+<a id="testing-range-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing Range Configuration<a href="#testing-range-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The testing range (<code>rangeTest</code>) is a single <code>IOptimizerRange</code> used for strategy evaluation. Unlike training ranges which generate strategies, the testing range provides data for comparison.</p>
+<a id="schema-definition-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schema Definition<a href="#schema-definition-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rangeTest</code></td>
+<td><code>IOptimizerRange</code></td>
+<td>Single testing period for Walker evaluation</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Start date of test period (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>End date of test period (inclusive)</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string?</code></td>
+<td>Optional description (e.g., &quot;Q3 2024 validation&quot;)</td>
+</tr>
+</tbody>
+</table>
+<a id="purpose-and-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Purpose and Usage<a href="#purpose-and-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The testing range serves three critical functions:</p>
+<ol>
+<li><strong>Out-of-Sample Validation</strong>: Ensures strategies don't overfit to training data</li>
+<li><strong>Comparative Benchmarking</strong>: Provides consistent evaluation period for all strategy variants</li>
+<li><strong>Performance Ranking</strong>: Walker uses test period metrics to identify best strategy</li>
+</ol>
+<p><strong>Anti-Pattern</strong>: Do not overlap training and testing ranges. This creates data leakage and invalidates the evaluation.</p>
+<p><strong>Best Practice</strong>: Use chronologically sequential ranges (e.g., train on Jan-Jun, test on Jul-Aug) to simulate realistic forward-testing conditions.</p>
+<a id="code-generation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code Generation Pipeline<a href="#code-generation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer translates training/testing ranges into executable TypeScript code with distinct frames and strategies.</p>
+<a id="frame-generation-mapping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Frame Generation Mapping<a href="#frame-generation-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/95_Training_vs_Testing_Ranges_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Frame Naming Convention</strong>:</p>
+<ul>
+<li>Training frames: <code>{prefix}_train_frame-{index}</code> where index starts at 1</li>
+<li>Testing frame: <code>{prefix}_test_frame</code> (always singular)</li>
+</ul>
+<a id="strategy-generation-mapping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Generation Mapping<a href="#strategy-generation-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/95_Training_vs_Testing_Ranges_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Strategy Naming Convention</strong>: <code>{prefix}_strategy-{index}</code> where index starts at 1 and matches the order of <code>strategyData</code> array.</p>
+<p><strong>Critical Detail</strong>: Walker always uses <code>prefix_test_frame</code> (the testing range), never the training frames. Training frames exist only for data collection during strategy generation, not for backtest execution.</p>
+<a id="complete-code-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Complete Code Structure<a href="#complete-code-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The generated <code>.mjs</code> file has the following structure:</p>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Purpose</th>
+<th>Code Template Method</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1. Imports</td>
+<td>Ollama, CCXT, backtest-kit</td>
+<td><code>getTopBanner()</code></td>
+</tr>
+<tr>
+<td>2. Helpers</td>
+<td><code>dumpJson()</code> for audit trail</td>
+<td><code>getJsonDumpTemplate()</code></td>
+</tr>
+<tr>
+<td>3. LLM Functions</td>
+<td><code>text()</code> and <code>json()</code></td>
+<td><code>getTextTemplate()</code>, <code>getJsonTemplate()</code></td>
+</tr>
+<tr>
+<td>4. Exchange</td>
+<td>CCXT Binance integration</td>
+<td><code>getExchangeTemplate()</code></td>
+</tr>
+<tr>
+<td>5. Train Frames</td>
+<td>One per <code>rangeTrain</code> entry</td>
+<td><code>getFrameTemplate()</code> (loop)</td>
+</tr>
+<tr>
+<td>6. Test Frame</td>
+<td>Single frame from <code>rangeTest</code></td>
+<td><code>getFrameTemplate()</code> (once)</td>
+</tr>
+<tr>
+<td>7. Strategies</td>
+<td>One per <code>rangeTrain</code> entry</td>
+<td><code>getStrategyTemplate()</code> (loop)</td>
+</tr>
+<tr>
+<td>8. Walker</td>
+<td>Compares all on test frame</td>
+<td><code>getWalkerTemplate()</code></td>
+</tr>
+<tr>
+<td>9. Launcher</td>
+<td>Event listeners, execution</td>
+<td><code>getLauncherTemplate()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="walker-based-selection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker-Based Selection<a href="#walker-based-selection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Walker compares all generated strategies on the testing range to identify the best performer.</p>
+<a id="execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/95_Training_vs_Testing_Ranges_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Metric Selection</strong>: The Walker uses <code>sharpeRatio</code> as the default comparison metric (configurable via <code>IWalkerSchema.metric</code>). Strategies are ranked in descending order, and the highest metric wins.</p>
+<a id="best-strategy-identification" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Best Strategy Identification<a href="#best-strategy-identification" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The Walker emits results via <code>listenWalkerComplete</code> event:</p>
+<pre><code class="typescript"><span class="hl-5">// Generated in OptimizerTemplateService.ts lines 429-432</span><br/><span class="hl-0">listenWalkerComplete</span><span class="hl-1">((</span><span class="hl-4">results</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Walker completed:&quot;</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">bestStrategy</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">results</span><span class="hl-1">.</span><span class="hl-4">walkerName</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Result Structure</strong>: <code>WalkerCompleteContract</code> includes:</p>
+<ul>
+<li><code>bestStrategy</code>: Name of highest-performing strategy</li>
+<li><code>bestMetric</code>: Metric value for best strategy</li>
+<li><code>strategies</code>: Array of all strategies with their metrics</li>
+</ul>
+<a id="practical-usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Practical Usage Patterns<a href="#practical-usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="example-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Example Configuration<a href="#example-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addOptimizer</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;multi-regime-optimizer&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Training ranges: 3 different market conditions</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTrain:</span><span class="hl-1"> [</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Bull market Q1 2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-03-31&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Bear market Q2 2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-04-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-06-30&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    {</span><br/><span class="hl-1">      </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Sideways Q3 2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-07-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">      </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-09-30&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Testing range: held-out Q4 2024</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTest:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Validation period Q4 2024&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-10-01&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-12-31&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">source:</span><span class="hl-1"> [</span><span class="hl-5">/* data sources */</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-0">getPrompt</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><span class="hl-5">/* strategy generation */</span><span class="hl-1">},</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Result</strong>: Generates 3 strategies (<code>prefix_strategy-1</code>, <code>prefix_strategy-2</code>, <code>prefix_strategy-3</code>), backtests all on Q4 2024, selects best.</p>
+<a id="temporal-validation-best-practices" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Temporal Validation Best Practices<a href="#temporal-validation-best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Description</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Sequential Ranges</strong></td>
+<td>Train on past, test on future</td>
+<td>Mimics realistic forward-testing</td>
+</tr>
+<tr>
+<td><strong>Gap Period</strong></td>
+<td>Leave gap between train and test</td>
+<td>Reduces autocorrelation effects</td>
+</tr>
+<tr>
+<td><strong>Multiple Regimes</strong></td>
+<td>Use 3-5 diverse training ranges</td>
+<td>Generates diverse strategy variants</td>
+</tr>
+<tr>
+<td><strong>Consistent Duration</strong></td>
+<td>Equal-length training ranges</td>
+<td>Fair comparison across regimes</td>
+</tr>
+<tr>
+<td><strong>Rolling Windows</strong></td>
+<td>Slide train/test forward</td>
+<td>Validates strategy robustness over time</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Anti-Pattern Example</strong>: Training on January and testing on February, then reusing February's results to modify the strategy. This creates look-ahead bias and invalidates the test.</p>
+<a id="progress-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Monitoring<a href="#progress-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The Optimizer emits progress events during data collection:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenOptimizerProgress</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">listenOptimizerProgress</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Progress: </span><span class="hl-7">${</span><span class="hl-9">(</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">progress</span><span class="hl-9"> </span><span class="hl-1">*</span><span class="hl-9"> </span><span class="hl-6">100</span><span class="hl-9">).</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Processed: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">processedSources</span><span class="hl-7">}</span><span class="hl-2"> / </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">totalSources</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Optimizer: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">optimizerName</span><span class="hl-7">}</span><span class="hl-2">, Symbol: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Calculation</strong>: Progress is <code>processedSources / (rangeTrain.length * source.length)</code>. If you have 3 training ranges and 2 sources, total sources = 6.</p>
+<a id="file-export-and-execution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">File Export and Execution<a href="#file-export-and-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="generated-file-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generated File Structure<a href="#generated-file-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>Optimizer.dump()</code> method saves a complete executable file:</p>
+<p><strong>Filename Format</strong>: <code>{optimizerName}_{symbol}.mjs</code></p>
+<p><strong>Example</strong>: For <code>optimizerName: &quot;my-optimizer&quot;</code> and <code>symbol: &quot;BTCUSDT&quot;</code>, generates <code>my-optimizer_BTCUSDT.mjs</code></p>
+<p><strong>Execution</strong>: The generated file is self-contained and can be run with:</p>
+<pre><code class="bash"><span class="hl-0">node</span><span class="hl-1"> </span><span class="hl-2">my-optimizer_BTCUSDT.mjs</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="audit-trail-generation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Audit Trail Generation<a href="#audit-trail-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each generated strategy includes <code>dumpJson()</code> helper that saves LLM conversations to <code>./dump/strategy/{resultId}/</code>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>00_system_prompt.md</code></td>
+<td>System messages and output data</td>
+</tr>
+<tr>
+<td><code>01_user_message.md</code></td>
+<td>First user input (1h candles)</td>
+</tr>
+<tr>
+<td><code>02_user_message.md</code></td>
+<td>Second user input (15m candles)</td>
+</tr>
+<tr>
+<td><code>03_user_message.md</code></td>
+<td>Third user input (5m candles)</td>
+</tr>
+<tr>
+<td><code>04_user_message.md</code></td>
+<td>Fourth user input (1m candles)</td>
+</tr>
+<tr>
+<td><code>05_user_message.md</code></td>
+<td>Strategy generation request</td>
+</tr>
+<tr>
+<td><code>06_llm_output.md</code></td>
+<td>Final LLM signal decision</td>
+</tr>
+</tbody>
+</table>
+<p>This enables complete reproducibility and debugging of strategy generation logic.</p>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The training vs testing range architecture enables automated strategy discovery with proper validation:</p>
+<ol>
+<li><strong>Training Ranges</strong> (<code>rangeTrain</code>): Define multiple historical periods representing diverse market conditions</li>
+<li><strong>One Strategy Per Range</strong>: Each training range generates exactly one strategy variant optimized for that period's characteristics</li>
+<li><strong>Testing Range</strong> (<code>rangeTest</code>): Single held-out period for unbiased evaluation of all generated strategies</li>
+<li><strong>Walker Comparison</strong>: Executes all strategies on test range, ranks by metric (default: <code>sharpeRatio</code>)</li>
+<li><strong>Best Strategy Selection</strong>: Identifies strategy with highest test-period performance</li>
+</ol>
+<p><strong>Key Advantage</strong>: By training on multiple market regimes and testing on unseen data, the system avoids overfitting to specific historical patterns while discovering diverse trading logic suited to different conditions.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#training-vs-testing-ranges"><span>Training vs <wbr/>Testing <wbr/>Ranges</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#conceptual-model"><span>Conceptual <wbr/>Model</span></a></li><li><a href="#training-ranges-configuration"><span>Training <wbr/>Ranges <wbr/>Configuration</span></a></li><li><ul><li><a href="#schema-definition"><span>Schema <wbr/>Definition</span></a></li><li><a href="#data-collection-per-training-range"><span>Data <wbr/>Collection <wbr/>Per <wbr/>Training <wbr/>Range</span></a></li><li><a href="#training-range-iteration"><span>Training <wbr/>Range <wbr/>Iteration</span></a></li></ul></li><li><a href="#testing-range-configuration"><span>Testing <wbr/>Range <wbr/>Configuration</span></a></li><li><ul><li><a href="#schema-definition-1"><span>Schema <wbr/>Definition</span></a></li><li><a href="#purpose-and-usage"><span>Purpose and <wbr/>Usage</span></a></li></ul></li><li><a href="#code-generation-pipeline"><span>Code <wbr/>Generation <wbr/>Pipeline</span></a></li><li><ul><li><a href="#frame-generation-mapping"><span>Frame <wbr/>Generation <wbr/>Mapping</span></a></li><li><a href="#strategy-generation-mapping"><span>Strategy <wbr/>Generation <wbr/>Mapping</span></a></li><li><a href="#complete-code-structure"><span>Complete <wbr/>Code <wbr/>Structure</span></a></li></ul></li><li><a href="#walker-based-selection"><span>Walker-<wbr/>Based <wbr/>Selection</span></a></li><li><ul><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><a href="#best-strategy-identification"><span>Best <wbr/>Strategy <wbr/>Identification</span></a></li></ul></li><li><a href="#practical-usage-patterns"><span>Practical <wbr/>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#example-configuration"><span>Example <wbr/>Configuration</span></a></li><li><a href="#temporal-validation-best-practices"><span>Temporal <wbr/>Validation <wbr/>Best <wbr/>Practices</span></a></li><li><a href="#progress-monitoring"><span>Progress <wbr/>Monitoring</span></a></li></ul></li><li><a href="#file-export-and-execution"><span>File <wbr/>Export and <wbr/>Execution</span></a></li><li><ul><li><a href="#generated-file-structure"><span>Generated <wbr/>File <wbr/>Structure</span></a></li><li><a href="#audit-trail-generation"><span>Audit <wbr/>Trail <wbr/>Generation</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

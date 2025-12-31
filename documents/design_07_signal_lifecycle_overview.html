@@ -1,0 +1,459 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/07_signal_lifecycle_overview | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_07_signal_lifecycle_overview.html">design/07_signal_lifecycle_overview</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-lifecycle-overview" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal Lifecycle Overview<a href="#signal-lifecycle-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document provides a high-level overview of how trading signals progress through their lifecycle states in the backtest-kit framework. It covers the state machine model, signal types, state transitions, validation rules, and monitoring logic.</p>
+<p>For detailed information about:</p>
+<ul>
+<li>Execution mode differences (backtest vs live), see <a href="design_06_execution_modes.html">Execution Modes</a></li>
+<li>Component registration and schema definitions, see <a href="design_08_component_registration.html">Component Registration</a></li>
+<li>Deep dive into each signal state, see <a href="design_49_signal_states.html">Signal States</a></li>
+<li>Signal persistence and crash recovery, see <a href="design_52_signal_persistence.html">Signal Persistence</a></li>
+</ul>
+<hr>
+<a id="signal-state-machine" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal State Machine<a href="#signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework implements a type-safe state machine using discriminated unions. Every signal passes through well-defined states from creation to closure. The <code>action</code> field serves as the discriminator for type safety.</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key States:</strong></p>
+<ul>
+<li><code>idle</code>: No active signal, strategy waiting to generate new signal</li>
+<li><code>scheduled</code>: Limit order awaiting price activation at <code>priceOpen</code></li>
+<li><code>opened</code>: Signal just created and validated, transitioning to active monitoring</li>
+<li><code>active</code>: Position monitoring TP/SL conditions</li>
+<li><code>closed</code>: Signal completed with PNL calculation</li>
+<li><code>cancelled</code>: Scheduled signal cancelled before activation</li>
+</ul>
+<hr>
+<a id="signal-types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Types<a href="#signal-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses two primary signal types with a clear transformation flow:</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_1.svg" alt="Mermaid Diagram"></p>
+<a id="isignaldto" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ISignalDto<a href="#isignaldto" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The data transfer object returned by the strategy's <code>getSignal</code> function:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>position</code></td>
+<td><code>&quot;long&quot; | &quot;short&quot;</code></td>
+<td>Trade direction</td>
+</tr>
+<tr>
+<td><code>priceOpen</code></td>
+<td><code>number?</code></td>
+<td>Optional entry price (if specified → scheduled)</td>
+</tr>
+<tr>
+<td><code>priceTakeProfit</code></td>
+<td><code>number</code></td>
+<td>TP target price</td>
+</tr>
+<tr>
+<td><code>priceStopLoss</code></td>
+<td><code>number</code></td>
+<td>SL exit price</td>
+</tr>
+<tr>
+<td><code>minuteEstimatedTime</code></td>
+<td><code>number</code></td>
+<td>Max duration in minutes</td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>string?</code></td>
+<td>Optional description</td>
+</tr>
+</tbody>
+</table>
+<a id="isignalrow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ISignalRow<a href="#isignalrow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Augmented signal with auto-generated metadata:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>string</code></td>
+<td>UUID v4 auto-generated</td>
+</tr>
+<tr>
+<td><code>priceOpen</code></td>
+<td><code>number</code></td>
+<td>Entry price (current VWAP if not specified)</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>string</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>scheduledAt</code></td>
+<td><code>number</code></td>
+<td>Creation timestamp (ms)</td>
+</tr>
+<tr>
+<td><code>pendingAt</code></td>
+<td><code>number</code></td>
+<td>Activation timestamp (ms)</td>
+</tr>
+<tr>
+<td><code>_isScheduled</code></td>
+<td><code>boolean</code></td>
+<td>Internal runtime marker</td>
+</tr>
+</tbody>
+</table>
+<a id="ischeduledsignalrow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IScheduledSignalRow<a href="#ischeduledsignalrow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Extends <code>ISignalRow</code> for signals awaiting price activation. The <code>pendingAt</code> field is initially set to <code>scheduledAt</code> and updated upon activation.</p>
+<hr>
+<a id="state-transitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Transitions<a href="#state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="idle-→-scheduledopened" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Idle → Scheduled/Opened<a href="#idle-→-scheduledopened" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The transition from idle begins when <code>getSignal</code> returns a non-null signal. The framework performs interval throttling based on the strategy's configured <code>interval</code> field.</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Interval Throttling Logic:</strong></p>
+<p>The <code>_lastSignalTimestamp</code> field tracks the last <code>getSignal</code> call. The interval check prevents signal spam:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:340-352</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">intervalMinutes</span><span class="hl-1"> = </span><span class="hl-8">INTERVAL_MINUTES</span><span class="hl-1">[</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">interval</span><span class="hl-1">];</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">intervalMs</span><span class="hl-1"> = </span><span class="hl-4">intervalMinutes</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1"> &amp;&amp;</span><br/><span class="hl-1">  </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> &lt; </span><span class="hl-4">intervalMs</span><br/><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">null</span><span class="hl-1">; </span><span class="hl-5">// Skip this tick</span><br/><span class="hl-1">}</span><br/><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">_lastSignalTimestamp</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Price Activation Check:</strong></p>
+<p>For signals with <code>priceOpen</code>, immediate activation occurs if the price has already reached the entry threshold:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:393-420</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">shouldActivateImmediately</span><span class="hl-1"> =</span><br/><span class="hl-1">  (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) ||</span><br/><span class="hl-1">  (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;short&quot;</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">shouldActivateImmediately</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Create ISignalRow directly (skip scheduled phase)</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signalRow</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-0">randomString</span><span class="hl-1">(),</span><br/><span class="hl-1">    </span><span class="hl-4">priceOpen:</span><span class="hl-1"> </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">    </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-7">false</span><span class="hl-1">,</span><br/><span class="hl-1">  };</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalRow</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="scheduled-→-openedcancelled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Scheduled → Opened/Cancelled<a href="#scheduled-→-openedcancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals monitor three conditions on each tick: price activation, StopLoss hit, and timeout expiration.</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Priority Order:</strong></p>
+<p>Cancellation checks occur <strong>before</strong> activation checks to prevent race conditions where a price gaps through both StopLoss and activation levels on the same candle:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:610-644</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Check StopLoss FIRST (cancellation priority)</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldCancel</span><span class="hl-1"> = </span><span class="hl-7">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><span class="hl-5">// Only check activation if NOT cancelled</span><br/><span class="hl-1">  </span><span class="hl-3">else</span><span class="hl-1"> </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">shouldActivate</span><span class="hl-1"> = </span><span class="hl-7">true</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Timeout Calculation:</strong></p>
+<p>The timeout is measured from <code>scheduledAt</code>, not <code>pendingAt</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:554-566</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signalTime</span><span class="hl-1"> = </span><span class="hl-4">scheduled</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">; </span><span class="hl-5">// Important: from scheduledAt</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signalTime</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel due to timeout</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="opened-→-active" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Opened → Active<a href="#opened-→-active" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The opened state is transient. After signal validation, the framework persists the signal (in live mode) and transitions to active monitoring:</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Validation Rules:</strong></p>
+<p>The <code>VALIDATE_SIGNAL_FN</code> performs extensive validation to prevent invalid signals:</p>
+<table>
+<thead>
+<tr>
+<th>Validation</th>
+<th>Long Position</th>
+<th>Short Position</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Price order</td>
+<td><code>SL &lt; Open &lt; TP</code></td>
+<td><code>TP &lt; Open &lt; SL</code></td>
+</tr>
+<tr>
+<td>Positive prices</td>
+<td>All prices &gt; 0</td>
+<td>All prices &gt; 0</td>
+</tr>
+<tr>
+<td>Finite values</td>
+<td>No NaN/Infinity</td>
+<td>No NaN/Infinity</td>
+</tr>
+<tr>
+<td>Min TP distance</td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+</tr>
+<tr>
+<td>Min SL distance</td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+</tr>
+<tr>
+<td>Max SL distance</td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+</tr>
+<tr>
+<td>Max lifetime</td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+</tr>
+<tr>
+<td>Instant closure check</td>
+<td><code>SL &lt; current &lt; TP</code></td>
+<td><code>TP &lt; current &lt; SL</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Immediate Closure Prevention:</strong></p>
+<p>For market orders (non-scheduled), the framework verifies the current price doesn't trigger immediate TP/SL:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:125-141 (long example)</span><br/><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">isScheduled</span><span class="hl-1"> &amp;&amp; </span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">currentPrice</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-5">// For long: current price must be BETWEEN SL and TP</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-2">`Long immediate: currentPrice (</span><span class="hl-7">${</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">) &lt;= priceStopLoss (</span><span class="hl-7">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceStopLoss</span><span class="hl-7">}</span><span class="hl-2">). `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Signal would be immediately closed by stop loss.`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">errors</span><span class="hl-1">.</span><span class="hl-0">push</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-2">`Long immediate: currentPrice (</span><span class="hl-7">${</span><span class="hl-4">currentPrice</span><span class="hl-7">}</span><span class="hl-2">) &gt;= priceTakeProfit (</span><span class="hl-7">${</span><span class="hl-4">signal</span><span class="hl-9">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-7">}</span><span class="hl-2">). `</span><span class="hl-1"> +</span><br/><span class="hl-1">      </span><span class="hl-2">`Signal would be immediately closed by take profit.`</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="active-→-closed" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Active → Closed<a href="#active-→-closed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Active signals monitor three completion conditions on each tick: TakeProfit hit, StopLoss hit, or time expiration.</p>
+<p><img src="../media/07_Signal_Lifecycle_Overview_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Time Calculation:</strong></p>
+<p>The elapsed time is measured from <code>pendingAt</code>, not <code>scheduledAt</code>. This ensures scheduled signals only count time after activation:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:901-919</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentTime</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">when</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">();</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signalTime</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pendingAt</span><span class="hl-1">; </span><span class="hl-5">// CRITICAL: from pendingAt, not scheduledAt</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signalTime</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">CLOSE_PENDING_SIGNAL_FN</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">self</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">signal</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">averagePrice</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-2">&quot;time_expired&quot;</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>PNL Calculation:</strong></p>
+<p>The framework applies realistic fees (0.1%) and slippage (0.1%) to both entry and exit prices:</p>
+<table>
+<thead>
+<tr>
+<th>Fee Type</th>
+<th>Long Position</th>
+<th>Short Position</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entry slippage</td>
+<td><code>priceOpen * 1.001</code></td>
+<td><code>priceOpen * 0.999</code></td>
+</tr>
+<tr>
+<td>Entry fee</td>
+<td><code>priceOpen * 1.001</code></td>
+<td><code>priceOpen * 0.999</code></td>
+</tr>
+<tr>
+<td>Exit slippage</td>
+<td><code>priceClose * 0.999</code></td>
+<td><code>priceClose * 1.001</code></td>
+</tr>
+<tr>
+<td>Exit fee</td>
+<td><code>priceClose * 0.999</code></td>
+<td><code>priceClose * 1.001</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Partial Progress Tracking:</strong></p>
+<p>The framework calculates percentage progress toward TP or SL to trigger milestone callbacks:</p>
+<pre><code class="typescript"><span class="hl-5">// From ClientStrategy.ts:1034-1053</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentDistance</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentDistance</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Moving towards TP</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tpDistance</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">progressPercent</span><span class="hl-1"> = (</span><span class="hl-4">currentDistance</span><span class="hl-1"> / </span><span class="hl-4">tpDistance</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">percentTp</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">min</span><span class="hl-1">(</span><span class="hl-4">progressPercent</span><span class="hl-1">, </span><span class="hl-6">100</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">partial</span><span class="hl-1">.</span><span class="hl-0">profit</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">signal</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">percentTp</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">backtest</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">when</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="execution-mode-differences" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Mode Differences<a href="#execution-mode-differences" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The lifecycle behaves differently in backtest and live modes:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Backtest Mode</th>
+<th>Live Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal generation</strong></td>
+<td>Per historical candle</td>
+<td>Per tick interval (1 minute)</td>
+</tr>
+<tr>
+<td><strong>VWAP calculation</strong></td>
+<td>From candle OHLCV data</td>
+<td>From last 5 1-minute candles</td>
+</tr>
+<tr>
+<td><strong>TP/SL checking</strong></td>
+<td>Check candle high/low</td>
+<td>Check VWAP at intervals</td>
+</tr>
+<tr>
+<td><strong>Fast-forward</strong></td>
+<td>Skip candles after opening</td>
+<td>No fast-forward, continuous monitoring</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>In-memory only</td>
+<td>Atomic file writes via <code>PersistSignalAdapter</code></td>
+</tr>
+<tr>
+<td><strong>Crash recovery</strong></td>
+<td>Not applicable</td>
+<td>Restore from disk on restart</td>
+</tr>
+<tr>
+<td><strong>Scheduled activation</strong></td>
+<td>Check exact candle timestamp</td>
+<td>Check at polling intervals</td>
+</tr>
+</tbody>
+</table>
+<a id="backtest-fast-forward" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Fast-Forward<a href="#backtest-fast-forward" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>After a signal opens, backtest mode calls <code>ClientStrategy.backtest()</code> which iterates through candles checking TP/SL conditions without calling <code>getSignal</code> again:</p>
+<pre><code class="typescript"><span class="hl-5">// From BacktestLogicPrivateService (conceptual flow)</span><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">timeframe</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> </span><span class="hl-4">timeframes</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fast-forward: fetch candles and run backtest</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">candles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(...);</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">closeResult</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">backtest</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">candles</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">closeResult</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Skip timeframes until signal closes</span><br/><span class="hl-1">    </span><span class="hl-3">continue</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-continuous-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Continuous Monitoring<a href="#live-continuous-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live mode continuously polls at <code>TICK_TTL</code> intervals (default 60 seconds), checking VWAP against TP/SL on every tick:</p>
+<pre><code class="typescript"><span class="hl-5">// From LiveLogicPrivateService (conceptual flow)</span><br/><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-7">true</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">yield</span><span class="hl-1"> </span><span class="hl-4">result</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">sleep</span><span class="hl-1">(</span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">TICK_TTL</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="code-entity-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code Entity Mapping<a href="#code-entity-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following table maps high-level concepts to concrete code entities:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Code Entity</th>
+<th>Location</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal states</strong></td>
+<td><code>IStrategyTickResult</code> union</td>
+<td><a href="">src/interfaces/Strategy.interface.ts:299-305</a></td>
+</tr>
+<tr>
+<td>Idle state</td>
+<td><code>IStrategyTickResultIdle</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:173-186</a></td>
+</tr>
+<tr>
+<td>Scheduled state</td>
+<td><code>IStrategyTickResultScheduled</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:192-205</a></td>
+</tr>
+<tr>
+<td>Opened state</td>
+<td><code>IStrategyTickResultOpened</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:211-224</a></td>
+</tr>
+<tr>
+<td>Active state</td>
+<td><code>IStrategyTickResultActive</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:230-247</a></td>
+</tr>
+<tr>
+<td>Closed state</td>
+<td><code>IStrategyTickResultClosed</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:253-272</a></td>
+</tr>
+<tr>
+<td>Cancelled state</td>
+<td><code>IStrategyTickResultCancelled</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:278-293</a></td>
+</tr>
+<tr>
+<td><strong>Signal types</strong></td>
+<td><code>ISignalDto</code>, <code>ISignalRow</code>, <code>IScheduledSignalRow</code></td>
+<td><a href="">src/interfaces/Strategy.interface.ts:24-73</a></td>
+</tr>
+<tr>
+<td><strong>Lifecycle orchestration</strong></td>
+<td><code>ClientStrategy</code> class</td>
+<td><a href="">src/client/ClientStrategy.ts:1-1500</a></td>
+</tr>
+<tr>
+<td>Signal generation</td>
+<td><code>GET_SIGNAL_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:332-476</a></td>
+</tr>
+<tr>
+<td>Signal validation</td>
+<td><code>VALIDATE_SIGNAL_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:45-330</a></td>
+</tr>
+<tr>
+<td>Scheduled monitoring</td>
+<td><code>CHECK_SCHEDULED_SIGNAL_*</code> functions</td>
+<td><a href="">src/client/ClientStrategy.ts:554-846</a></td>
+</tr>
+<tr>
+<td>Active monitoring</td>
+<td><code>CHECK_PENDING_SIGNAL_COMPLETION_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:901-960</a></td>
+</tr>
+<tr>
+<td>Signal closure</td>
+<td><code>CLOSE_PENDING_SIGNAL_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:962-1023</a></td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td><code>PersistSignalAdapter</code></td>
+<td><a href="">src/classes/Persist.ts</a></td>
+</tr>
+<tr>
+<td><strong>Routing</strong></td>
+<td><code>StrategyConnectionService</code></td>
+<td><a href="">src/lib/services/connection/StrategyConnectionService.ts:52-240</a></td>
+</tr>
+<tr>
+<td><strong>Event emission</strong></td>
+<td><code>signalEmitter</code>, <code>signalBacktestEmitter</code>, <code>signalLiveEmitter</code></td>
+<td><a href="">src/config/emitters.ts</a></td>
+</tr>
+<tr>
+<td><strong>Callbacks</strong></td>
+<td><code>IStrategyCallbacks</code> interface</td>
+<td><a href="">src/interfaces/Strategy.interface.ts:100-126</a></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="key-takeaways" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key Takeaways<a href="#key-takeaways" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ol>
+<li>
+<p><strong>Type-safe state machine</strong>: Discriminated unions (<code>action</code> field) enable exhaustive type checking at compile time.</p>
+</li>
+<li>
+<p><strong>Two entry modes</strong>: Scheduled signals (limit orders with <code>priceOpen</code>) vs immediate signals (market orders without <code>priceOpen</code>).</p>
+</li>
+<li>
+<p><strong>Validation is comprehensive</strong>: The framework prevents invalid signals before they enter active monitoring through price logic, distance checks, and instant closure detection.</p>
+</li>
+<li>
+<p><strong>Time tracking distinction</strong>: Scheduled signals use <code>scheduledAt</code> for timeout calculation, active signals use <code>pendingAt</code> for duration calculation.</p>
+</li>
+<li>
+<p><strong>Cancellation priority</strong>: StopLoss checks occur before activation checks in scheduled signals to handle price gaps correctly.</p>
+</li>
+<li>
+<p><strong>Mode-specific optimizations</strong>: Backtest uses fast-forward simulation, live uses continuous VWAP monitoring with persistence for crash recovery.</p>
+</li>
+<li>
+<p><strong>Event-driven architecture</strong>: Every state transition emits typed events via <code>signalEmitter</code>, <code>signalBacktestEmitter</code>, and <code>signalLiveEmitter</code> for external consumption.</p>
+</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-lifecycle-overview"><span>Signal <wbr/>Lifecycle <wbr/>Overview</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#signal-state-machine"><span>Signal <wbr/>State <wbr/>Machine</span></a></li><li><a href="#signal-types"><span>Signal <wbr/>Types</span></a></li><li><ul><li><a href="#isignaldto"><span>ISignal<wbr/>Dto</span></a></li><li><a href="#isignalrow"><span>ISignal<wbr/>Row</span></a></li><li><a href="#ischeduledsignalrow"><span>IScheduled<wbr/>Signal<wbr/>Row</span></a></li></ul></li><li><a href="#state-transitions"><span>State <wbr/>Transitions</span></a></li><li><ul><li><a href="#idle-→-scheduledopened"><span>Idle → <wbr/>Scheduled/<wbr/>Opened</span></a></li><li><a href="#scheduled-→-openedcancelled"><span>Scheduled → <wbr/>Opened/<wbr/>Cancelled</span></a></li><li><a href="#opened-→-active"><span>Opened → <wbr/>Active</span></a></li><li><a href="#active-→-closed"><span>Active → <wbr/>Closed</span></a></li></ul></li><li><a href="#execution-mode-differences"><span>Execution <wbr/>Mode <wbr/>Differences</span></a></li><li><ul><li><a href="#backtest-fast-forward"><span>Backtest <wbr/>Fast-<wbr/>Forward</span></a></li><li><a href="#live-continuous-monitoring"><span>Live <wbr/>Continuous <wbr/>Monitoring</span></a></li></ul></li><li><a href="#code-entity-mapping"><span>Code <wbr/>Entity <wbr/>Mapping</span></a></li><li><a href="#key-takeaways"><span>Key <wbr/>Takeaways</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

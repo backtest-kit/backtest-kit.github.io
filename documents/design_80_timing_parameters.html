@@ -1,0 +1,365 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/80_timing_parameters | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_80_timing_parameters.html">design/80_timing_parameters</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="timing-parameters" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Timing Parameters<a href="#timing-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the timing-related configuration constants that control temporal behavior in backtest-kit. These parameters govern how long the system waits for scheduled signals to activate, the maximum lifetime of active signals, and the sleep interval between tick iterations in live mode.</p>
+<p>For validation distance thresholds (take profit/stop loss distances), see <a href="design_79_validation_parameters.html">Validation Parameters</a>. For general configuration including fees, slippage, and VWAP settings, see <a href="design_78_global_configuration.html">Global Configuration</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Timing parameters control three critical aspects of signal execution:</p>
+<ol>
+<li><strong>Scheduled Signal Timeout</strong>: How long to wait for a scheduled signal's <code>priceOpen</code> to be reached before cancellation</li>
+<li><strong>Signal Lifetime Limits</strong>: Maximum duration a signal can remain active before forced time-based exit</li>
+<li><strong>Live Mode Tick Interval</strong>: Sleep duration between tick iterations to prevent API spam</li>
+</ol>
+<p>All timing parameters are configurable via the global configuration system (see <a href="design_78_global_configuration.html">Global Configuration</a>) and accessed through <code>GLOBAL_CONFIG</code> imported from <a href="">src/config/params.ts</a>.</p>
+<hr>
+<a id="timing-constants" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timing Constants<a href="#timing-constants" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cc_schedule_await_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_SCHEDULE_AWAIT_MINUTES<a href="#cc_schedule_await_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Maximum wait time for scheduled signals to activate.</p>
+<p>When a strategy returns a signal with <code>priceOpen</code> specified (scheduled signal), the system waits for the market price to reach the entry point. If the price doesn't reach <code>priceOpen</code> within this timeout period, the signal is cancelled without opening a position.</p>
+<p><strong>Default Value</strong>: Not explicitly shown in provided code, but referenced in <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:178</a></p>
+<p><strong>Usage in Backtest</strong>:</p>
+<p>When a scheduled signal is detected, the system requests candles for the monitoring period:</p>
+<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = </span><span class="hl-4">bufferMinutes</span><span class="hl-1"> + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> + </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> + </span><span class="hl-6">1</span>
+</code><button>Copy</button></pre>
+
+<p>This ensures sufficient historical data is available to:</p>
+<ul>
+<li>Monitor price activation attempts during the await window</li>
+<li>Detect if stop loss would be hit before activation (pre-activation cancellation)</li>
+<li>Process the full signal duration after activation</li>
+</ul>
+<p><strong>Usage in Live Mode</strong>:</p>
+<p>Live mode continuously checks if the current VWAP price reaches <code>priceOpen</code> on each tick iteration. After <code>CC_SCHEDULE_AWAIT_MINUTES</code> elapses from <code>scheduledAt</code> timestamp, the signal is automatically cancelled if not yet activated.</p>
+<p><strong>Cancellation Logic</strong>:</p>
+<p>Scheduled signals transition to <code>cancelled</code> state when:</p>
+<ul>
+<li>Timeout expires: <code>(Date.now() - scheduledAt) &gt; CC_SCHEDULE_AWAIT_MINUTES * 60 * 1000</code></li>
+<li>Pre-activation stop loss: Stop loss price would be hit before <code>priceOpen</code> is reached</li>
+</ul>
+<p><img src="../media/80_Timing_Parameters_0.svg" alt="Mermaid Diagram"></p>
+<ul>
+<li><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:155-178</a></li>
+<li><a href="">types.d.ts:786-801</a> (IStrategyTickResultScheduled)</li>
+</ul>
+<hr>
+<a id="cc_max_signal_lifetime_minutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_MAX_SIGNAL_LIFETIME_MINUTES<a href="#cc_max_signal_lifetime_minutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Maximum duration a signal can remain active before forced closure.</p>
+<p>This parameter acts as a safety mechanism to prevent signals from remaining open indefinitely. Even if take profit and stop loss are not hit, signals automatically close after this time limit expires.</p>
+<p><strong>Relationship to minuteEstimatedTime</strong>:</p>
+<p>Each signal specifies <code>minuteEstimatedTime</code> in its DTO, which represents the expected holding duration. This is distinct from <code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Scope</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>minuteEstimatedTime</code></td>
+<td>Per-signal</td>
+<td>Expected duration set by strategy's <code>getSignal()</code></td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Global config</td>
+<td>Hard limit applied to all signals</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Time Expiration Logic</strong>:</p>
+<p>Signals track elapsed time from <code>pendingAt</code> timestamp (when position opened, not when scheduled):</p>
+<pre><code><span class="hl-4">elapsedMinutes</span><span class="hl-1"> = (</span><span class="hl-4">currentTimestamp</span><span class="hl-1"> - </span><span class="hl-4">pendingAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span>
+</code><button>Copy</button></pre>
+
+<p>Closure occurs when:</p>
+<ul>
+<li><code>elapsedMinutes &gt;= minuteEstimatedTime</code> (strategy's expected duration)</li>
+<li>OR <code>elapsedMinutes &gt;= CC_MAX_SIGNAL_LIFETIME_MINUTES</code> (global hard limit)</li>
+</ul>
+<p>The first condition to be met triggers <code>closeReason: &quot;time_expired&quot;</code>.</p>
+<p><strong>Backtest Optimization</strong>:</p>
+<p>In backtest mode, the system fetches exactly <code>minuteEstimatedTime</code> candles after signal opens, avoiding unnecessary processing of longer timeframes. If a signal would exceed <code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code>, it's capped at the global limit.</p>
+<p><img src="../media/80_Timing_Parameters_1.svg" alt="Mermaid Diagram"></p>
+<ul>
+<li><a href="">types.d.ts:666</a> (minuteEstimatedTime field)</li>
+<li><a href="">types.d.ts:754</a> (StrategyCloseReason type)</li>
+<li><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:320-332</a></li>
+</ul>
+<hr>
+<a id="tick_ttl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TICK_TTL<a href="#tick_ttl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Sleep interval between tick iterations in live trading mode.</p>
+<p><strong>Definition</strong>: <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:14</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">TICK_TTL</span><span class="hl-1"> = </span><span class="hl-6">1</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1_000</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Value Breakdown</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Milliseconds</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1 * 60 * 1_000</code></td>
+<td>60,000 ms</td>
+<td>Base 1-minute interval</td>
+</tr>
+<tr>
+<td><code>+ 1</code></td>
+<td>1 ms</td>
+<td>Buffer to avoid edge case timing issues</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>60,001 ms</strong></td>
+<td>~1 minute between ticks</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why 1 Minute + 1ms?</strong></p>
+<p>The additional 1 millisecond prevents edge cases where:</p>
+<ul>
+<li>Clock skew causes ticks to occur at exact minute boundaries</li>
+<li>Race conditions between tick timing and candle boundary timestamps</li>
+<li>Floating point precision issues in time calculations</li>
+</ul>
+<p>The extra millisecond ensures ticks always fall slightly after minute boundaries, avoiding ambiguity in which candle data is &quot;current.&quot;</p>
+<p><strong>Live Mode Execution Flow</strong>:</p>
+<p>The live trading infinite loop uses <code>TICK_TTL</code> to control iteration frequency:</p>
+<p><img src="../media/80_Timing_Parameters_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Performance Implications</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>API Rate Limiting</strong></td>
+<td>60-second interval prevents exchange API rate limit violations</td>
+</tr>
+<tr>
+<td><strong>CPU Usage</strong></td>
+<td>Minimal CPU usage during sleep periods (process yields to OS scheduler)</td>
+</tr>
+<tr>
+<td><strong>Latency</strong></td>
+<td>Worst-case 1-minute delay between price movements and signal generation</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>No accumulation of pending work during sleep (async/await yields control)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Comparison to Backtest Mode</strong>:</p>
+<p>Backtest mode does <strong>not</strong> use <code>TICK_TTL</code>. Instead, it iterates through pre-generated timeframes as fast as possible:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Iteration Control</th>
+<th>Speed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Live</strong></td>
+<td><code>sleep(TICK_TTL)</code> between ticks</td>
+<td>Real-time (1 tick/minute)</td>
+</tr>
+<tr>
+<td><strong>Backtest</strong></td>
+<td>No sleep, continuous loop through timeframes</td>
+<td>As fast as CPU allows</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Interaction with Signal Intervals</strong>:</p>
+<p>The <code>TICK_TTL</code> constant works in conjunction with strategy <code>interval</code> settings (e.g., <code>&quot;1m&quot;</code>, <code>&quot;5m&quot;</code>, <code>&quot;15m&quot;</code>). These intervals throttle how frequently <code>getSignal()</code> is called, independent of tick frequency.</p>
+<p>For example, with <code>interval: &quot;5m&quot;</code>:</p>
+<ul>
+<li>
+<p>Ticks still occur every 60 seconds via <code>TICK_TTL</code></p>
+</li>
+<li>
+<p>But <code>getSignal()</code> is only called every 5 minutes</p>
+</li>
+<li>
+<p>Intermediate ticks only monitor existing signal's TP/SL/time progress</p>
+</li>
+<li>
+<p><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:14</a></p>
+</li>
+<li>
+<p><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:63-177</a></p>
+</li>
+<li>
+<p><a href="">types.d.ts:647</a> (SignalInterval type)</p>
+</li>
+</ul>
+<hr>
+<a id="timing-coordination-in-backtest" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timing Coordination in Backtest<a href="#timing-coordination-in-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest system coordinates all timing parameters to efficiently process historical data. When a signal opens, the system calculates the exact number of candles needed:</p>
+<p><img src="../media/80_Timing_Parameters_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Formula for Candle Count</strong>:</p>
+<p>For <strong>scheduled signals</strong> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:176-178</a>:</p>
+<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">) + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> + </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> + </span><span class="hl-6">1</span>
+</code><button>Copy</button></pre>
+
+<p>For <strong>immediate signals</strong> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:320-322</a>:</p>
+<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">) + </span><span class="hl-4">minuteEstimatedTime</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Component Breakdown</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+<th>Example (5 candles, 60 min await, 120 min duration)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT - 1</code></td>
+<td>VWAP calculation buffer</td>
+<td>4 candles</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td>Activation monitoring</td>
+<td>60 candles (scheduled only)</td>
+</tr>
+<tr>
+<td><code>minuteEstimatedTime</code></td>
+<td>Signal execution</td>
+<td>120 candles</td>
+</tr>
+<tr>
+<td><code>+ 1</code></td>
+<td>Inclusive boundary</td>
+<td>1 candle</td>
+</tr>
+<tr>
+<td><strong>Total (scheduled)</strong></td>
+<td>-</td>
+<td><strong>185 candles</strong></td>
+</tr>
+<tr>
+<td><strong>Total (immediate)</strong></td>
+<td>-</td>
+<td><strong>125 candles</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Timeframe Skipping</strong>:</p>
+<p>After a signal closes, the backtest loop skips timeframes until reaching <code>closeTimestamp</code>:</p>
+<p><img src="../media/80_Timing_Parameters_4.svg" alt="Mermaid Diagram"></p>
+<p>This optimization prevents redundant tick() calls during the signal's active period, significantly improving backtest performance.</p>
+<ul>
+<li><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:155-283</a> (scheduled signal handling)</li>
+<li><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:307-434</a> (immediate signal handling)</li>
+<li><a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:406-412</a> (timeframe skipping)</li>
+</ul>
+<hr>
+<a id="timing-coordination-in-live-mode" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timing Coordination in Live Mode<a href="#timing-coordination-in-live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live mode continuously monitors signals in real-time, recalculating elapsed time on each tick:</p>
+<p><img src="../media/80_Timing_Parameters_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Elapsed Time Tracking</strong>:</p>
+<p>Each tick recalculates time-based conditions:</p>
+<pre><code><span class="hl-4">elapsedSinceScheduled</span><span class="hl-1"> = (</span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">scheduledAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span><br/><span class="hl-4">elapsedSincePending</span><span class="hl-1"> = (</span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">pendingAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Timeout Checks per Tick</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Signal State</th>
+<th>Timeout Check</th>
+<th>Action on Timeout</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduled</code></td>
+<td><code>elapsedSinceScheduled &gt;= CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td>Cancel signal</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td><code>elapsedSincePending &gt;= minuteEstimatedTime</code></td>
+<td>Close with <code>time_expired</code></td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td><code>elapsedSincePending &gt;= CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Force close with <code>time_expired</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Real-time vs Historical Timestamps</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Timestamp Source</th>
+<th>Timing Precision</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Live</strong></td>
+<td><code>new Date()</code> at each tick</td>
+<td>Wall clock time, 60-second granularity</td>
+</tr>
+<tr>
+<td><strong>Backtest</strong></td>
+<td><code>timeframes[i]</code> from frame generation</td>
+<td>Historical candle timestamps, exact replay</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:63-177</a></li>
+<li><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:72</a> (timestamp generation)</li>
+<li><a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:93-95</a> (sleep implementation)</li>
+</ul>
+<hr>
+<a id="configuration-access" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Access<a href="#configuration-access" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All timing parameters are accessed via the global configuration object:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">GLOBAL_CONFIG</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./config/params&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">scheduleTimeout</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxLifetime</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgPriceCandleCount</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>To customize these values, use <code>setConfig()</code> before running backtests or live trading:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">30</span><span class="hl-1">,        </span><span class="hl-5">// Wait up to 30 minutes for activation</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">1440</span><span class="hl-1">, </span><span class="hl-5">// Max 24 hours per signal</span><br/><span class="hl-1">  </span><span class="hl-4">CC_AVG_PRICE_CANDLES_COUNT:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,        </span><span class="hl-5">// Use 5 candles for VWAP (default)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Note</strong>: <code>TICK_TTL</code> is hardcoded in <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:14</a> and not user-configurable. To modify tick frequency, you must edit the source code directly.</p>
+<ul>
+<li><a href="">src/config/params.ts</a></li>
+<li><a href="">src/function/setup.ts</a> (setConfig, getConfig functions)</li>
+<li><a href="">types.d.ts:195</a> (GlobalConfig type reference)</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#timing-parameters"><span>Timing <wbr/>Parameters</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#overview"><span>Overview</span></a></li><li><a href="#timing-constants"><span>Timing <wbr/>Constants</span></a></li><li><ul><li><a href="#cc_schedule_await_minutes"><span>CC_<wbr/>SCHEDULE_<wbr/>AWAIT_<wbr/>MINUTES</span></a></li><li><a href="#cc_max_signal_lifetime_minutes"><span>CC_<wbr/>MAX_<wbr/>SIGNAL_<wbr/>LIFETIME_<wbr/>MINUTES</span></a></li><li><a href="#tick_ttl"><span>TICK_<wbr/>TTL</span></a></li></ul></li><li><a href="#timing-coordination-in-backtest"><span>Timing <wbr/>Coordination in <wbr/>Backtest</span></a></li><li><a href="#timing-coordination-in-live-mode"><span>Timing <wbr/>Coordination in <wbr/>Live <wbr/>Mode</span></a></li><li><a href="#configuration-access"><span>Configuration <wbr/>Access</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

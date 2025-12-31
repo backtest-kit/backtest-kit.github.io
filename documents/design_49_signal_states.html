@@ -1,0 +1,849 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/49_signal_states | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_49_signal_states.html">design/49_signal_states</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-states" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal States<a href="#signal-states" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document provides comprehensive documentation of the six discrete states that a trading signal can occupy during its lifecycle in backtest-kit. Each state is represented by a distinct TypeScript interface as part of a discriminated union (<code>IStrategyTickResult</code>), enabling type-safe state handling throughout the system.</p>
+<p>For information about the complete signal lifecycle flow and state transitions, see <a href="design_07_signal_lifecycle_overview.html">Signal Lifecycle Overview</a>. For details on signal generation and validation, see <a href="design_50_signal_generation_and_validation.html">Signal Generation and Validation</a>. For information on how signals are persisted across crashes in live mode, see <a href="design_52_signal_persistence.html">Signal Persistence</a>.</p>
+<hr>
+<a id="state-machine-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Machine Overview<a href="#state-machine-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The signal state machine consists of six mutually exclusive states, represented as a discriminated union with the <code>action</code> field as the discriminator:</p>
+<p><img src="../media/49_Signal_States_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="discriminated-union-type" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Discriminated Union Type<a href="#discriminated-union-type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All signal states are unified under the <code>IStrategyTickResult</code> discriminated union type:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResult</span><span class="hl-1"> =</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultIdle</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultScheduled</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultOpened</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultActive</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultClosed</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultCancelled</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>action</code> field serves as the discriminator, enabling TypeScript to narrow types in conditional branches:</p>
+<pre><code class="typescript"><span class="hl-5">// Type guard example</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// TypeScript knows result is IStrategyTickResultClosed</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">closeReason</span><span class="hl-1">); </span><span class="hl-5">// ✓ Valid</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">); </span><span class="hl-5">// ✓ Valid</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="state-idle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Idle<a href="#state-idle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultIdle</code></p>
+<p><strong>Purpose:</strong> Represents the absence of an active trading position. The strategy is monitoring the market but has no open signal.</p>
+<a id="type-definition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultIdle</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;idle&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;idle&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>null</code></td>
+<td>Always null in idle state (no active signal)</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier for tracking</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier for tracking</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price at idle state</td>
+</tr>
+</tbody>
+</table>
+<a id="state-transitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The idle state can transition to:</p>
+<ul>
+<li><strong>scheduled</strong>: When <code>getSignal()</code> returns a signal with <code>priceOpen</code> specified</li>
+<li><strong>opened</strong>: When <code>getSignal()</code> returns a signal without <code>priceOpen</code> (immediate execution)</li>
+<li><strong>idle</strong>: Remains idle if <code>getSignal()</code> returns <code>null</code></li>
+</ul>
+<a id="implementation-location" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The idle state is returned by <code>ClientStrategy.tick()</code> when:</p>
+<ol>
+<li>No pending signal exists (<code>this._pendingSignal === null</code>)</li>
+<li>No scheduled signal exists (<code>this._scheduledSignal === null</code>)</li>
+<li><code>getSignal()</code> returns <code>null</code> or validation fails</li>
+</ol>
+<hr>
+<a id="state-scheduled" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Scheduled<a href="#state-scheduled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultScheduled</code></p>
+<p><strong>Purpose:</strong> Represents a limit order waiting for price to reach <code>priceOpen</code> before activation. This state models real-world limit orders where the trader specifies an entry price.</p>
+<a id="type-definition-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultScheduled</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;scheduled&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">IScheduledSignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;scheduled&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>IScheduledSignalRow</code></td>
+<td>Scheduled signal with <code>priceOpen</code> specified</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price when scheduled signal was created</td>
+</tr>
+</tbody>
+</table>
+<a id="signal-row-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Row Structure<a href="#signal-row-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IScheduledSignalRow</code> extends <code>ISignalRow</code> and always has:</p>
+<ul>
+<li><code>priceOpen</code>: Defined (the activation price)</li>
+<li><code>_isScheduled</code>: <code>true</code></li>
+<li><code>scheduledAt</code>: Timestamp when signal was created</li>
+<li><code>pendingAt</code>: Initially equals <code>scheduledAt</code>, updated to actual pending time upon activation</li>
+</ul>
+<a id="state-transitions-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The scheduled state can transition to:</p>
+<ul>
+<li><strong>opened</strong>: When <code>currentPrice</code> reaches <code>priceOpen</code> (activation condition met)</li>
+<li><strong>cancelled</strong>: When <code>StopLoss</code> is hit before <code>priceOpen</code> is reached</li>
+<li><strong>cancelled</strong>: When timeout occurs (exceeds <code>CC_SCHEDULE_AWAIT_MINUTES</code>, default 120 minutes)</li>
+<li><strong>idle</strong>: When risk validation fails at activation attempt</li>
+</ul>
+<a id="activation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Activation Logic<a href="#activation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/49_Signal_States_1.svg" alt="Mermaid Diagram"></p>
+<a id="price-activation-conditions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Activation Conditions<a href="#price-activation-conditions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For <strong>LONG</strong> positions:</p>
+<ul>
+<li>Activate when: <code>currentPrice &lt;= priceOpen</code> (price dropped to or below entry point)</li>
+<li>Cancel if: <code>currentPrice &lt;= priceStopLoss</code> (before activation)</li>
+</ul>
+<p>For <strong>SHORT</strong> positions:</p>
+<ul>
+<li>Activate when: <code>currentPrice &gt;= priceOpen</code> (price rose to or above entry point)</li>
+<li>Cancel if: <code>currentPrice &gt;= priceStopLoss</code> (before activation)</li>
+</ul>
+<a id="implementation-location-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signal handling occurs in:</p>
+<ul>
+<li>Creation: <a href="">src/client/ClientStrategy.ts:389-443</a></li>
+<li>Activation check: <a href="">src/client/ClientStrategy.ts:610-644</a></li>
+<li>Timeout check: <a href="">src/client/ClientStrategy.ts:554-608</a></li>
+<li>Cancellation by StopLoss: <a href="">src/client/ClientStrategy.ts:646-679</a></li>
+</ul>
+<hr>
+<a id="state-opened" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Opened<a href="#state-opened" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultOpened</code></p>
+<p><strong>Purpose:</strong> Represents the first tick immediately after a position is opened. This is a transient state that signals the creation of a new active position.</p>
+<a id="type-definition-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultOpened</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;opened&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>ISignalRow</code></td>
+<td>Newly created and validated signal with generated ID</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price at signal open</td>
+</tr>
+</tbody>
+</table>
+<a id="timestamps" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timestamps<a href="#timestamps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>signal</code> contains two critical timestamps:</p>
+<ul>
+<li><code>scheduledAt</code>: When the signal was first created (for both immediate and scheduled signals)</li>
+<li><code>pendingAt</code>: When the position became active
+<ul>
+<li>For immediate signals: <code>pendingAt === scheduledAt</code></li>
+<li>For scheduled signals: <code>pendingAt</code> is updated upon activation</li>
+</ul>
+</li>
+</ul>
+<a id="state-transitions-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The opened state immediately transitions to:</p>
+<ul>
+<li><strong>active</strong>: On the next tick (monitoring begins)</li>
+</ul>
+<p>The opened state is ephemeral and exists only for one tick to trigger <code>onOpen</code> callbacks.</p>
+<a id="callbacks-triggered" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Callbacks Triggered<a href="#callbacks-triggered" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When entering the opened state:</p>
+<ol>
+<li><code>IStrategyCallbacks.onOpen</code> is invoked <a href="">src/client/ClientStrategy.ts:747-754</a></li>
+<li><code>Risk.addSignal()</code> is called to register the position <a href="">src/client/ClientStrategy.ts:742-745</a></li>
+<li>Signal is persisted to disk (in live mode) <a href="">src/client/ClientStrategy.ts:157-175</a></li>
+</ol>
+<a id="implementation-location-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The opened state is emitted by:</p>
+<ul>
+<li>Immediate signal opening: <a href="">src/client/ClientStrategy.ts:803-860</a></li>
+<li>Scheduled signal activation: <a href="">src/client/ClientStrategy.ts:681-774</a></li>
+</ul>
+<hr>
+<a id="state-active" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Active<a href="#state-active" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultActive</code></p>
+<p><strong>Purpose:</strong> Represents an open position being continuously monitored for take profit, stop loss, or time expiration conditions.</p>
+<a id="type-definition-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultActive</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;active&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">percentTp</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">percentSl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;active&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>ISignalRow</code></td>
+<td>Currently monitored signal</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price for monitoring</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol</td>
+</tr>
+<tr>
+<td><code>percentTp</code></td>
+<td><code>number</code></td>
+<td>Percentage progress towards take profit (0-100%, 0 if moving towards SL)</td>
+</tr>
+<tr>
+<td><code>percentSl</code></td>
+<td><code>number</code></td>
+<td>Percentage progress towards stop loss (0-100%, 0 if moving towards TP)</td>
+</tr>
+</tbody>
+</table>
+<a id="progress-calculation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Calculation<a href="#progress-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>percentTp</code> and <code>percentSl</code> fields indicate how close the current price is to hitting the respective target:</p>
+<pre><code class="typescript"><span class="hl-5">// For LONG position</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">distanceToTp</span><span class="hl-1"> = </span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentProgress</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-4">percentTp</span><span class="hl-1"> = (</span><span class="hl-4">currentProgress</span><span class="hl-1"> / </span><span class="hl-4">distanceToTp</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// For SHORT position</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">distanceToTp</span><span class="hl-1"> = </span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">currentProgress</span><span class="hl-1"> = </span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">currentPrice</span><span class="hl-1">;</span><br/><span class="hl-4">percentTp</span><span class="hl-1"> = (</span><span class="hl-4">currentProgress</span><span class="hl-1"> / </span><span class="hl-4">distanceToTp</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Only one of <code>percentTp</code> or <code>percentSl</code> is non-zero at any given time, depending on which direction the price is moving.</p>
+<a id="exit-conditions-monitoring" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exit Conditions Monitoring<a href="#exit-conditions-monitoring" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/49_Signal_States_2.svg" alt="Mermaid Diagram"></p>
+<a id="partial-profitloss-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Profit/Loss Tracking<a href="#partial-profitloss-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>During the active state, <code>ClientPartial</code> monitors for milestone levels:</p>
+<ul>
+<li><strong>Profit levels</strong>: 10%, 20%, 30%, ..., 100% (when <code>revenuePercent &gt; 0</code>)</li>
+<li><strong>Loss levels</strong>: -10%, -20%, -30%, ..., -100% (when <code>revenuePercent &lt; 0</code>)</li>
+</ul>
+<p>Events are emitted only once per level via Set-based deduplication <a href="">src/client/ClientPartial.ts:1-300</a>.</p>
+<a id="state-transitions-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The active state can transition to:</p>
+<ul>
+<li><strong>closed</strong>: When any exit condition is met (TP, SL, or time expiration)</li>
+</ul>
+<a id="implementation-location-3" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Active state monitoring occurs in:</p>
+<ul>
+<li>Main monitoring loop: <a href="">src/client/ClientStrategy.ts:862-1085</a></li>
+<li>Progress calculation: <a href="">src/client/ClientStrategy.ts:920-1000</a></li>
+<li>Exit condition checks: <a href="">src/client/ClientStrategy.ts:1000-1085</a></li>
+</ul>
+<hr>
+<a id="state-closed" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Closed<a href="#state-closed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultClosed</code></p>
+<p><strong>Purpose:</strong> Represents the final state of a completed signal with calculated profit/loss. This is a terminal state that marks the end of a signal's lifecycle.</p>
+<a id="type-definition-4" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultClosed</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">closeReason</span><span class="hl-1">: </span><span class="hl-11">StrategyCloseReason</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">closeTimestamp</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">pnl</span><span class="hl-1">: </span><span class="hl-11">IStrategyPnL</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties-4" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;closed&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>ISignalRow</code></td>
+<td>Completed signal with original parameters</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Final VWAP price at close</td>
+</tr>
+<tr>
+<td><code>closeReason</code></td>
+<td><code>StrategyCloseReason</code></td>
+<td>Why signal closed: <code>&quot;take_profit&quot;</code>, <code>&quot;stop_loss&quot;</code>, or <code>&quot;time_expired&quot;</code></td>
+</tr>
+<tr>
+<td><code>closeTimestamp</code></td>
+<td><code>number</code></td>
+<td>Unix timestamp in milliseconds when signal closed</td>
+</tr>
+<tr>
+<td><code>pnl</code></td>
+<td><code>IStrategyPnL</code></td>
+<td>Profit/loss calculation with fees and slippage</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol</td>
+</tr>
+</tbody>
+</table>
+<a id="close-reasons" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Close Reasons<a href="#close-reasons" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">StrategyCloseReason</span><span class="hl-1"> = </span><span class="hl-2">&quot;time_expired&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;take_profit&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;stop_loss&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Reason</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;take_profit&quot;</code></td>
+<td>Price reached <code>priceTakeProfit</code> target</td>
+</tr>
+<tr>
+<td><code>&quot;stop_loss&quot;</code></td>
+<td>Price reached <code>priceStopLoss</code> limit</td>
+</tr>
+<tr>
+<td><code>&quot;time_expired&quot;</code></td>
+<td><code>minuteEstimatedTime</code> elapsed without hitting TP/SL</td>
+</tr>
+</tbody>
+</table>
+<a id="pnl-calculation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PnL Calculation<a href="#pnl-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IStrategyPnL</code> structure includes:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyPnL</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">pnlPercentage</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;  </span><span class="hl-5">// e.g., 1.5 for +1.5%, -2.3 for -2.3%</span><br/><span class="hl-1">  </span><span class="hl-4">priceOpen</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;      </span><span class="hl-5">// Entry price adjusted with slippage and fees</span><br/><span class="hl-1">  </span><span class="hl-4">priceClose</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;     </span><span class="hl-5">// Exit price adjusted with slippage and fees</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Fee and Slippage Application:</strong></p>
+<ul>
+<li>Entry fee: 0.1% (default <code>CC_PERCENT_FEE</code>)</li>
+<li>Exit fee: 0.1%</li>
+<li>Entry slippage: 0.1% (default <code>CC_PERCENT_SLIPPAGE</code>)</li>
+<li>Exit slippage: 0.1%</li>
+<li>Total cost: ~0.4% round-trip</li>
+</ul>
+<p>The calculation is performed by <code>toProfitLossDto()</code> helper <a href="">src/helpers/toProfitLossDto.ts:1-100</a>.</p>
+<a id="state-transitions-4" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The closed state transitions to:</p>
+<ul>
+<li><strong>idle</strong>: Signal is complete and removed from tracking</li>
+</ul>
+<a id="cleanup-actions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cleanup Actions<a href="#cleanup-actions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When entering the closed state:</p>
+<ol>
+<li><code>Risk.removeSignal()</code> is called to release risk limits <a href="">src/client/ClientStrategy.ts:1147-1150</a></li>
+<li><code>ClientPartial.clear()</code> removes partial tracking state <a href="">src/client/ClientStrategy.ts:1151-1154</a></li>
+<li><code>IStrategyCallbacks.onClose</code> is invoked <a href="">src/client/ClientStrategy.ts:1139-1146</a></li>
+<li>Signal is removed from persistence (in live mode) <a href="">src/client/ClientStrategy.ts:157-175</a></li>
+</ol>
+<a id="implementation-location-4" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Closed state creation occurs in:</p>
+<ul>
+<li>Take profit closure: <a href="">src/client/ClientStrategy.ts:1000-1050</a></li>
+<li>Stop loss closure: <a href="">src/client/ClientStrategy.ts:1050-1100</a></li>
+<li>Time expiration closure: <a href="">src/client/ClientStrategy.ts:1100-1150</a></li>
+</ul>
+<hr>
+<a id="state-cancelled" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State: Cancelled<a href="#state-cancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Interface:</strong> <code>IStrategyTickResultCancelled</code></p>
+<p><strong>Purpose:</strong> Represents a scheduled signal that was discarded without ever opening a position. This occurs when a limit order's conditions are never met or are invalidated before activation.</p>
+<a id="type-definition-5" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Definition<a href="#type-definition-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultCancelled</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;cancelled&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">IScheduledSignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">closeTimestamp</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties-5" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Properties<a href="#properties-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;cancelled&quot;</code></td>
+<td>Discriminator value for type narrowing</td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>IScheduledSignalRow</code></td>
+<td>Cancelled scheduled signal (never activated)</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Final VWAP price at cancellation</td>
+</tr>
+<tr>
+<td><code>closeTimestamp</code></td>
+<td><code>number</code></td>
+<td>Unix timestamp in milliseconds when signal cancelled</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair symbol</td>
+</tr>
+</tbody>
+</table>
+<a id="cancellation-scenarios" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cancellation Scenarios<a href="#cancellation-scenarios" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A scheduled signal is cancelled in two scenarios:</p>
+<a id="1-pre-activation-stop-loss-hit" class="tsd-anchor"></a><h4 class="tsd-anchor-link">1. Pre-Activation Stop Loss Hit<a href="#1-pre-activation-stop-loss-hit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>For <strong>LONG</strong> scheduled signals:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt; </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Price dropped past SL before reaching priceOpen</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel to prevent opening a position that would immediately lose</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>For <strong>SHORT</strong> scheduled signals:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceStopLoss</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt; </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Price rose past SL before reaching priceOpen</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel to prevent opening a position that would immediately lose</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Rationale:</strong> Prevents opening positions that would trigger immediate stop loss, saving fees and slippage costs.</p>
+<a id="2-timeout-exceeded" class="tsd-anchor"></a><h4 class="tsd-anchor-link">2. Timeout Exceeded<a href="#2-timeout-exceeded" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">scheduledAt</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">; </span><span class="hl-5">// Default: 120 minutes</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Scheduled signal waited too long</span><br/><span class="hl-1">  </span><span class="hl-5">// Cancel to free up risk limits</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Rationale:</strong> Prevents &quot;zombie&quot; scheduled signals from blocking risk limits indefinitely.</p>
+<a id="state-transitions-5" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transitions<a href="#state-transitions-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The cancelled state transitions to:</p>
+<ul>
+<li><strong>idle</strong>: Scheduled signal is removed without ever activating</li>
+</ul>
+<a id="no-pnl-impact" class="tsd-anchor"></a><h3 class="tsd-anchor-link">No PnL Impact<a href="#no-pnl-impact" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Unlike the closed state, cancelled signals have <strong>no PnL impact</strong> because:</p>
+<ul>
+<li>No position was ever opened</li>
+<li>No entry fees were incurred</li>
+<li>No slippage was applied</li>
+<li>Risk limits are released immediately</li>
+</ul>
+<a id="callbacks-triggered-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Callbacks Triggered<a href="#callbacks-triggered-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When entering the cancelled state:</p>
+<ol>
+<li><code>IStrategyCallbacks.onCancel</code> is invoked <a href="">src/client/ClientStrategy.ts:580-587</a></li>
+<li>Scheduled signal is removed from persistence (in live mode) <a href="">src/classes/Persist.ts:1-500</a></li>
+</ol>
+<a id="implementation-location-5" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Location<a href="#implementation-location-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Cancelled state creation occurs in:</p>
+<ul>
+<li>Timeout cancellation: <a href="">src/client/ClientStrategy.ts:554-608</a></li>
+<li>Pre-activation SL cancellation: <a href="">src/client/ClientStrategy.ts:646-679</a></li>
+</ul>
+<hr>
+<a id="state-properties-comparison-table" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Properties Comparison Table<a href="#state-properties-comparison-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Property</th>
+<th><code>idle</code></th>
+<th><code>scheduled</code></th>
+<th><code>opened</code></th>
+<th><code>active</code></th>
+<th><code>closed</code></th>
+<th><code>cancelled</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>action</code></td>
+<td><code>&quot;idle&quot;</code></td>
+<td><code>&quot;scheduled&quot;</code></td>
+<td><code>&quot;opened&quot;</code></td>
+<td><code>&quot;active&quot;</code></td>
+<td><code>&quot;closed&quot;</code></td>
+<td><code>&quot;cancelled&quot;</code></td>
+</tr>
+<tr>
+<td><code>signal</code></td>
+<td><code>null</code></td>
+<td><code>IScheduledSignalRow</code></td>
+<td><code>ISignalRow</code></td>
+<td><code>ISignalRow</code></td>
+<td><code>ISignalRow</code></td>
+<td><code>IScheduledSignalRow</code></td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>percentTp</code></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td><code>percentSl</code></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+<td>✗</td>
+</tr>
+<tr>
+<td><code>closeReason</code></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr>
+<td><code>closeTimestamp</code></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✓</td>
+</tr>
+<tr>
+<td><code>pnl</code></td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✗</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="code-level-implementation-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Code-Level Implementation Mapping<a href="#code-level-implementation-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram maps signal states to their implementation in <code>ClientStrategy</code>:</p>
+<p><img src="../media/49_Signal_States_3.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="validation-rules-enforced-at-state-transitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Rules Enforced at State Transitions<a href="#validation-rules-enforced-at-state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>VALIDATE_SIGNAL_FN</code> enforces the following rules when signals are created or activated:</p>
+<a id="price-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Price Validation<a href="#price-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Position</th>
+<th>Rule</th>
+<th>Error Message Pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>LONG</td>
+<td><code>priceTakeProfit &gt; priceOpen</code></td>
+<td>&quot;priceTakeProfit must be &gt; priceOpen&quot;</td>
+</tr>
+<tr>
+<td>LONG</td>
+<td><code>priceStopLoss &lt; priceOpen</code></td>
+<td>&quot;priceStopLoss must be &lt; priceOpen&quot;</td>
+</tr>
+<tr>
+<td>SHORT</td>
+<td><code>priceTakeProfit &lt; priceOpen</code></td>
+<td>&quot;priceTakeProfit must be &lt; priceOpen&quot;</td>
+</tr>
+<tr>
+<td>SHORT</td>
+<td><code>priceStopLoss &gt; priceOpen</code></td>
+<td>&quot;priceStopLoss must be &gt; priceOpen&quot;</td>
+</tr>
+</tbody>
+</table>
+<a id="distance-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Distance Validation<a href="#distance-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Minimum</th>
+<th>Maximum</th>
+<th>Configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Take Profit</td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>N/A</td>
+<td>Default: 0.5%</td>
+</tr>
+<tr>
+<td>Stop Loss</td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Default: 0.1% - 10%</td>
+</tr>
+</tbody>
+</table>
+<a id="time-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Time Validation<a href="#time-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Minimum</th>
+<th>Maximum</th>
+<th>Configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>minuteEstimatedTime</code></td>
+<td>&gt; 0</td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Default: 10080 min (7 days)</td>
+</tr>
+</tbody>
+</table>
+<a id="immediate-closure-prevention" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Immediate Closure Prevention<a href="#immediate-closure-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For immediate signals (without <code>priceOpen</code>):</p>
+<pre><code class="typescript"><span class="hl-5">// LONG: currentPrice must be BETWEEN SL and TP</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">priceStopLoss</span><span class="hl-1"> || </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal would be immediately closed&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// SHORT: currentPrice must be BETWEEN TP and SL</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">currentPrice</span><span class="hl-1"> &lt;= </span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> || </span><span class="hl-4">currentPrice</span><span class="hl-1"> &gt;= </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal would be immediately closed&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>For scheduled signals (with <code>priceOpen</code>):</p>
+<pre><code class="typescript"><span class="hl-5">// LONG: priceOpen must be BETWEEN SL and TP</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">priceOpen</span><span class="hl-1"> &lt;= </span><span class="hl-4">priceStopLoss</span><span class="hl-1"> || </span><span class="hl-4">priceOpen</span><span class="hl-1"> &gt;= </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal would close immediately on activation&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// SHORT: priceOpen must be BETWEEN TP and SL</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">priceOpen</span><span class="hl-1"> &lt;= </span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> || </span><span class="hl-4">priceOpen</span><span class="hl-1"> &gt;= </span><span class="hl-4">priceStopLoss</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Signal would close immediately on activation&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Rationale:</strong> Prevents signals that would incur fees/slippage without any opportunity for profit.</p>
+<hr>
+<a id="event-emission-per-state" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Emission Per State<a href="#event-emission-per-state" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following table shows which RxJS subjects emit events for each state:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th><code>signalEmitter</code></th>
+<th><code>signalBacktestEmitter</code></th>
+<th><code>signalLiveEmitter</code></th>
+<th>Additional Events</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>opened</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td><code>Risk.addSignal()</code> called</td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td><code>partialProfitSubject</code> / <code>partialLossSubject</code></td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td><code>Risk.removeSignal()</code> called</td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>✓</td>
+<td>✓ (if backtest)</td>
+<td>✓ (if live)</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p>All states emit to:</p>
+<ul>
+<li>Global <code>signalEmitter</code> <a href="">src/config/emitters.ts:19</a></li>
+<li>Mode-specific emitters based on <code>execution.context.backtest</code> flag <a href="">src/client/ClientStrategy.ts:1200-1229</a></li>
+</ul>
+<hr>
+<a id="state-persistence-in-live-mode" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Persistence in Live Mode<a href="#state-persistence-in-live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In live trading mode (when <code>execution.context.backtest === false</code>), signal states are persisted to disk for crash recovery:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Persisted?</th>
+<th>Adapter</th>
+<th>File Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>idle</code></td>
+<td>No</td>
+<td>N/A</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td>Yes</td>
+<td><code>PersistScheduleAdapter</code></td>
+<td><code>./dump/data/schedule/{strategy}/{symbol}.json</code></td>
+</tr>
+<tr>
+<td><code>opened</code></td>
+<td>Yes</td>
+<td><code>PersistSignalAdapter</code></td>
+<td><code>./dump/data/signal/{strategy}/{symbol}.json</code></td>
+</tr>
+<tr>
+<td><code>active</code></td>
+<td>Yes</td>
+<td><code>PersistSignalAdapter</code></td>
+<td><code>./dump/data/signal/{strategy}/{symbol}.json</code></td>
+</tr>
+<tr>
+<td><code>closed</code></td>
+<td>No (deleted)</td>
+<td><code>PersistSignalAdapter</code></td>
+<td>Removed from disk</td>
+</tr>
+<tr>
+<td><code>cancelled</code></td>
+<td>No (deleted)</td>
+<td><code>PersistScheduleAdapter</code></td>
+<td>Removed from disk</td>
+</tr>
+</tbody>
+</table>
+<a id="persistence-workflow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Workflow<a href="#persistence-workflow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/49_Signal_States_4.svg" alt="Mermaid Diagram"></p>
+<p>For detailed information on persistence mechanics, see <a href="design_52_signal_persistence.html">Signal Persistence</a> and <a href="design_60_crash_recovery.html">Crash Recovery</a>.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-states"><span>Signal <wbr/>States</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#state-machine-overview"><span>State <wbr/>Machine <wbr/>Overview</span></a></li><li><a href="#discriminated-union-type"><span>Discriminated <wbr/>Union <wbr/>Type</span></a></li><li><a href="#state-idle"><span>State: <wbr/>Idle</span></a></li><li><ul><li><a href="#type-definition"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><a href="#state-transitions"><span>State <wbr/>Transitions</span></a></li><li><a href="#implementation-location"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-scheduled"><span>State: <wbr/>Scheduled</span></a></li><li><ul><li><a href="#type-definition-1"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties-1"><span>Properties</span></a></li><li><a href="#signal-row-structure"><span>Signal <wbr/>Row <wbr/>Structure</span></a></li><li><a href="#state-transitions-1"><span>State <wbr/>Transitions</span></a></li><li><a href="#activation-logic"><span>Activation <wbr/>Logic</span></a></li><li><a href="#price-activation-conditions"><span>Price <wbr/>Activation <wbr/>Conditions</span></a></li><li><a href="#implementation-location-1"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-opened"><span>State: <wbr/>Opened</span></a></li><li><ul><li><a href="#type-definition-2"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties-2"><span>Properties</span></a></li><li><a href="#timestamps"><span>Timestamps</span></a></li><li><a href="#state-transitions-2"><span>State <wbr/>Transitions</span></a></li><li><a href="#callbacks-triggered"><span>Callbacks <wbr/>Triggered</span></a></li><li><a href="#implementation-location-2"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-active"><span>State: <wbr/>Active</span></a></li><li><ul><li><a href="#type-definition-3"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties-3"><span>Properties</span></a></li><li><a href="#progress-calculation"><span>Progress <wbr/>Calculation</span></a></li><li><a href="#exit-conditions-monitoring"><span>Exit <wbr/>Conditions <wbr/>Monitoring</span></a></li><li><a href="#partial-profitloss-tracking"><span>Partial <wbr/>Profit/<wbr/>Loss <wbr/>Tracking</span></a></li><li><a href="#state-transitions-3"><span>State <wbr/>Transitions</span></a></li><li><a href="#implementation-location-3"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-closed"><span>State: <wbr/>Closed</span></a></li><li><ul><li><a href="#type-definition-4"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties-4"><span>Properties</span></a></li><li><a href="#close-reasons"><span>Close <wbr/>Reasons</span></a></li><li><a href="#pnl-calculation"><span>Pn<wbr/>L <wbr/>Calculation</span></a></li><li><a href="#state-transitions-4"><span>State <wbr/>Transitions</span></a></li><li><a href="#cleanup-actions"><span>Cleanup <wbr/>Actions</span></a></li><li><a href="#implementation-location-4"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-cancelled"><span>State: <wbr/>Cancelled</span></a></li><li><ul><li><a href="#type-definition-5"><span>Type <wbr/>Definition</span></a></li><li><a href="#properties-5"><span>Properties</span></a></li><li><a href="#cancellation-scenarios"><span>Cancellation <wbr/>Scenarios</span></a></li><li><ul><li><a href="#1-pre-activation-stop-loss-hit"><span>1. <wbr/>Pre-<wbr/>Activation <wbr/>Stop <wbr/>Loss <wbr/>Hit</span></a></li><li><a href="#2-timeout-exceeded"><span>2. <wbr/>Timeout <wbr/>Exceeded</span></a></li></ul></li><li><a href="#state-transitions-5"><span>State <wbr/>Transitions</span></a></li><li><a href="#no-pnl-impact"><span>No <wbr/>Pn<wbr/>L <wbr/>Impact</span></a></li><li><a href="#callbacks-triggered-1"><span>Callbacks <wbr/>Triggered</span></a></li><li><a href="#implementation-location-5"><span>Implementation <wbr/>Location</span></a></li></ul></li><li><a href="#state-properties-comparison-table"><span>State <wbr/>Properties <wbr/>Comparison <wbr/>Table</span></a></li><li><a href="#code-level-implementation-mapping"><span>Code-<wbr/>Level <wbr/>Implementation <wbr/>Mapping</span></a></li><li><a href="#validation-rules-enforced-at-state-transitions"><span>Validation <wbr/>Rules <wbr/>Enforced at <wbr/>State <wbr/>Transitions</span></a></li><li><ul><li><a href="#price-validation"><span>Price <wbr/>Validation</span></a></li><li><a href="#distance-validation"><span>Distance <wbr/>Validation</span></a></li><li><a href="#time-validation"><span>Time <wbr/>Validation</span></a></li><li><a href="#immediate-closure-prevention"><span>Immediate <wbr/>Closure <wbr/>Prevention</span></a></li></ul></li><li><a href="#event-emission-per-state"><span>Event <wbr/>Emission <wbr/>Per <wbr/>State</span></a></li><li><a href="#state-persistence-in-live-mode"><span>State <wbr/>Persistence in <wbr/>Live <wbr/>Mode</span></a></li><li><ul><li><a href="#persistence-workflow"><span>Persistence <wbr/>Workflow</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

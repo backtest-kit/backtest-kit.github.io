@@ -1,0 +1,314 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/03_installation_and_setup | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_03_installation_and_setup.html">design/03_installation_and_setup</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="installation-and-setup" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Installation and Setup<a href="#installation-and-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document provides instructions for installing <code>backtest-kit</code> and configuring a new project. It covers package installation, peer dependencies, module formats, TypeScript configuration, and project structure recommendations.</p>
+<p>For usage examples and running your first backtest, see <a href="design_04_quick_start_guide.html">Quick Start Guide</a>. For advanced configuration of global parameters, see <a href="design_78_global_configuration.html">Global Configuration</a>.</p>
+<hr>
+<a id="package-installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Package Installation<a href="#package-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="npm-installation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">NPM Installation<a href="#npm-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Install <code>backtest-kit</code> from the npm registry:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">backtest-kit</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The package is distributed in both CommonJS and ES Module formats, with TypeScript type definitions included at <a href="">types.d.ts</a>.</p>
+<hr>
+<a id="system-requirements" class="tsd-anchor"></a><h2 class="tsd-anchor-link">System Requirements<a href="#system-requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="required-peer-dependencies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Required Peer Dependencies<a href="#required-peer-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>backtest-kit</code> requires <strong>TypeScript 5.0 or higher</strong> as a peer dependency. This is enforced at the package level for type safety guarantees.</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">typescript@^5.0.0</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The peer dependency requirement is declared in <a href="">package.json:71-73</a> and inherited by transitive dependencies:</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Peer Dependency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backtest-kit</code></td>
+<td><code>typescript: ^5.0.0</code></td>
+</tr>
+<tr>
+<td><code>di-scoped</code></td>
+<td><code>typescript: ^5.0.0</code></td>
+</tr>
+<tr>
+<td><code>functools-kit</code></td>
+<td><code>typescript: ^5.0.0</code></td>
+</tr>
+<tr>
+<td><code>get-moment-stamp</code></td>
+<td><code>typescript: ^5.0.0</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Node.js Version:</strong> The build tooling requires Node.js 14+ (specified in rollup configuration), but runtime execution supports any LTS version.</p>
+<hr>
+<a id="core-dependencies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Dependencies<a href="#core-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following packages are automatically installed as dependencies:</p>
+<p><img src="../media/03_Installation_and_Setup_0.svg" alt="Mermaid Diagram"></p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Purpose</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>di-kit</code></td>
+<td>Dependency injection container with <code>provide()</code>/<code>inject()</code> pattern</td>
+<td><a href="">src/lib/core/provide.ts</a></td>
+</tr>
+<tr>
+<td><code>di-scoped</code></td>
+<td>AsyncLocalStorage-based scoped DI for context isolation</td>
+<td><a href="">ExecutionContextService</a>, <a href="">MethodContextService</a></td>
+</tr>
+<tr>
+<td><code>functools-kit</code></td>
+<td>Utility functions: <code>trycatch()</code>, <code>memoize()</code>, <code>queued()</code>, <code>singleshot()</code></td>
+<td>Used throughout codebase</td>
+</tr>
+<tr>
+<td><code>get-moment-stamp</code></td>
+<td>Timestamp formatting for human-readable output</td>
+<td>Markdown report generation</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="optional-dependencies-for-typical-use-cases" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Optional Dependencies for Typical Use Cases<a href="#optional-dependencies-for-typical-use-cases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>While not required by <code>backtest-kit</code> itself, most trading strategies require additional packages:</p>
+<a id="exchange-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Integration<a href="#exchange-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">ccxt</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>CCXT</strong> (CryptoCurrency eXchange Trading Library) provides unified API access to 100+ cryptocurrency exchanges. Used in <code>IExchangeSchema.getCandles</code> implementations for fetching historical OHLCV data.</p>
+<p><strong>Usage Example:</strong> <a href="">demo/backtest/src/index.mjs:24-35</a>, <a href="">demo/live/src/index.mjs:24-35</a></p>
+<a id="aillm-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">AI/LLM Integration<a href="#aillm-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">ollama</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Ollama</strong> client library for local LLM inference. Required for:</p>
+<ul>
+<li>AI-powered strategy generation via <code>addOptimizer()</code> (see <a href="design_31_optimizer_schemas.html">Optimizer Schemas</a>)</li>
+<li>Signal generation with LLM-based decision making</li>
+<li>Multi-timeframe analysis patterns</li>
+</ul>
+<p><strong>Usage Example:</strong> <a href="">demo/backtest/src/utils/json.mjs</a>, <a href="">demo/optimization/src/index.mjs</a></p>
+<a id="utility-libraries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Utility Libraries<a href="#utility-libraries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">uuid</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>UUID</strong> for generating unique signal identifiers. Recommended when <code>ISignalDto.id</code> is not provided by strategy, as the system auto-generates IDs using <code>randomString()</code> from <code>functools-kit</code>, but UUID v4 provides stronger uniqueness guarantees for production systems.</p>
+<p><strong>Usage Example:</strong> <a href="">demo/backtest/src/index.mjs:19</a>, <a href="">demo/live/src/index.mjs:19</a></p>
+<a id="environment-variables" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Environment Variables<a href="#environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">install</span><span class="hl-1"> </span><span class="hl-2">dotenv-cli</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>dotenv-cli</strong> for loading environment variables from <code>.env</code> files. Useful for managing:</p>
+<ul>
+<li><code>OLLAMA_API_KEY</code> for LLM integration</li>
+<li>Exchange API keys for live trading</li>
+<li>Configuration parameters</li>
+</ul>
+<p><strong>Usage Example:</strong> <a href="">demo/backtest/package.json:6</a>, <a href="">demo/live/package.json:6</a></p>
+<hr>
+<a id="module-format-selection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Module Format Selection<a href="#module-format-selection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>backtest-kit</code> supports both CommonJS and ES Modules:</p>
+<p><img src="../media/03_Installation_and_Setup_1.svg" alt="Mermaid Diagram"></p>
+<a id="commonjs-require" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CommonJS (require)<a href="#commonjs-require" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">addStrategy</span><span class="hl-1">, </span><span class="hl-8">Backtest</span><span class="hl-1"> } = </span><span class="hl-0">require</span><span class="hl-1">(</span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Entry point: <a href="">build/index.cjs</a> specified in <a href="">package.json:49</a></p>
+<a id="es-modules-import" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ES Modules (import)<a href="#es-modules-import" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Entry point: <a href="">build/index.mjs</a> specified in <a href="">package.json:50</a></p>
+<a id="packagejson-exports-field" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Package.json Exports Field<a href="#packagejson-exports-field" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <a href="">package.json:53-58</a> defines explicit export mappings:</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;exports&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;require&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;./build/index.cjs&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;types&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;./types.d.ts&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;import&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;./build/index.mjs&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;default&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;./build/index.cjs&quot;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Recommendation:</strong> Use ES Modules (<code>&quot;type&quot;: &quot;module&quot;</code> in package.json) for new projects, as all demo examples use this format and it provides better tree-shaking support.</p>
+<hr>
+<a id="project-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Project Structure<a href="#project-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="minimal-project-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Minimal Project Structure<a href="#minimal-project-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">my</span><span class="hl-1">-</span><span class="hl-4">trading</span><span class="hl-1">-</span><span class="hl-4">bot</span><span class="hl-1">/</span><br/><span class="hl-1">├── </span><span class="hl-4">package</span><span class="hl-1">.</span><span class="hl-4">json</span><span class="hl-1">          # </span><span class="hl-4">Project</span><span class="hl-1"> </span><span class="hl-4">metadata</span><span class="hl-1"> </span><span class="hl-4">and</span><span class="hl-1"> </span><span class="hl-4">dependencies</span><br/><span class="hl-1">├── .</span><span class="hl-4">env</span><span class="hl-1">                  # </span><span class="hl-4">Environment</span><span class="hl-1"> </span><span class="hl-0">variables</span><span class="hl-1"> (</span><span class="hl-8">API</span><span class="hl-1"> </span><span class="hl-4">keys</span><span class="hl-1">, </span><span class="hl-4">config</span><span class="hl-1">)</span><br/><span class="hl-1">├── </span><span class="hl-4">src</span><span class="hl-1">/</span><br/><span class="hl-1">│   ├── </span><span class="hl-4">index</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1">        # </span><span class="hl-4">Main</span><span class="hl-1"> </span><span class="hl-4">entry</span><span class="hl-1"> </span><span class="hl-4">point</span><br/><span class="hl-1">│   └── </span><span class="hl-4">utils</span><span class="hl-1">/</span><br/><span class="hl-1">│       ├── </span><span class="hl-4">json</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1">     # </span><span class="hl-8">LLM</span><span class="hl-1"> </span><span class="hl-0">helper</span><span class="hl-1"> (</span><span class="hl-4">optional</span><span class="hl-1">)</span><br/><span class="hl-1">│       └── </span><span class="hl-4">messages</span><span class="hl-1">.</span><span class="hl-4">mjs</span><span class="hl-1"> # </span><span class="hl-4">Market</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1"> </span><span class="hl-0">formatter</span><span class="hl-1"> (</span><span class="hl-4">optional</span><span class="hl-1">)</span><br/><span class="hl-1">└── </span><span class="hl-4">dump</span><span class="hl-1">/                # </span><span class="hl-4">Auto</span><span class="hl-1">-</span><span class="hl-4">generated</span><span class="hl-1"> </span><span class="hl-4">reports</span><span class="hl-1"> </span><span class="hl-4">and</span><span class="hl-1"> </span><span class="hl-4">persistence</span><br/><span class="hl-1">    ├── </span><span class="hl-4">data</span><span class="hl-1">/            # </span><span class="hl-4">Crash</span><span class="hl-1"> </span><span class="hl-4">recovery</span><span class="hl-1"> </span><span class="hl-0">state</span><span class="hl-1"> (</span><span class="hl-4">live</span><span class="hl-1"> </span><span class="hl-4">mode</span><span class="hl-1"> </span><span class="hl-4">only</span><span class="hl-1">)</span><br/><span class="hl-1">    │   ├── </span><span class="hl-4">signal</span><span class="hl-1">/      # </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1"> </span><span class="hl-4">storage</span><br/><span class="hl-1">    │   ├── </span><span class="hl-4">risk</span><span class="hl-1">/        # </span><span class="hl-4">PersistRiskAdapter</span><span class="hl-1"> </span><span class="hl-4">storage</span><br/><span class="hl-1">    │   ├── </span><span class="hl-4">schedule</span><span class="hl-1">/    # </span><span class="hl-4">PersistScheduleAdapter</span><span class="hl-1"> </span><span class="hl-4">storage</span><br/><span class="hl-1">    │   └── </span><span class="hl-4">partial</span><span class="hl-1">/     # </span><span class="hl-4">PersistPartialAdapter</span><span class="hl-1"> </span><span class="hl-4">storage</span><br/><span class="hl-1">    └── </span><span class="hl-4">report</span><span class="hl-1">/          # </span><span class="hl-4">Markdown</span><span class="hl-1"> </span><span class="hl-4">reports</span><br/><span class="hl-1">        ├── </span><span class="hl-4">backtest</span><span class="hl-1">/    # </span><span class="hl-4">BacktestMarkdownService</span><span class="hl-1"> </span><span class="hl-4">output</span><br/><span class="hl-1">        ├── </span><span class="hl-4">live</span><span class="hl-1">/        # </span><span class="hl-4">LiveMarkdownService</span><span class="hl-1"> </span><span class="hl-4">output</span><br/><span class="hl-1">        └── </span><span class="hl-4">walker</span><span class="hl-1">/      # </span><span class="hl-4">WalkerMarkdownService</span><span class="hl-1"> </span><span class="hl-4">output</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Directory Behavior:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Auto-Created</th>
+<th>Purpose</th>
+<th>Persistence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dump/data/</code></td>
+<td>Yes (live mode)</td>
+<td>Atomic state persistence for crash recovery</td>
+<td>Survives restarts</td>
+</tr>
+<tr>
+<td><code>dump/report/</code></td>
+<td>Yes (on demand)</td>
+<td>Markdown reports generated by <code>*.dump()</code> calls</td>
+<td>Manual cleanup</td>
+</tr>
+<tr>
+<td><code>dump/strategy/</code></td>
+<td>Yes (optimizer)</td>
+<td>LLM conversation audit trails and generated code</td>
+<td>Manual cleanup</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="typescript-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">TypeScript Configuration<a href="#typescript-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="tsconfigjson-recommendations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">tsconfig.json Recommendations<a href="#tsconfigjson-recommendations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>While <code>backtest-kit</code> is distributed as compiled JavaScript with type definitions, TypeScript configuration is required for:</p>
+<ol>
+<li><strong>Type checking</strong> consumer code that uses the library</li>
+<li><strong>IDE intellisense</strong> for autocomplete and inline documentation</li>
+<li><strong>Compilation</strong> of custom strategies written in TypeScript</li>
+</ol>
+<p><strong>Minimal Configuration:</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;compilerOptions&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;target&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;ES2020&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;module&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;ES2020&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;moduleResolution&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;node&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;esModuleInterop&quot;</span><span class="hl-1">: </span><span class="hl-7">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;skipLibCheck&quot;</span><span class="hl-1">: </span><span class="hl-7">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;strict&quot;</span><span class="hl-1">: </span><span class="hl-7">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;resolveJsonModule&quot;</span><span class="hl-1">: </span><span class="hl-7">true</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;types&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;node&quot;</span><span class="hl-1">]</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;include&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;src/**/*&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;exclude&quot;</span><span class="hl-1">: [</span><span class="hl-2">&quot;node_modules&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;dist&quot;</span><span class="hl-1">]</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Settings:</strong></p>
+<ul>
+<li><code>&quot;module&quot;: &quot;ES2020&quot;</code> - Required for async/await and top-level await (used in strategy execution)</li>
+<li><code>&quot;moduleResolution&quot;: &quot;node&quot;</code> - Standard Node.js module resolution for npm packages</li>
+<li><code>&quot;esModuleInterop&quot;: true</code> - Required for importing CCXT and other CommonJS libraries</li>
+<li><code>&quot;skipLibCheck&quot;: true</code> - Recommended for faster builds (skips type checking of declaration files)</li>
+<li><code>&quot;strict&quot;: true</code> - Enables all strict type checking for safety</li>
+</ul>
+<p><strong>AsyncLocalStorage Support:</strong> The codebase uses Node.js <code>async_hooks</code> for temporal isolation (see <a href="design_09_temporal_isolation_and_look-ahead_prevention.html">Temporal Isolation and Look-Ahead Prevention</a>). No special TypeScript configuration is needed beyond <code>&quot;types&quot;: [&quot;node&quot;]</code>.</p>
+<hr>
+<a id="environment-variables-1" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Environment Variables<a href="#environment-variables-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="configuration-via-env" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Configuration via .env<a href="#configuration-via-env" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Create a <code>.env</code> file in project root for sensitive configuration:</p>
+<pre><code class="bash"><span class="hl-5"># LLM Configuration (for AI strategies)</span><br/><span class="hl-4">OLLAMA_API_KEY</span><span class="hl-1">=</span><span class="hl-2">your_api_key_here</span><br/><span class="hl-4">OLLAMA_BASE_URL</span><span class="hl-1">=</span><span class="hl-2">http://localhost:11434</span><br/><br/><span class="hl-5"># Exchange API Keys (for live trading)</span><br/><span class="hl-4">BINANCE_API_KEY</span><span class="hl-1">=</span><span class="hl-2">your_binance_key</span><br/><span class="hl-4">BINANCE_API_SECRET</span><span class="hl-1">=</span><span class="hl-2">your_binance_secret</span><br/><br/><span class="hl-5"># Custom Configuration (optional)</span><br/><span class="hl-4">CC_PERCENT_SLIPPAGE</span><span class="hl-1">=</span><span class="hl-2">0.1</span><br/><span class="hl-4">CC_PERCENT_FEE</span><span class="hl-1">=</span><span class="hl-2">0.1</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="loading-environment-variables" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Loading Environment Variables<a href="#loading-environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Using dotenv-cli (Recommended):</strong></p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-13">&quot;scripts&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-13">&quot;start&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;dotenv -e .env -- node ./src/index.mjs&quot;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage Example:</strong> <a href="">demo/backtest/package.json:5-7</a>, <a href="">demo/live/package.json:5-7</a></p>
+<p><strong>Direct programmatic loading:</strong></p>
+<pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-2">&#39;dotenv/config&#39;</span><span class="hl-1">;</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="basic-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Basic Configuration<a href="#basic-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="logger-setup" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logger Setup<a href="#logger-setup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Configure logging output using <code>setLogger()</code> before registering components:</p>
+<pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">log:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">log</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">debug:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">debug</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">info:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">info</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">warn:</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-4">warn</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>ILogger</code> interface (defined in <a href="">src/interfaces/Logger.interface.ts</a>) is injected into all services via dependency injection. Without configuration, logging is silently disabled.</p>
+<a id="global-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Global Configuration<a href="#global-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Set global trading parameters using <code>setConfig()</code>:</p>
+<pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,           </span><span class="hl-5">// 0.1% slippage per trade</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,                 </span><span class="hl-5">// 0.1% exchange fee per trade</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">120</span><span class="hl-1">,      </span><span class="hl-5">// Scheduled signal timeout</span><br/><span class="hl-1">  </span><span class="hl-4">CC_AVG_PRICE_CANDLES_COUNT:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,       </span><span class="hl-5">// VWAP candle window</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0.5</span><span class="hl-1">,  </span><span class="hl-5">// Minimum TP distance</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,    </span><span class="hl-5">// Minimum SL distance</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">10</span><span class="hl-1">,     </span><span class="hl-5">// Maximum SL distance</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">10080</span><span class="hl-1">,    </span><span class="hl-5">// Max signal duration (7 days)</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_GENERATION_SECONDS:</span><span class="hl-1"> </span><span class="hl-6">60</span><span class="hl-1">,     </span><span class="hl-5">// Timeout for getSignal()</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Default values</strong> are defined in <a href="">src/config/params.ts:1-50</a>. All configuration parameters are optional; omitted values use framework defaults.</p>
+<p><strong>Purpose of Configuration:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Validation</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_PERCENT_SLIPPAGE</code></td>
+<td>PNL calculation</td>
+<td>Realistic profit/loss modeling</td>
+</tr>
+<tr>
+<td><code>CC_PERCENT_FEE</code></td>
+<td>PNL calculation</td>
+<td>Exchange trading fees</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td>Scheduled signal timeout</td>
+<td>Prevents stale limit orders</td>
+</tr>
+<tr>
+<td><code>CC_AVG_PRICE_CANDLES_COUNT</code></td>
+<td>VWAP calculation</td>
+<td>Price smoothing window</td>
+</tr>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td>Signal validation</td>
+<td>Prevents micro-profit trades</td>
+</tr>
+<tr>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Signal validation</td>
+<td>Prevents instant stop-outs</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td>Signal validation</td>
+<td>Limits maximum loss per trade</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>Signal validation</td>
+<td>Prevents eternal positions blocking risk limits</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_GENERATION_SECONDS</code></td>
+<td>Timeout protection</td>
+<td>Prevents hanging getSignal() calls</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="verification" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Verification<a href="#verification" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="test-import" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Test Import<a href="#test-import" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Create a minimal test file to verify installation:</p>
+<pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> { </span><br/><span class="hl-1">  </span><span class="hl-4">setLogger</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">setConfig</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addExchange</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addStrategy</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">addFrame</span><span class="hl-1"> </span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&#39;backtest-kit imported successfully&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Run with:</p>
+<pre><code class="bash"><span class="hl-0">node</span><span class="hl-1"> </span><span class="hl-2">test.mjs</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Expected output: <code>backtest-kit imported successfully</code></p>
+<a id="type-checking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type Checking<a href="#type-checking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Verify TypeScript types are available:</p>
+<pre><code class="bash"><span class="hl-0">npx</span><span class="hl-1"> </span><span class="hl-2">tsc</span><span class="hl-1"> </span><span class="hl-7">--noEmit</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This validates that <a href="">types.d.ts</a> is correctly resolved by the TypeScript compiler.</p>
+<hr>
+<a id="import-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Import Reference<a href="#import-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="complete-public-api-import-map" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Complete Public API Import Map<a href="#complete-public-api-import-map" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/03_Installation_and_Setup_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Typical Import Statement:</strong></p>
+<pre><code class="javascript"><span class="hl-3">import</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Configuration</span><br/><span class="hl-1">  </span><span class="hl-4">setLogger</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">setConfig</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Component Registration</span><br/><span class="hl-1">  </span><span class="hl-4">addExchange</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">addStrategy</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">addFrame</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">addRisk</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Execution</span><br/><span class="hl-1">  </span><span class="hl-4">Backtest</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">Live</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Event Monitoring</span><br/><span class="hl-1">  </span><span class="hl-4">listenSignalBacktest</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">listenDoneBacktest</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">listenError</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Utilities</span><br/><span class="hl-1">  </span><span class="hl-4">getCandles</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">dumpSignal</span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&#39;backtest-kit&#39;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="next-steps" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Next Steps<a href="#next-steps" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>After installation and basic configuration:</p>
+<ol>
+<li><strong><a href="design_04_quick_start_guide.html">Quick Start Guide</a></strong> - Walk through a minimal backtest example</li>
+<li><strong><a href="design_08_component_registration.html">Component Registration</a></strong> - Learn the <code>add*</code> function pattern</li>
+<li><strong><a href="design_86_custom_exchange_integration.html">Exchange Integration</a></strong> - Implement custom data sources</li>
+<li><strong><a href="design_15_public_api_reference.html">Public API Reference</a></strong> - Complete API documentation</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#installation-and-setup"><span>Installation and <wbr/>Setup</span></a><ul><li><a href="#package-installation"><span>Package <wbr/>Installation</span></a></li><li><ul><li><a href="#npm-installation"><span>NPM <wbr/>Installation</span></a></li></ul></li><li><a href="#system-requirements"><span>System <wbr/>Requirements</span></a></li><li><ul><li><a href="#required-peer-dependencies"><span>Required <wbr/>Peer <wbr/>Dependencies</span></a></li></ul></li><li><a href="#core-dependencies"><span>Core <wbr/>Dependencies</span></a></li><li><a href="#optional-dependencies-for-typical-use-cases"><span>Optional <wbr/>Dependencies for <wbr/>Typical <wbr/>Use <wbr/>Cases</span></a></li><li><ul><li><a href="#exchange-integration"><span>Exchange <wbr/>Integration</span></a></li><li><a href="#aillm-integration"><span>AI/LLM <wbr/>Integration</span></a></li><li><a href="#utility-libraries"><span>Utility <wbr/>Libraries</span></a></li><li><a href="#environment-variables"><span>Environment <wbr/>Variables</span></a></li></ul></li><li><a href="#module-format-selection"><span>Module <wbr/>Format <wbr/>Selection</span></a></li><li><ul><li><a href="#commonjs-require"><span>CommonJS (require)</span></a></li><li><a href="#es-modules-import"><span>ES <wbr/>Modules (import)</span></a></li><li><a href="#packagejson-exports-field"><span>Package.json <wbr/>Exports <wbr/>Field</span></a></li></ul></li><li><a href="#project-structure"><span>Project <wbr/>Structure</span></a></li><li><ul><li><a href="#minimal-project-structure"><span>Minimal <wbr/>Project <wbr/>Structure</span></a></li></ul></li><li><a href="#typescript-configuration"><span>Type<wbr/>Script <wbr/>Configuration</span></a></li><li><ul><li><a href="#tsconfigjson-recommendations"><span>tsconfig.json <wbr/>Recommendations</span></a></li></ul></li><li><a href="#environment-variables-1"><span>Environment <wbr/>Variables</span></a></li><li><ul><li><a href="#configuration-via-env"><span>Configuration via .env</span></a></li><li><a href="#loading-environment-variables"><span>Loading <wbr/>Environment <wbr/>Variables</span></a></li></ul></li><li><a href="#basic-configuration"><span>Basic <wbr/>Configuration</span></a></li><li><ul><li><a href="#logger-setup"><span>Logger <wbr/>Setup</span></a></li><li><a href="#global-configuration"><span>Global <wbr/>Configuration</span></a></li></ul></li><li><a href="#verification"><span>Verification</span></a></li><li><ul><li><a href="#test-import"><span>Test <wbr/>Import</span></a></li><li><a href="#type-checking"><span>Type <wbr/>Checking</span></a></li></ul></li><li><a href="#import-reference"><span>Import <wbr/>Reference</span></a></li><li><ul><li><a href="#complete-public-api-import-map"><span>Complete <wbr/>Public API <wbr/>Import <wbr/>Map</span></a></li></ul></li><li><a href="#next-steps"><span>Next <wbr/>Steps</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,276 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/67_risk_management | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_67_risk_management.html">design/67_risk_management</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="risk-management" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Risk Management<a href="#risk-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The risk management system enforces portfolio-level constraints and validation rules that prevent signals from opening when they violate risk parameters. Risk profiles are defined via <code>addRisk()</code> and referenced by strategies using <code>riskName</code> or <code>riskList</code>. The system tracks active positions across all strategies and evaluates custom validation functions before allowing new signals to open.</p>
+<p>For signal lifecycle information, see <a href="design_48_signal_lifecycle.html">Signal Lifecycle</a>. For strategy configuration, see <a href="design_25_strategy_schemas.html">Strategy Schemas</a>. For event monitoring, see <a href="design_23_event_listeners.html">Event Listeners</a>.</p>
+<a id="risk-profile-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Profile Configuration<a href="#risk-profile-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk profiles are registered via <code>addRisk()</code> and define a set of validation rules that signals must pass before opening. Each risk profile has a unique <code>riskName</code> identifier.</p>
+<a id="iriskschema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">IRiskSchema Interface<a href="#iriskschema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IRiskSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;                              </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">  </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">;                                 </span><span class="hl-5">// Optional documentation</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-11">Partial</span><span class="hl-1">&lt;</span><span class="hl-11">IRiskCallbacks</span><span class="hl-1">&gt;;           </span><span class="hl-5">// onRejected, onAllowed</span><br/><span class="hl-1">  </span><span class="hl-4">validations</span><span class="hl-1">: (</span><span class="hl-11">IRiskValidation</span><span class="hl-1"> | </span><span class="hl-11">IRiskValidationFn</span><span class="hl-1">)[];  </span><span class="hl-5">// Validation chain</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Strategies reference risk profiles using <code>riskName</code> (single profile) or <code>riskList</code> (multiple profiles that must all pass).</p>
+<a id="validation-chain-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Chain Structure<a href="#validation-chain-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>validations</code> array can contain either <code>IRiskValidation</code> objects (with <code>validate</code> function and optional <code>note</code>) or raw validation functions (<code>IRiskValidationFn</code>).</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IRiskValidation</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">validate</span><span class="hl-1">: </span><span class="hl-11">IRiskValidationFn</span><span class="hl-1">;  </span><span class="hl-5">// Function that throws on failure</span><br/><span class="hl-1">  </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">;                </span><span class="hl-5">// Documentation for this validation</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">IRiskValidationFn</span><span class="hl-1"> = (</span><span class="hl-4">payload</span><span class="hl-1">: </span><span class="hl-11">IRiskValidationPayload</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1"> | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Validation functions receive <code>IRiskValidationPayload</code> containing complete context about the signal and portfolio state.</p>
+<a id="risk-validation-payload" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Validation Payload<a href="#risk-validation-payload" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The payload passed to validation functions contains both signal details and portfolio state.</p>
+<p><img src="../media/67_Risk_Management_0.svg" alt="Mermaid Diagram"></p>
+<a id="payload-fields" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Payload Fields<a href="#payload-fields" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>pendingSignal</code></td>
+<td><code>ISignalDto</code></td>
+<td>Signal attempting to open</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy requesting signal</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange being used</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>number</code></td>
+<td>Unix timestamp (ms)</td>
+</tr>
+<tr>
+<td><code>activePositionCount</code></td>
+<td><code>number</code></td>
+<td>Number of currently active positions</td>
+</tr>
+<tr>
+<td><code>activePositions</code></td>
+<td><code>IRiskActivePosition[]</code></td>
+<td>Details of all active positions</td>
+</tr>
+</tbody>
+</table>
+<p>Validation functions throw <code>Error</code> to reject signals. The error message becomes the rejection reason logged to <code>riskSubject</code>.</p>
+<a id="risk-validation-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Validation Flow<a href="#risk-validation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The risk validation system integrates with the signal lifecycle at two critical points: signal generation and scheduled signal activation.</p>
+<p><img src="../media/67_Risk_Management_1.svg" alt="Mermaid Diagram"></p>
+<a id="two-stage-risk-checking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Two-Stage Risk Checking<a href="#two-stage-risk-checking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Risk validation occurs <strong>twice</strong> for scheduled signals:</p>
+<ol>
+<li><strong>Initial Check</strong>: When <code>getSignal()</code> returns signal with <code>priceOpen</code> (<a href="">src/client/ClientStrategy.ts:376-387</a>)</li>
+<li><strong>Activation Check</strong>: When price reaches <code>priceOpen</code> (<a href="">src/client/ClientStrategy.ts:712-729</a>)</li>
+</ol>
+<p>This dual-check prevents race conditions where portfolio state changes between signal creation and activation.</p>
+<a id="clientrisk-implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientRisk Implementation<a href="#clientrisk-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientRisk</code> implements the <code>IRisk</code> interface and manages portfolio-wide position tracking.</p>
+<p><img src="../media/67_Risk_Management_2.svg" alt="Mermaid Diagram"></p>
+<a id="position-tracking-key-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Tracking Key Format<a href="#position-tracking-key-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Active positions are tracked using composite keys:</p>
+<pre><code><span class="hl-1">{</span><span class="hl-4">symbol</span><span class="hl-1">}:{</span><span class="hl-4">strategyName</span><span class="hl-1">}:{</span><span class="hl-4">riskName</span><span class="hl-1">}</span>
+</code><button>Copy</button></pre>
+
+<p>Example: <code>&quot;BTCUSDT:my-strategy:demo-risk&quot;</code></p>
+<p>This allows:</p>
+<ul>
+<li>Multiple strategies on same symbol with different risk profiles</li>
+<li>Same strategy on different symbols</li>
+<li>Multiple risk profiles per strategy (via <code>riskList</code>)</li>
+</ul>
+<a id="method-signatures" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Signatures<a href="#method-signatures" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IRisk</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">checkSignal</span><span class="hl-1">(</span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-11">IRiskCheckArgs</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">boolean</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">addSignal</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">: { </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">; </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1"> }): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">removeSignal</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">: { </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">; </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1"> }): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="persistence-and-recovery" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence and Recovery<a href="#persistence-and-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Active positions are persisted to disk to survive process crashes in live mode.</p>
+<p><img src="../media/67_Risk_Management_3.svg" alt="Mermaid Diagram"></p>
+<a id="atomic-persistence-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Atomic Persistence Pattern<a href="#atomic-persistence-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Position changes are written atomically using <code>PersistRiskAdapter</code>:</p>
+<ol>
+<li>Write to temporary file: <code>{riskName}.json.tmp</code></li>
+<li><code>fsync()</code> to ensure disk write</li>
+<li>Atomic rename: <code>{riskName}.json.tmp</code> → <code>{riskName}.json</code></li>
+</ol>
+<p>This prevents partial writes during crashes.</p>
+<a id="backtest-vs-live-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest vs Live Mode<a href="#backtest-vs-live-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Backtest</strong>: No persistence (in-memory only for speed)</li>
+<li><strong>Live</strong>: Full persistence after every <code>addSignal</code>/<code>removeSignal</code></li>
+</ul>
+<a id="event-system-for-risk-rejections" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event System for Risk Rejections<a href="#event-system-for-risk-rejections" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk rejections emit events to <code>riskSubject</code> for monitoring and alerting.</p>
+<p><img src="../media/67_Risk_Management_4.svg" alt="Mermaid Diagram"></p>
+<a id="riskcontract-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">RiskContract Structure<a href="#riskcontract-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Events emitted to <code>riskSubject</code> contain:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair</td>
+</tr>
+<tr>
+<td><code>pendingSignal</code></td>
+<td><code>ISignalDto</code></td>
+<td>Rejected signal</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>StrategyName</code></td>
+<td>Strategy that generated signal</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td><code>ExchangeName</code></td>
+<td>Exchange being used</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td><code>number</code></td>
+<td>Current VWAP price</td>
+</tr>
+<tr>
+<td><code>activePositionCount</code></td>
+<td><code>number</code></td>
+<td>Active positions at rejection time</td>
+</tr>
+<tr>
+<td><code>comment</code></td>
+<td><code>string</code></td>
+<td>Rejection reason (from validation <code>note</code> or error message)</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>number</code></td>
+<td>Unix timestamp (ms)</td>
+</tr>
+</tbody>
+</table>
+<a id="event-listener-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listener Functions<a href="#event-listener-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Continuous monitoring</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenRisk</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`[RISK] </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2"> rejected: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">comment</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Active positions: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">activePositionCount</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Wait for first rejection matching filter</span><br/><span class="hl-0">listenRiskOnce</span><span class="hl-1">(</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT signal rejected!&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="common-risk-validation-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Risk Validation Patterns<a href="#common-risk-validation-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="maximum-concurrent-positions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Maximum Concurrent Positions<a href="#maximum-concurrent-positions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Limit total number of active positions across all strategies:</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;max-3-positions&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">activePositionCount</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-6">3</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Max 3 concurrent positions exceeded&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="minimum-take-profit-distance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Minimum Take Profit Distance<a href="#minimum-take-profit-distance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Ensure TP is sufficiently far from entry to cover fees:</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;min-tp-distance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">pendingSignal</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceTakeProfit</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tpDistance</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><br/><span class="hl-1">        ? ((</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><br/><span class="hl-1">        : ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">tpDistance</span><span class="hl-1"> &lt; </span><span class="hl-6">1.0</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`TP too close: </span><span class="hl-7">${</span><span class="hl-4">tpDistance</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="riskreward-ratio" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk/Reward Ratio<a href="#riskreward-ratio" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Enforce minimum R/R ratio (e.g., 2:1):</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;min-rr-2to1&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">pendingSignal</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">priceOpen</span><span class="hl-1"> = </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-8">priceTakeProfit</span><span class="hl-1">, </span><span class="hl-8">priceStopLoss</span><span class="hl-1">, </span><span class="hl-8">position</span><span class="hl-1"> } = </span><span class="hl-4">pendingSignal</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">reward</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><br/><span class="hl-1">        ? </span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><br/><span class="hl-1">        : </span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">risk</span><span class="hl-1"> = </span><span class="hl-4">position</span><span class="hl-1"> === </span><span class="hl-2">&quot;long&quot;</span><br/><span class="hl-1">        ? </span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceStopLoss</span><br/><span class="hl-1">        : </span><span class="hl-4">priceStopLoss</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">reward</span><span class="hl-1"> / </span><span class="hl-4">risk</span><span class="hl-1"> &lt; </span><span class="hl-6">2.0</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Poor R/R: </span><span class="hl-7">${</span><span class="hl-9">(</span><span class="hl-4">reward</span><span class="hl-1">/</span><span class="hl-4">risk</span><span class="hl-9">).</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">:1`</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="time-window-restrictions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Time Window Restrictions<a href="#time-window-restrictions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Prevent signals during specific hours (e.g., low liquidity periods):</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;trading-hours&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">timestamp</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">hour</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-4">timestamp</span><span class="hl-1">).</span><span class="hl-0">getUTCHours</span><span class="hl-1">();</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Block 00:00-02:00 UTC (low liquidity)</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">hour</span><span class="hl-1"> &gt;= </span><span class="hl-6">0</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">hour</span><span class="hl-1"> &lt; </span><span class="hl-6">2</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Trading disabled during low liquidity hours&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="symbol-specific-limits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Symbol-Specific Limits<a href="#symbol-specific-limits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Limit positions per symbol:</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;one-per-symbol&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">activePositions</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">countOnSymbol</span><span class="hl-1"> = </span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">filter</span><span class="hl-1">(</span><br/><span class="hl-1">        </span><span class="hl-4">pos</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">pos</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">symbol</span><br/><span class="hl-1">      ).</span><span class="hl-4">length</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">countOnSymbol</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Already have position on </span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="integration-with-strategy-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Strategy Lifecycle<a href="#integration-with-strategy-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk validation integrates with multiple strategy lifecycle points.</p>
+<p><img src="../media/67_Risk_Management_5.svg" alt="Mermaid Diagram"></p>
+<a id="multiple-risk-profiles-risklist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multiple Risk Profiles (riskList)<a href="#multiple-risk-profiles-risklist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies can require multiple risk profiles to all pass:</p>
+<pre><code class="typescript"><span class="hl-0">addStrategy</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative-btc&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">riskList:</span><span class="hl-1"> [</span><span class="hl-2">&quot;max-3-positions&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;min-rr-2to1&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;trading-hours&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-0">getSignal</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// All three risk profiles must validate</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All risk profiles in <code>riskList</code> are checked sequentially. If any validation fails, the signal is rejected.</p>
+<a id="global-risk-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Global Risk Configuration<a href="#global-risk-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global risk parameters are configured via <code>setConfig()</code>:</p>
+<pre><code class="typescript"><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0.3</span><span class="hl-1">,  </span><span class="hl-5">// Min TP distance (%)</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MIN_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">0.1</span><span class="hl-1">,    </span><span class="hl-5">// Min SL distance (%)</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_STOPLOSS_DISTANCE_PERCENT:</span><span class="hl-1"> </span><span class="hl-6">5.0</span><span class="hl-1">,    </span><span class="hl-5">// Max SL distance (%)</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">10080</span><span class="hl-1">,    </span><span class="hl-5">// Max 7 days</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">120</span><span class="hl-1">,           </span><span class="hl-5">// Scheduled signal timeout</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These parameters are enforced by <code>VALIDATE_SIGNAL_FN</code> before risk validation:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code></td>
+<td><code>0.3</code></td>
+<td>Minimum TP distance to cover fees</td>
+</tr>
+<tr>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>0.1</code></td>
+<td>Minimum SL distance to avoid instant stops</td>
+</tr>
+<tr>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code></td>
+<td><code>5.0</code></td>
+<td>Maximum SL distance to protect capital</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td><code>10080</code></td>
+<td>Maximum signal duration (7 days)</td>
+</tr>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td><code>120</code></td>
+<td>Scheduled signal timeout (2 hours)</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-error-handling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Error Handling<a href="#validation-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Validation errors are caught and handled gracefully:</p>
+<p><img src="../media/67_Risk_Management_6.svg" alt="Mermaid Diagram"></p>
+<a id="error-propagation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Propagation<a href="#error-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li>Validation function throws <code>Error</code></li>
+<li><code>ClientRisk</code> catches error</li>
+<li>Error emitted to <code>validationSubject</code> (for debugging)</li>
+<li><code>onRejected</code> callback invoked with error message</li>
+<li><code>riskSubject</code> emits <code>RiskContract</code> with rejection details</li>
+<li><code>checkSignal()</code> returns <code>false</code></li>
+</ol>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="validation-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Execution<a href="#validation-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Validations run <strong>sequentially</strong> in array order</li>
+<li>First validation that throws stops execution (short-circuit)</li>
+<li>Async validations are supported (use <code>await</code>)</li>
+<li>Validation timing tracked via <code>performanceEmitter</code></li>
+</ul>
+<a id="position-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Tracking<a href="#position-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><code>_activePositionsMap</code> is in-memory Map for O(1) lookups</li>
+<li>Persistence only in live mode (backtest skips I/O)</li>
+<li>Atomic file writes prevent corruption</li>
+<li>Separate files per <code>riskName</code> for parallel writes</li>
+</ul>
+<a id="memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization<a href="#memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientRisk</code> instances are memoized per <code>riskName</code> in <code>RiskConnectionService</code>, ensuring singleton behavior and preventing duplicate position tracking.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#risk-management"><span>Risk <wbr/>Management</span></a><ul><li><a href="#risk-profile-configuration"><span>Risk <wbr/>Profile <wbr/>Configuration</span></a></li><li><ul><li><a href="#iriskschema-interface"><span>IRisk<wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#validation-chain-structure"><span>Validation <wbr/>Chain <wbr/>Structure</span></a></li></ul></li><li><a href="#risk-validation-payload"><span>Risk <wbr/>Validation <wbr/>Payload</span></a></li><li><ul><li><a href="#payload-fields"><span>Payload <wbr/>Fields</span></a></li></ul></li><li><a href="#risk-validation-flow"><span>Risk <wbr/>Validation <wbr/>Flow</span></a></li><li><ul><li><a href="#two-stage-risk-checking"><span>Two-<wbr/>Stage <wbr/>Risk <wbr/>Checking</span></a></li></ul></li><li><a href="#clientrisk-implementation"><span>Client<wbr/>Risk <wbr/>Implementation</span></a></li><li><ul><li><a href="#position-tracking-key-format"><span>Position <wbr/>Tracking <wbr/>Key <wbr/>Format</span></a></li><li><a href="#method-signatures"><span>Method <wbr/>Signatures</span></a></li></ul></li><li><a href="#persistence-and-recovery"><span>Persistence and <wbr/>Recovery</span></a></li><li><ul><li><a href="#atomic-persistence-pattern"><span>Atomic <wbr/>Persistence <wbr/>Pattern</span></a></li><li><a href="#backtest-vs-live-mode"><span>Backtest vs <wbr/>Live <wbr/>Mode</span></a></li></ul></li><li><a href="#event-system-for-risk-rejections"><span>Event <wbr/>System for <wbr/>Risk <wbr/>Rejections</span></a></li><li><ul><li><a href="#riskcontract-structure"><span>Risk<wbr/>Contract <wbr/>Structure</span></a></li><li><a href="#event-listener-functions"><span>Event <wbr/>Listener <wbr/>Functions</span></a></li></ul></li><li><a href="#common-risk-validation-patterns"><span>Common <wbr/>Risk <wbr/>Validation <wbr/>Patterns</span></a></li><li><ul><li><a href="#maximum-concurrent-positions"><span>Maximum <wbr/>Concurrent <wbr/>Positions</span></a></li><li><a href="#minimum-take-profit-distance"><span>Minimum <wbr/>Take <wbr/>Profit <wbr/>Distance</span></a></li><li><a href="#riskreward-ratio"><span>Risk/<wbr/>Reward <wbr/>Ratio</span></a></li><li><a href="#time-window-restrictions"><span>Time <wbr/>Window <wbr/>Restrictions</span></a></li><li><a href="#symbol-specific-limits"><span>Symbol-<wbr/>Specific <wbr/>Limits</span></a></li></ul></li><li><a href="#integration-with-strategy-lifecycle"><span>Integration with <wbr/>Strategy <wbr/>Lifecycle</span></a></li><li><ul><li><a href="#multiple-risk-profiles-risklist"><span>Multiple <wbr/>Risk <wbr/>Profiles (risk<wbr/>List)</span></a></li></ul></li><li><a href="#global-risk-configuration"><span>Global <wbr/>Risk <wbr/>Configuration</span></a></li><li><a href="#validation-error-handling"><span>Validation <wbr/>Error <wbr/>Handling</span></a></li><li><ul><li><a href="#error-propagation"><span>Error <wbr/>Propagation</span></a></li></ul></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#validation-execution"><span>Validation <wbr/>Execution</span></a></li><li><a href="#position-tracking"><span>Position <wbr/>Tracking</span></a></li><li><a href="#memoization"><span>Memoization</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,317 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/60_crash_recovery | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_60_crash_recovery.html">design/60_crash_recovery</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="crash-recovery" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Crash Recovery<a href="#crash-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page explains the crash recovery system for Live Trading mode, which ensures that active trading positions survive process crashes and restarts. When a live trading bot crashes, all in-memory state is lost. Without crash recovery, open positions would be abandoned with no monitoring of take profit (TP) or stop loss (SL) conditions, leading to uncontrolled risk exposure and potential financial losses.</p>
+<p>The crash recovery system persists signal state to disk and restores it on restart, preserving critical timing information (<code>pendingAt</code>, <code>scheduledAt</code>) to maintain correct signal lifetime calculations. For information about the overall Live Trading execution flow, see <a href="design_59_live_execution_flow.html">Live Execution Flow</a>. For details on how restored signals are monitored, see <a href="design_61_real-time_monitoring.html">Real-time Monitoring</a>.</p>
+<p><strong>Key Point</strong>: Crash recovery is only active in <strong>Live mode</strong>. Backtest mode operates entirely in-memory with no persistence, as documented in <a href="design_55_backtest_execution_flow.html">Backtest Execution Flow</a>.</p>
+<hr>
+<a id="why-crash-recovery-matters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Why Crash Recovery Matters<a href="#why-crash-recovery-matters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Without crash recovery, a process crash during live trading causes:</p>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Impact</th>
+<th>Financial Risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Lost Active Signals</strong></td>
+<td>Open positions become unmonitored</td>
+<td>No TP/SL enforcement, unlimited loss potential</td>
+</tr>
+<tr>
+<td><strong>Blocked Risk Limits</strong></td>
+<td>Risk counters never decremented</td>
+<td>Cannot open new positions, strategy deadlock</td>
+</tr>
+<tr>
+<td><strong>Fee Accumulation</strong></td>
+<td>Entry fees paid, but no exit trade</td>
+<td>Guaranteed loss from fees alone</td>
+</tr>
+<tr>
+<td><strong>Timing Reset</strong></td>
+<td>Signal lifetime recalculated from restart</td>
+<td>Premature closure, wasted entry fees</td>
+</tr>
+</tbody>
+</table>
+<p>The crash recovery system prevents all these issues by:</p>
+<ol>
+<li><strong>Persisting signal state atomically</strong> before acknowledging position opens</li>
+<li><strong>Restoring signals on restart</strong> with original timing information intact</li>
+<li><strong>Validating restored signals</strong> to prevent stale data from wrong exchange/strategy</li>
+<li><strong>Triggering lifecycle callbacks</strong> to notify monitoring systems of restoration</li>
+</ol>
+<hr>
+<a id="persistence-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence Architecture<a href="#persistence-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The crash recovery system uses two specialized persistence adapters:</p>
+<p><img src="../media/60_Crash_Recovery_0.svg" alt="Mermaid Diagram"></p>
+<a id="persistence-timing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Timing<a href="#persistence-timing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Pending Signal Persistence</th>
+<th>Scheduled Signal Persistence</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal Creation</strong></td>
+<td>No write (not yet opened)</td>
+<td>Write immediately (<code>setScheduledSignal</code>)</td>
+</tr>
+<tr>
+<td><strong>Signal Open</strong></td>
+<td>Write immediately (<code>setPendingSignal</code>)</td>
+<td>Delete schedule file, write pending file</td>
+</tr>
+<tr>
+<td><strong>Signal Active</strong></td>
+<td>No action (already persisted)</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><strong>Signal Close</strong></td>
+<td>Delete file (<code>setPendingSignal(null)</code>)</td>
+<td>N/A (already converted to pending)</td>
+</tr>
+<tr>
+<td><strong>Signal Cancel</strong></td>
+<td>N/A</td>
+<td>Delete file (<code>setScheduledSignal(null)</code>)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="signal-restoration-process" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Restoration Process<a href="#signal-restoration-process" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When <code>ClientStrategy</code> initializes in Live mode, the <code>waitForInit()</code> function restores persisted signals before processing any ticks:</p>
+<p><img src="../media/60_Crash_Recovery_1.svg" alt="Mermaid Diagram"></p>
+<a id="code-entity-mapping-restoration-functions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Code Entity Mapping: Restoration Functions<a href="#code-entity-mapping-restoration-functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WAIT_FOR_INIT_FN</code></td>
+<td><a href="">src/client/ClientStrategy.ts:491-552</a></td>
+<td>Main restoration logic, checks backtest mode</td>
+</tr>
+<tr>
+<td><code>PersistSignalAdapter.readSignalData</code></td>
+<td><a href="">src/client/ClientStrategy.ts:497-509</a></td>
+<td>Reads pending signal from disk</td>
+</tr>
+<tr>
+<td><code>PersistScheduleAdapter.readScheduleData</code></td>
+<td><a href="">src/client/ClientStrategy.ts:525-537</a></td>
+<td>Reads scheduled signal from disk</td>
+</tr>
+<tr>
+<td><code>callbacks.onActive</code></td>
+<td><a href="">src/client/ClientStrategy.ts:512-522</a></td>
+<td>Notifies monitoring of restored active position</td>
+</tr>
+<tr>
+<td><code>callbacks.onSchedule</code></td>
+<td><a href="">src/client/ClientStrategy.ts:540-550</a></td>
+<td>Notifies monitoring of restored scheduled signal</td>
+</tr>
+<tr>
+<td><code>strategy.waitForInit()</code></td>
+<td><a href="">src/lib/services/connection/StrategyConnectionService.ts:154</a></td>
+<td>Called before first tick</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-rules" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Rules<a href="#validation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The restoration process includes critical validation to prevent stale signal data:</p>
+<pre><code class="typescript"><span class="hl-5">// Validation checks from ClientStrategy.ts:503-508</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">pendingSignal</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1"> !== </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">method</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">exchangeName</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Discard signal - different exchange</span><br/><span class="hl-1">}</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">pendingSignal</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1"> !== </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">method</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Discard signal - different strategy</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Why this matters</strong>: If you switch strategies or exchanges, old persisted signals must not be restored. The <code>exchangeName</code> and <code>strategyName</code> fields in persisted data act as ownership markers.</p>
+<hr>
+<a id="timing-preservation-the-critical-pendingat-field" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timing Preservation: The Critical <code>pendingAt</code> Field<a href="#timing-preservation-the-critical-pendingat-field" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The most important aspect of crash recovery is preserving timing information. Every <code>ISignalRow</code> has two timestamps:</p>
+<table>
+<thead>
+<tr>
+<th>Timestamp</th>
+<th>When Set</th>
+<th>Used For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scheduledAt</code></td>
+<td>Signal first created</td>
+<td>Tracking total signal lifecycle, scheduled timeout</td>
+</tr>
+<tr>
+<td><code>pendingAt</code></td>
+<td>Position activated at <code>priceOpen</code></td>
+<td><strong>Signal lifetime calculation (<code>minuteEstimatedTime</code>)</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="the-bug-that-crash-recovery-prevents" class="tsd-anchor"></a><h3 class="tsd-anchor-link">The Bug That Crash Recovery Prevents<a href="#the-bug-that-crash-recovery-prevents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Without crash recovery, this timing bug occurs:</p>
+<p><img src="../media/60_Crash_Recovery_2.svg" alt="Mermaid Diagram"></p>
+<a id="code-how-timing-is-preserved" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Code: How Timing Is Preserved<a href="#code-how-timing-is-preserved" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>During Signal Activation</strong> (<a href="">src/client/ClientStrategy.ts:681-774</a>):</p>
+<pre><code class="typescript"><span class="hl-5">// Line 734: Update pendingAt when scheduled signal activates</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">activatedSignal</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1"> = {</span><br/><span class="hl-1">  ...</span><span class="hl-4">scheduled</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">pendingAt:</span><span class="hl-1"> </span><span class="hl-4">activationTime</span><span class="hl-1">, </span><span class="hl-5">// NEW timestamp when position opens</span><br/><span class="hl-1">  </span><span class="hl-4">_isScheduled:</span><span class="hl-1"> </span><span class="hl-7">false</span><span class="hl-1">,</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-0">setPendingSignal</span><span class="hl-1">(</span><span class="hl-4">activatedSignal</span><span class="hl-1">); </span><span class="hl-5">// PERSIST with correct pendingAt</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>During Time Expiration Check</strong> (<a href="">src/client/ClientStrategy.ts:901-920</a>):</p>
+<pre><code class="typescript"><span class="hl-5">// Line 907: CRITICAL - uses pendingAt, NOT scheduledAt</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">signalTime</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pendingAt</span><span class="hl-1">; </span><span class="hl-5">// Start counting from activation time</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxTimeToWait</span><span class="hl-1"> = </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">elapsedTime</span><span class="hl-1"> = </span><span class="hl-4">currentTime</span><span class="hl-1"> - </span><span class="hl-4">signalTime</span><span class="hl-1">;</span><br/><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">elapsedTime</span><span class="hl-1"> &gt;= </span><span class="hl-4">maxTimeToWait</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-5">// Close signal by time_expired</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>During Restoration</strong> (<a href="">src/client/ClientStrategy.ts:497-509</a>):</p>
+<pre><code class="typescript"><span class="hl-5">// Line 498: Read persisted signal with ORIGINAL pendingAt intact</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pendingSignal</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">readSignalData</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">execution</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">);</span><br/><span class="hl-5">// pendingSignal.pendingAt is PRESERVED from before crash</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Test Validation</strong> (<a href="">test/e2e/timing.test.mjs:416-505</a>):</p>
+<pre><code class="typescript"><span class="hl-5">// Line 424: Create signal that was activated 12 hours ago</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">twelveHoursAgo</span><span class="hl-1"> = </span><span class="hl-4">now</span><span class="hl-1"> - </span><span class="hl-6">12</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Line 442: Persist with pendingAt = twelveHoursAgo</span><br/><span class="hl-10">pendingAt</span><span class="hl-1">: </span><span class="hl-4">twelveHoursAgo</span><span class="hl-1">, </span><span class="hl-5">// Activated 12 hours ago</span><br/><br/><span class="hl-5">// Line 478: After restoration, verify remaining time is correct</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">remainingTime</span><span class="hl-1"> = </span><span class="hl-4">expectedTime</span><span class="hl-1"> - </span><span class="hl-4">elapsedTime</span><span class="hl-1">;</span><br/><span class="hl-5">// Should be ~12 hours remaining (not restarting from 24h)</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="backtest-vs-live-behavior" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Backtest vs Live Behavior<a href="#backtest-vs-live-behavior" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Crash recovery is <strong>disabled in Backtest mode</strong> to maximize performance:</p>
+<p><img src="../media/60_Crash_Recovery_3.svg" alt="Mermaid Diagram"></p>
+<a id="code-entity-mapping-backtest-early-return" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Code Entity Mapping: Backtest Early Return<a href="#code-entity-mapping-backtest-early-return" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Code Path</th>
+<th>Location</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>waitForInit()</code> backtest check</td>
+<td><a href="">src/client/ClientStrategy.ts:493-495</a></td>
+<td><code>if (backtest) return;</code></td>
+</tr>
+<tr>
+<td><code>setPendingSignal()</code> no-op</td>
+<td>Referenced in <code>ClientStrategy</code></td>
+<td>Skips file write when <code>backtest=true</code></td>
+</tr>
+<tr>
+<td>Backtest signal handling</td>
+<td><a href="design_55_backtest_execution_flow.html">Backtest Execution Flow</a></td>
+<td>All signals processed in-memory</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why backtest skips persistence</strong>:</p>
+<ul>
+<li>Backtests iterate through thousands of candles rapidly</li>
+<li>Historical data is deterministic (no crashes in historical replay)</li>
+<li>File I/O would slow down backtests by 100x+</li>
+<li>Results are reproducible without state persistence</li>
+</ul>
+<hr>
+<a id="atomic-write-guarantees" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Atomic Write Guarantees<a href="#atomic-write-guarantees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The persistence layer uses atomic file writes to prevent partial/corrupted data:</p>
+<p><img src="../media/60_Crash_Recovery_4.svg" alt="Mermaid Diagram"></p>
+<p>The atomic write pattern ensures:</p>
+<ul>
+<li><strong>No partial writes</strong>: Either full new data or old data, never corrupted</li>
+<li><strong>No race conditions</strong>: File rename is atomic at OS level</li>
+<li><strong>Safe concurrent reads</strong>: Readers always see complete JSON</li>
+</ul>
+<p><strong>Persistence Base Class</strong>: <code>PersistBase</code> provides the atomic write implementation (referenced in <a href="design_84_persistence_layer.html">Persistence Layer</a>).</p>
+<hr>
+<a id="testing-crash-recovery" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing Crash Recovery<a href="#testing-crash-recovery" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The test suite validates crash recovery behavior using custom persistence adapters:</p>
+<a id="test-restored-pending-signal-timing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Test: Restored Pending Signal Timing<a href="#test-restored-pending-signal-timing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// test/e2e/timing.test.mjs:416-505</span><br/><span class="hl-0">test</span><span class="hl-1">(</span><span class="hl-2">&quot;Restored pending signal preserves 24h timing from pendingAt&quot;</span><span class="hl-1">, </span><span class="hl-7">async</span><span class="hl-1"> ({ </span><span class="hl-4">pass</span><span class="hl-1">, </span><span class="hl-4">fail</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">now</span><span class="hl-1"> = </span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">twelveHoursAgo</span><span class="hl-1"> = </span><span class="hl-4">now</span><span class="hl-1"> - </span><span class="hl-6">12</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Inject custom adapter that returns a pre-existing signal</span><br/><span class="hl-1">  </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-7">class</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">readValue</span><span class="hl-1">() {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> {</span><br/><span class="hl-1">        </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-2">&quot;restored-signal&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">position:</span><span class="hl-1"> </span><span class="hl-2">&quot;long&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">minuteEstimatedTime:</span><span class="hl-1"> </span><span class="hl-6">1440</span><span class="hl-1">, </span><span class="hl-5">// 24 hours total</span><br/><span class="hl-1">        </span><span class="hl-4">pendingAt:</span><span class="hl-1"> </span><span class="hl-4">twelveHoursAgo</span><span class="hl-1">, </span><span class="hl-5">// Activated 12 hours ago</span><br/><span class="hl-1">        </span><span class="hl-5">// ... other fields</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Start live trading - signal should restore with 12h remaining</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;test-exchange&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Verify: remaining time should be ~12h, not reset to 24h</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="test-coverage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Test Coverage<a href="#test-coverage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Test Case</th>
+<th>File</th>
+<th>Line Range</th>
+<th>Validates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pending signal restoration</td>
+<td><a href="">test/e2e/timing.test.mjs</a></td>
+<td>416-505</td>
+<td><code>pendingAt</code> preservation, 12h remaining</td>
+</tr>
+<tr>
+<td>Scheduled signal restoration</td>
+<td><a href="">test/spec/scheduled.test.mjs</a></td>
+<td>211-362</td>
+<td>Scheduled signal lifecycle tracking</td>
+</tr>
+<tr>
+<td>Timing calculations</td>
+<td><a href="">test/e2e/timing.test.mjs</a></td>
+<td>34-201</td>
+<td><code>minuteEstimatedTime</code> from <code>pendingAt</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="configuration-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Parameters<a href="#configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Crash recovery behavior is controlled by global configuration:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td>120</td>
+<td>Max time scheduled signal waits for activation before cancellation</td>
+</tr>
+<tr>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td>10080 (7 days)</td>
+<td>Max <code>minuteEstimatedTime</code> to prevent eternal signals</td>
+</tr>
+<tr>
+<td><code>TICK_TTL</code></td>
+<td>60000ms</td>
+<td>Interval between tick processing (affects restore frequency)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Related</strong>: See <a href="design_80_timing_parameters.html">Timing Parameters</a> for detailed configuration reference.</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The crash recovery system is a critical safety mechanism for live trading:</p>
+<ol>
+<li><strong>Persists signals atomically</strong> when positions open (<a href="">src/client/ClientStrategy.ts:740</a>)</li>
+<li><strong>Restores signals on startup</strong> with validation (<a href="">src/client/ClientStrategy.ts:497-537</a>)</li>
+<li><strong>Preserves timing information</strong> to prevent premature closure (<a href="">src/client/ClientStrategy.ts:734-738</a>)</li>
+<li><strong>Triggers lifecycle callbacks</strong> for monitoring integration (<a href="">src/client/ClientStrategy.ts:512-522</a>)</li>
+<li><strong>Disabled in backtest mode</strong> for performance (<a href="">src/client/ClientStrategy.ts:493-495</a>)</li>
+</ol>
+<p>Without crash recovery, process crashes would abandon open positions, leading to uncontrolled risk exposure and guaranteed losses from entry fees. The system ensures that live trading operations are resilient to infrastructure failures while maintaining correct position lifetime calculations.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#crash-recovery"><span>Crash <wbr/>Recovery</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#why-crash-recovery-matters"><span>Why <wbr/>Crash <wbr/>Recovery <wbr/>Matters</span></a></li><li><a href="#persistence-architecture"><span>Persistence <wbr/>Architecture</span></a></li><li><ul><li><a href="#persistence-timing"><span>Persistence <wbr/>Timing</span></a></li></ul></li><li><a href="#signal-restoration-process"><span>Signal <wbr/>Restoration <wbr/>Process</span></a></li><li><ul><li><a href="#code-entity-mapping-restoration-functions"><span>Code <wbr/>Entity <wbr/>Mapping: <wbr/>Restoration <wbr/>Functions</span></a></li><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li></ul></li><li><a href="#timing-preservation-the-critical-pendingat-field"><span>Timing <wbr/>Preservation: <wbr/>The <wbr/>Critical pending<wbr/>At <wbr/>Field</span></a></li><li><ul><li><a href="#the-bug-that-crash-recovery-prevents"><span>The <wbr/>Bug <wbr/>That <wbr/>Crash <wbr/>Recovery <wbr/>Prevents</span></a></li><li><a href="#code-how-timing-is-preserved"><span>Code: <wbr/>How <wbr/>Timing <wbr/>Is <wbr/>Preserved</span></a></li></ul></li><li><a href="#backtest-vs-live-behavior"><span>Backtest vs <wbr/>Live <wbr/>Behavior</span></a></li><li><ul><li><a href="#code-entity-mapping-backtest-early-return"><span>Code <wbr/>Entity <wbr/>Mapping: <wbr/>Backtest <wbr/>Early <wbr/>Return</span></a></li></ul></li><li><a href="#atomic-write-guarantees"><span>Atomic <wbr/>Write <wbr/>Guarantees</span></a></li><li><a href="#testing-crash-recovery"><span>Testing <wbr/>Crash <wbr/>Recovery</span></a></li><li><ul><li><a href="#test-restored-pending-signal-timing"><span>Test: <wbr/>Restored <wbr/>Pending <wbr/>Signal <wbr/>Timing</span></a></li><li><a href="#test-coverage"><span>Test <wbr/>Coverage</span></a></li></ul></li><li><a href="#configuration-parameters"><span>Configuration <wbr/>Parameters</span></a></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

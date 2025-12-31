@@ -1,0 +1,300 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/45_global_services | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_45_global_services.html">design/45_global_services</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="global-services" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Global Services<a href="#global-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Global Services provide entry points for runtime operations that require validation and delegation to connection services. Unlike schema services (which store configurations) and command services (which orchestrate execution), global services act as facades that coordinate validation, logging, and delegation for specific subsystems.</p>
+<p>The framework provides four Global Services, each managing a distinct domain:</p>
+<table>
+<thead>
+<tr>
+<th>Global Service Class</th>
+<th>Domain</th>
+<th>Primary Responsibilities</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RiskGlobalService</code></td>
+<td>Portfolio risk management</td>
+<td>Validates risk profiles, delegates position tracking to RiskConnectionService</td>
+</tr>
+<tr>
+<td><code>SizingGlobalService</code></td>
+<td>Position sizing</td>
+<td>Validates sizing configurations, delegates calculations to SizingConnectionService</td>
+</tr>
+<tr>
+<td><code>PartialGlobalService</code></td>
+<td>Profit/loss milestones</td>
+<td>Validates strategies, delegates milestone tracking to PartialConnectionService</td>
+</tr>
+<tr>
+<td><code>OptimizerGlobalService</code></td>
+<td>LLM strategy generation</td>
+<td>Validates optimizer configurations, delegates code generation to OptimizerConnectionService</td>
+</tr>
+</tbody>
+</table>
+<p>For information about the overall service layer organization, see <a href="design_41_service_architecture_overview.html">Service Architecture Overview</a>. For details on the services that Global Services delegate to, see <a href="design_42_connection_services.html">Connection Services</a>, <a href="design_43_schema_services.html">Schema Services</a>, and <a href="design_44_validation_services.html">Validation Services</a>.</p>
+</thinking>
+<hr>
+<a id="global-services-vs-other-service-layers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Global Services vs Other Service Layers<a href="#global-services-vs-other-service-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global Services occupy a specific niche in the service architecture distinct from other layers.</p>
+<a id="architectural-position" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Architectural Position<a href="#architectural-position" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This diagram shows how Global Services fit between client classes and connection services. Unlike <code>add*</code> functions which access schema/validation services directly, global services provide validated entry points for runtime operations.</p>
+<a id="comparison-with-other-layers" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comparison with Other Layers<a href="#comparison-with-other-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Purpose</th>
+<th>State Management</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Schema Services</strong></td>
+<td>Store registered configurations</td>
+<td>In-memory ToolRegistry</td>
+<td>add* functions, Connection Services</td>
+</tr>
+<tr>
+<td><strong>Validation Services</strong></td>
+<td>Enforce registration rules</td>
+<td>Stateless (memoized checks)</td>
+<td>add* functions, Global Services</td>
+</tr>
+<tr>
+<td><strong>Connection Services</strong></td>
+<td>Create/cache client instances</td>
+<td>Memoized client instances per key</td>
+<td>Global Services, Core Services</td>
+</tr>
+<tr>
+<td><strong>Global Services</strong></td>
+<td>Coordinate validation + delegation</td>
+<td>Stateless (delegates to Connection)</td>
+<td>Client classes (ClientStrategy, etc.)</td>
+</tr>
+<tr>
+<td><strong>Command Services</strong></td>
+<td>Orchestrate execution workflows</td>
+<td>Stateless (delegates to Logic)</td>
+<td>Utility classes (Backtest, Live, Walker)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Key distinction</strong>: Global Services are <strong>runtime facades</strong> used by client classes during execution. Schema Services are <strong>configuration stores</strong> used during setup. Command Services are <strong>execution orchestrators</strong> used by utility classes.</p>
+<hr>
+<a id="standard-global-service-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Standard Global Service Pattern<a href="#standard-global-service-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All Global Services follow a consistent three-step pattern for public methods:</p>
+<a id="implementation-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Pattern<a href="#implementation-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This diagram shows the standard three-step pattern that all Global Service methods follow: log the operation, validate component existence, then delegate to the corresponding Connection Service.</p>
+<a id="standard-method-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Standard Method Structure<a href="#standard-method-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Every public method in a Global Service follows this template:</p>
+<pre><code class="typescript"><span class="hl-5">// Pattern from PartialGlobalService.profit()</span><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">profit</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">revenuePercent</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-11">Date</span><br/><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">// Step 1: Log operation with context</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;partialGlobalService profit&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">revenuePercent</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">when</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Step 2: Validate component existence (memoized)</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-2">&quot;partialGlobalService profit&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Step 3: Delegate to Connection Service</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">partialConnectionService</span><span class="hl-1">.</span><span class="hl-0">profit</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">revenuePercent</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">when</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="dependency-injection-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Pattern<a href="#dependency-injection-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All Global Services inject three types of dependencies via the DI container:</p>
+<a id="injected-dependencies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Injected Dependencies<a href="#injected-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This diagram shows the dependency injection pattern used by PartialGlobalService. All dependencies are injected using the <code>inject()</code> function with TYPES symbols.</p>
+<a id="dependency-categories" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Categories<a href="#dependency-categories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Dependency Type</th>
+<th>Instance</th>
+<th>Purpose</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Logger</strong></td>
+<td><code>LoggerService</code></td>
+<td>Operation logging</td>
+<td>Called at method entry with context</td>
+</tr>
+<tr>
+<td><strong>Connection</strong></td>
+<td><code>*ConnectionService</code></td>
+<td>Client factory</td>
+<td>Delegates operations after validation</td>
+</tr>
+<tr>
+<td><strong>Validation</strong></td>
+<td><code>*ValidationService</code></td>
+<td>Schema checks</td>
+<td>Called by memoized <code>validate()</code></td>
+</tr>
+<tr>
+<td><strong>Schema</strong></td>
+<td><code>*SchemaService</code></td>
+<td>Configuration retrieval</td>
+<td>Accessed to check related components</td>
+</tr>
+</tbody>
+</table>
+<p>Example from PartialGlobalService:</p>
+<p><a href="">src/lib/services/global/PartialGlobalService.ts:40-74</a></p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">readonly</span><span class="hl-1"> </span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">);</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">readonly</span><span class="hl-1"> </span><span class="hl-4">partialConnectionService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">PartialConnectionService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">partialConnectionService</span><br/><span class="hl-1">);</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">readonly</span><span class="hl-1"> </span><span class="hl-4">strategyValidationService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">StrategyValidationService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><br/><span class="hl-1">);</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">readonly</span><span class="hl-1"> </span><span class="hl-4">strategySchemaService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">StrategySchemaService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><br/><span class="hl-1">);</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">readonly</span><span class="hl-1"> </span><span class="hl-4">riskValidationService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">RiskValidationService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="memoized-validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memoized Validation<a href="#memoized-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global Services use memoization to avoid redundant validation calls for the same component.</p>
+<a id="validation-caching-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Caching Pattern<a href="#validation-caching-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This sequence diagram shows how memoization prevents redundant validation. The first call performs validation and caches the result. Subsequent calls for the same strategy return immediately from cache.</p>
+<a id="memoize-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoize Implementation<a href="#memoize-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>validate()</code> method is wrapped with <code>memoize()</code> from functools-kit:</p>
+<p><a href="">src/lib/services/global/PartialGlobalService.ts:77-95</a></p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">validate</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-5">// Cache key: strategy name</span><br/><span class="hl-1">  ([</span><span class="hl-4">strategyName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Validation logic (only runs once per key)</span><br/><span class="hl-1">  (</span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">methodName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;partialGlobalService validate&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">methodName</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Validate strategy exists</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">methodName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-5">// Validate associated risk profiles</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">riskName</span><span class="hl-1">, </span><span class="hl-8">riskList</span><span class="hl-1"> } = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">riskName</span><span class="hl-1"> &amp;&amp; </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">riskName</span><span class="hl-1">, </span><span class="hl-4">methodName</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">riskList</span><span class="hl-1"> &amp;&amp; </span><span class="hl-4">riskList</span><span class="hl-1">.</span><span class="hl-0">forEach</span><span class="hl-1">((</span><span class="hl-4">riskName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><br/><span class="hl-1">      </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">riskName</span><span class="hl-1">, </span><span class="hl-4">methodName</span><span class="hl-1">)</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key aspects:</strong></p>
+<ul>
+<li><strong>Cache key</strong>: Strategy name as string</li>
+<li><strong>First call</strong>: Validates strategy and associated risk profiles</li>
+<li><strong>Subsequent calls</strong>: Returns immediately (no validation performed)</li>
+<li><strong>Scope</strong>: Per Global Service instance (singleton via DI)</li>
+</ul>
+<hr>
+<a id="partialglobalservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PartialGlobalService<a href="#partialglobalservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>PartialGlobalService coordinates partial profit/loss milestone tracking. It validates strategies and delegates milestone operations to PartialConnectionService.</p>
+<a id="service-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Overview<a href="#service-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This diagram shows PartialGlobalService's role in the partial tracking system. ClientStrategy calls the global service, which validates and delegates to PartialConnectionService, which manages ClientPartial instances.</p>
+<a id="public-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Public Methods<a href="#public-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>profit()</code></td>
+<td><code>symbol, data, currentPrice, revenuePercent, backtest, when</code></td>
+<td>Processes profit state, emits events for new levels (10%, 20%, etc)</td>
+</tr>
+<tr>
+<td><code>loss()</code></td>
+<td><code>symbol, data, currentPrice, lossPercent, backtest, when</code></td>
+<td>Processes loss state, emits events for new levels (-10%, -20%, etc)</td>
+</tr>
+<tr>
+<td><code>clear()</code></td>
+<td><code>symbol, data, priceClose, backtest</code></td>
+<td>Clears milestone state when signal closes</td>
+</tr>
+</tbody>
+</table>
+<p>Example usage from ClientStrategy:</p>
+<p><a href="">src/lib/services/global/PartialGlobalService.ts:110-175</a></p>
+<pre><code class="typescript"><span class="hl-5">// Called during signal monitoring when in profit</span><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">profit</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">revenuePercent</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-11">Date</span><br/><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;partialGlobalService profit&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">revenuePercent</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">when</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-2">&quot;partialGlobalService profit&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">partialConnectionService</span><span class="hl-1">.</span><span class="hl-0">profit</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">data</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">currentPrice</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">revenuePercent</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">backtest</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">when</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Validation flow:</strong></p>
+<ol>
+<li>Validates strategy exists via <code>StrategyValidationService</code></li>
+<li>Retrieves strategy schema to check <code>riskName</code> and <code>riskList</code></li>
+<li>Validates each associated risk profile via <code>RiskValidationService</code></li>
+<li>Delegates to <code>PartialConnectionService</code></li>
+</ol>
+<hr>
+<a id="riskglobalservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">RiskGlobalService<a href="#riskglobalservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>RiskGlobalService coordinates portfolio-level risk management. It validates risk profiles and delegates position tracking to RiskConnectionService. (Not fully detailed in provided files, but follows the same pattern as PartialGlobalService.)</p>
+<hr>
+<a id="sizingglobalservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">SizingGlobalService<a href="#sizingglobalservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>SizingGlobalService coordinates position sizing calculations. It validates sizing configurations and delegates calculations to SizingConnectionService. (Not fully detailed in provided files, but follows the same pattern.)</p>
+<hr>
+<a id="optimizerglobalservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">OptimizerGlobalService<a href="#optimizerglobalservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>OptimizerGlobalService coordinates LLM-based strategy generation. It validates optimizer configurations and delegates code generation to OptimizerConnectionService. (Not fully detailed in provided files, but follows the same pattern.)</p>
+<hr>
+<a id="integration-with-client-classes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Client Classes<a href="#integration-with-client-classes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global Services are primarily used by client classes during runtime execution, not by public API functions.</p>
+<a id="usage-pattern-clientstrategy-→-partialglobalservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage Pattern: ClientStrategy → PartialGlobalService<a href="#usage-pattern-clientstrategy-→-partialglobalservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/45_Global_Services_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This sequence diagram shows the complete call chain from ClientStrategy through PartialGlobalService to ClientPartial. Global Services act as validated entry points, not as direct public APIs.</p>
+<a id="injection-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Injection Pattern<a href="#injection-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client classes receive Global Services via their constructor parameters:</p>
+<pre><code class="typescript"><span class="hl-5">// From IStrategyParams interface (not shown but inferred)</span><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyParams</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">partial</span><span class="hl-1">: </span><span class="hl-11">PartialGlobalService</span><span class="hl-1">;  </span><span class="hl-5">// Injected global service</span><br/><span class="hl-1">  </span><span class="hl-4">risk</span><span class="hl-1">: </span><span class="hl-11">RiskGlobalService</span><span class="hl-1">;        </span><span class="hl-5">// Injected global service</span><br/><span class="hl-1">  </span><span class="hl-4">sizing</span><span class="hl-1">: </span><span class="hl-11">SizingGlobalService</span><span class="hl-1">;    </span><span class="hl-5">// Injected global service</span><br/><span class="hl-1">  </span><span class="hl-5">// ...</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// ClientStrategy uses injected services</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">ClientStrategy</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-11">IStrategyParams</span><span class="hl-1">) {}</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">monitorSignal</span><span class="hl-1">(...) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Use injected PartialGlobalService</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">revenuePercent</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">partial</span><span class="hl-1">.</span><span class="hl-0">profit</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">currentPrice</span><span class="hl-1">, </span><span class="hl-4">revenuePercent</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key points:</strong></p>
+<ul>
+<li>Global Services are <strong>injected</strong> into client classes, not imported directly</li>
+<li>Client classes access them via <code>this.params.*GlobalService</code></li>
+<li>Public API functions (<code>add*</code>, <code>list*</code>) do NOT use Global Services</li>
+<li>Global Services are runtime facades, not configuration APIs</li>
+</ul>
+<hr>
+<a id="service-registration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Registration<a href="#service-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global Services are registered in the dependency injection container during framework initialization.</p>
+<a id="di-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">DI Registration<a href="#di-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/lib/core/provide.ts:91-96</a></p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingGlobalService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">SizingGlobalService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskGlobalService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RiskGlobalService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">optimizerGlobalService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">OptimizerGlobalService</span><span class="hl-1">());</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">partialGlobalService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PartialGlobalService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="export-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Export Pattern<a href="#export-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/lib/index.ts:120-129</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">globalServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">sizingGlobalService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">SizingGlobalService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingGlobalService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">riskGlobalService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">RiskGlobalService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskGlobalService</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerGlobalService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">OptimizerGlobalService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">    </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">optimizerGlobalService</span><br/><span class="hl-1">  ),</span><br/><span class="hl-1">  </span><span class="hl-4">partialGlobalService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">PartialGlobalService</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">    </span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">partialGlobalService</span><br/><span class="hl-1">  ),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All services are included in the <code>backtest</code> export object <a href="">src/lib/index.ts:225-246</a>, making them accessible as:</p>
+<ul>
+<li><code>backtest.sizingGlobalService</code></li>
+<li><code>backtest.riskGlobalService</code></li>
+<li><code>backtest.optimizerGlobalService</code></li>
+<li><code>backtest.partialGlobalService</code></li>
+</ul>
+<a id="types-symbols" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TYPES Symbols<a href="#types-symbols" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/lib/core/types.ts:36-41</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">globalServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">sizingGlobalService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;sizingGlobalService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">riskGlobalService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;riskGlobalService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">optimizerGlobalService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;optimizerGlobalService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-4">partialGlobalService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;partialGlobalService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key aspects:</strong></p>
+<ul>
+<li>Each service has a unique Symbol identifier in TYPES</li>
+<li>Services are registered as factory functions via <code>provide()</code></li>
+<li>Services are lazily initialized on first <code>inject()</code> call</li>
+<li>Singletons: Only one instance per service type</li>
+</ul>
+<hr>
+<a id="key-characteristics" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key Characteristics<a href="#key-characteristics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Global Services exhibit these consistent patterns across the framework:</p>
+<a id="stateless-operation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Stateless Operation<a href="#stateless-operation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Global Services maintain no state themselves. They delegate state management to:</p>
+<ul>
+<li>Schema Services (component configurations)</li>
+<li>Connection Services (memoized client instances)</li>
+<li>Client Classes (signal state, position tracking)</li>
+</ul>
+<a id="memoized-validation-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoized Validation<a href="#memoized-validation-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Validation is memoized by component name to avoid redundant schema checks:</p>
+<pre><code class="typescript"><span class="hl-5">// Pattern from RiskGlobalService</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">validate</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">riskName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">riskName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,  </span><span class="hl-5">// Cache key</span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-11">RiskName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;riskGlobalService validate&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">      </span><span class="hl-4">riskName</span><span class="hl-1">,</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">riskValidationService</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><br/><span class="hl-1">      </span><span class="hl-4">riskName</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-2">&quot;riskGlobalService validate&quot;</span><br/><span class="hl-1">    );</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The cache key is the component name string. First invocation performs validation, subsequent calls return immediately.</p>
+<a id="consistent-logging" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Consistent Logging<a href="#consistent-logging" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Every public method logs its invocation with context:</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">checkSignal</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-11">IRiskCheckArgs</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">context</span><span class="hl-1">: { </span><span class="hl-4">riskName</span><span class="hl-1">: </span><span class="hl-11">RiskName</span><span class="hl-1"> }</span><br/><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;riskGlobalService checkSignal&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">context</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">validate</span><span class="hl-1">(</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">riskName</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">riskConnectionService</span><span class="hl-1">.</span><span class="hl-0">checkSignal</span><span class="hl-1">(</span><span class="hl-4">params</span><span class="hl-1">, </span><span class="hl-4">context</span><span class="hl-1">);</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Log entries include:</p>
+<ul>
+<li>Service and method name (e.g., <code>&quot;riskGlobalService checkSignal&quot;</code>)</li>
+<li>Operation-specific context (symbol, component names)</li>
+<li>Structured data for debugging</li>
+</ul>
+<a id="single-responsibility" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Single Responsibility<a href="#single-responsibility" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each Global Service manages exactly one component type or execution mode:</p>
+<ul>
+<li><code>RiskGlobalService</code> → Risk profiles only</li>
+<li><code>StrategyGlobalService</code> → Strategies only</li>
+<li><code>BacktestGlobalService</code> → Backtest execution only</li>
+<li><code>WalkerGlobalService</code> → Both walker components AND walker execution (special case)</li>
+</ul>
+<hr>
+<a id="delegation-flow-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Delegation Flow Summary<a href="#delegation-flow-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/45_Global_Services_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>Purpose</strong>: This diagram summarizes the complete delegation flow for both Component and Execution Global Services. Both types perform validation first, but Component services delegate to Connection Services while Execution services delegate to Logic Services.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#global-services"><span>Global <wbr/>Services</span></a><ul><li><a href="#global-services-vs-other-service-layers"><span>Global <wbr/>Services vs <wbr/>Other <wbr/>Service <wbr/>Layers</span></a></li><li><ul><li><a href="#architectural-position"><span>Architectural <wbr/>Position</span></a></li><li><a href="#comparison-with-other-layers"><span>Comparison with <wbr/>Other <wbr/>Layers</span></a></li></ul></li><li><a href="#standard-global-service-pattern"><span>Standard <wbr/>Global <wbr/>Service <wbr/>Pattern</span></a></li><li><ul><li><a href="#implementation-pattern"><span>Implementation <wbr/>Pattern</span></a></li><li><a href="#standard-method-structure"><span>Standard <wbr/>Method <wbr/>Structure</span></a></li></ul></li><li><a href="#dependency-injection-pattern"><span>Dependency <wbr/>Injection <wbr/>Pattern</span></a></li><li><ul><li><a href="#injected-dependencies"><span>Injected <wbr/>Dependencies</span></a></li><li><a href="#dependency-categories"><span>Dependency <wbr/>Categories</span></a></li></ul></li><li><a href="#memoized-validation"><span>Memoized <wbr/>Validation</span></a></li><li><ul><li><a href="#validation-caching-pattern"><span>Validation <wbr/>Caching <wbr/>Pattern</span></a></li><li><a href="#memoize-implementation"><span>Memoize <wbr/>Implementation</span></a></li></ul></li><li><a href="#partialglobalservice"><span>Partial<wbr/>Global<wbr/>Service</span></a></li><li><ul><li><a href="#service-overview"><span>Service <wbr/>Overview</span></a></li><li><a href="#public-methods"><span>Public <wbr/>Methods</span></a></li></ul></li><li><a href="#riskglobalservice"><span>Risk<wbr/>Global<wbr/>Service</span></a></li><li><a href="#sizingglobalservice"><span>Sizing<wbr/>Global<wbr/>Service</span></a></li><li><a href="#optimizerglobalservice"><span>Optimizer<wbr/>Global<wbr/>Service</span></a></li><li><a href="#integration-with-client-classes"><span>Integration with <wbr/>Client <wbr/>Classes</span></a></li><li><ul><li><a href="#usage-pattern-clientstrategy-→-partialglobalservice"><span>Usage <wbr/>Pattern: <wbr/>Client<wbr/>Strategy → <wbr/>Partial<wbr/>Global<wbr/>Service</span></a></li><li><a href="#injection-pattern"><span>Injection <wbr/>Pattern</span></a></li></ul></li><li><a href="#service-registration"><span>Service <wbr/>Registration</span></a></li><li><ul><li><a href="#di-registration"><span>DI <wbr/>Registration</span></a></li><li><a href="#export-pattern"><span>Export <wbr/>Pattern</span></a></li><li><a href="#types-symbols"><span>TYPES <wbr/>Symbols</span></a></li></ul></li><li><a href="#key-characteristics"><span>Key <wbr/>Characteristics</span></a></li><li><ul><li><a href="#stateless-operation"><span>Stateless <wbr/>Operation</span></a></li><li><a href="#memoized-validation-1"><span>Memoized <wbr/>Validation</span></a></li><li><a href="#consistent-logging"><span>Consistent <wbr/>Logging</span></a></li><li><a href="#single-responsibility"><span>Single <wbr/>Responsibility</span></a></li></ul></li><li><a href="#delegation-flow-summary"><span>Delegation <wbr/>Flow <wbr/>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

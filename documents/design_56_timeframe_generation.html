@@ -1,0 +1,309 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/56_timeframe_generation | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_56_timeframe_generation.html">design/56_timeframe_generation</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="timeframe-generation" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Timeframe Generation<a href="#timeframe-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Timeframe generation is the process of creating a sequential array of timestamps that define when strategy evaluation occurs during backtesting. The <code>FrameCoreService</code> generates these timestamps based on a configured <code>IFrameSchema</code>, which specifies the start date, end date, and interval granularity. This timestamp array drives the backtest execution loop, determining at which points in historical time the strategy's <code>getSignal()</code> function is evaluated.</p>
+<p>For information about how these generated timeframes are consumed during backtest execution, see <a href="design_55_backtest_execution_flow.html">Backtest Execution Flow</a>. For details on how signals are processed at each timeframe tick, see <a href="design_57_fast-forward_simulation.html">Fast-Forward Simulation</a>.</p>
+<hr>
+<a id="frame-schema-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Schema Configuration<a href="#frame-schema-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Frames are registered via the <code>addFrame()</code> function using the <code>IFrameSchema</code> interface, which defines the backtest period boundaries and tick granularity.</p>
+<a id="frame-schema-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Frame Schema Structure<a href="#frame-schema-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IFrameSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-11">FrameName</span><span class="hl-1">;           </span><span class="hl-5">// Unique identifier for retrieval</span><br/><span class="hl-1">  </span><span class="hl-4">note</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">;                  </span><span class="hl-5">// Optional documentation</span><br/><span class="hl-1">  </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-11">FrameInterval</span><span class="hl-1">;        </span><span class="hl-5">// Tick spacing (1m, 5m, 1h, etc.)</span><br/><span class="hl-1">  </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">;                </span><span class="hl-5">// Backtest period start (inclusive)</span><br/><span class="hl-1">  </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">;                  </span><span class="hl-5">// Backtest period end (inclusive)</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks</span><span class="hl-1">?: </span><span class="hl-11">Partial</span><span class="hl-1">&lt;</span><span class="hl-11">IFrameCallbacks</span><span class="hl-1">&gt;;  </span><span class="hl-5">// Optional lifecycle hooks</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>frameName</code></td>
+<td><code>string</code></td>
+<td>Registry key for frame retrieval</td>
+<td><code>&quot;1-month-test&quot;</code></td>
+</tr>
+<tr>
+<td><code>interval</code></td>
+<td><code>FrameInterval</code></td>
+<td>Spacing between timestamps</td>
+<td><code>&quot;1m&quot;</code>, <code>&quot;15m&quot;</code>, <code>&quot;1h&quot;</code></td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>First timestamp (inclusive)</td>
+<td><code>new Date(&quot;2024-01-01T00:00:00Z&quot;)</code></td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>Last timestamp (inclusive)</td>
+<td><code>new Date(&quot;2024-01-31T23:59:59Z&quot;)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The generated timeframe array will contain timestamps starting at <code>startDate</code> and incrementing by <code>interval</code> until reaching or exceeding <code>endDate</code>.</p>
+<hr>
+<a id="frame-intervals" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Intervals<a href="#frame-intervals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>FrameInterval</code> type defines supported tick granularities for timeframe generation. Each interval determines the temporal resolution of the backtest.</p>
+<p><img src="../media/56_Timeframe_Generation_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Interval Duration Mapping:</strong></p>
+<table>
+<thead>
+<tr>
+<th>FrameInterval</th>
+<th>Milliseconds</th>
+<th>Minutes</th>
+<th>Typical Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1m</code></td>
+<td>60,000</td>
+<td>1</td>
+<td>High-frequency scalping</td>
+</tr>
+<tr>
+<td><code>3m</code></td>
+<td>180,000</td>
+<td>3</td>
+<td>Scalping with reduced noise</td>
+</tr>
+<tr>
+<td><code>5m</code></td>
+<td>300,000</td>
+<td>5</td>
+<td>Short-term day trading</td>
+</tr>
+<tr>
+<td><code>15m</code></td>
+<td>900,000</td>
+<td>15</td>
+<td>Swing trading entry</td>
+</tr>
+<tr>
+<td><code>30m</code></td>
+<td>1,800,000</td>
+<td>30</td>
+<td>Intraday momentum</td>
+</tr>
+<tr>
+<td><code>1h</code></td>
+<td>3,600,000</td>
+<td>60</td>
+<td>Hourly trend analysis</td>
+</tr>
+<tr>
+<td><code>2h</code></td>
+<td>7,200,000</td>
+<td>120</td>
+<td>Multi-hour position holding</td>
+</tr>
+<tr>
+<td><code>4h</code></td>
+<td>14,400,000</td>
+<td>240</td>
+<td>Position trading</td>
+</tr>
+<tr>
+<td><code>6h</code></td>
+<td>21,600,000</td>
+<td>360</td>
+<td>Extended swing trades</td>
+</tr>
+<tr>
+<td><code>8h</code></td>
+<td>28,800,000</td>
+<td>480</td>
+<td>Daily session alignment</td>
+</tr>
+<tr>
+<td><code>12h</code></td>
+<td>43,200,000</td>
+<td>720</td>
+<td>Half-day intervals</td>
+</tr>
+<tr>
+<td><code>1d</code></td>
+<td>86,400,000</td>
+<td>1440</td>
+<td>Daily signals</td>
+</tr>
+<tr>
+<td><code>3d</code></td>
+<td>259,200,000</td>
+<td>4320</td>
+<td>Multi-day position strategies</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important:</strong> The <code>SignalInterval</code> type (used for strategy throttling) supports only <code>&quot;1m&quot; | &quot;3m&quot; | &quot;5m&quot; | &quot;15m&quot; | &quot;30m&quot; | &quot;1h&quot;</code>, while <code>FrameInterval</code> includes additional hour and day intervals. This allows backtests to run at coarser granularity than signal generation.</p>
+<hr>
+<a id="timeframe-generation-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Timeframe Generation Architecture<a href="#timeframe-generation-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The frame system follows a layered architecture where schemas are registered, validated, and then used to instantiate <code>ClientFrame</code> instances that generate timestamp arrays.</p>
+<p><img src="../media/56_Timeframe_Generation_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="framecoreservice-and-timeframe-retrieval" class="tsd-anchor"></a><h2 class="tsd-anchor-link">FrameCoreService and Timeframe Retrieval<a href="#framecoreservice-and-timeframe-retrieval" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>FrameCoreService</code> acts as the entry point for timeframe retrieval during backtest execution. It injects the <code>MethodContext</code> (containing <code>frameName</code>) and delegates to <code>FrameConnectionService</code> for instance creation.</p>
+<a id="timeframe-retrieval-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timeframe Retrieval Flow<a href="#timeframe-retrieval-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/56_Timeframe_Generation_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Points:</strong></p>
+<ol>
+<li><strong>Memoization:</strong> <code>FrameConnectionService</code> caches <code>ClientFrame</code> instances using the composite key <code>&quot;${frameName}:${symbol}&quot;</code> to prevent duplicate instantiation</li>
+<li><strong>Schema Retrieval:</strong> The <code>IFrameSchema</code> is fetched from <code>FrameSchemaService</code> on each call, but the <code>ClientFrame</code> instance is reused</li>
+<li><strong>Timestamp Array:</strong> <code>ClientFrame.getTimeframe()</code> returns a complete <code>Date[]</code> array representing the entire backtest period</li>
+<li><strong>Memory Efficiency:</strong> While the full array is returned, the backtest loop consumes it sequentially, allowing early termination</li>
+</ol>
+<hr>
+<a id="clientframe-implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientFrame Implementation<a href="#clientframe-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>ClientFrame</code> class implements the timestamp generation logic based on the configured <code>IFrameSchema</code> parameters.</p>
+<a id="timestamp-generation-algorithm" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timestamp Generation Algorithm<a href="#timestamp-generation-algorithm" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/56_Timeframe_Generation_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Generation Process:</strong></p>
+<ol>
+<li><strong>Initialization:</strong> Start at <code>startDate</code> timestamp</li>
+<li><strong>Iteration:</strong> While <code>current &lt;= endDate</code>:
+<ul>
+<li>Add <code>current</code> timestamp to array</li>
+<li>Increment <code>current</code> by <code>interval</code> milliseconds</li>
+</ul>
+</li>
+<li><strong>Callback:</strong> Invoke <code>onTimeframe()</code> if configured in schema</li>
+<li><strong>Return:</strong> Full timestamp array</li>
+</ol>
+<p><strong>Example Generation:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Frame Schema</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">frameName</span><span class="hl-1">: </span><span class="hl-2">&quot;hourly-test&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">interval</span><span class="hl-1">: </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">startDate</span><span class="hl-1">: </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-10">endDate</span><span class="hl-1">: </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T03:00:00Z&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Generated Timeframe Array</span><br/><span class="hl-1">[</span><br/><span class="hl-1">  </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),  </span><span class="hl-5">// 00:00</span><br/><span class="hl-1">  </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T01:00:00Z&quot;</span><span class="hl-1">),  </span><span class="hl-5">// 01:00</span><br/><span class="hl-1">  </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T02:00:00Z&quot;</span><span class="hl-1">),  </span><span class="hl-5">// 02:00</span><br/><span class="hl-1">  </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T03:00:00Z&quot;</span><span class="hl-1">),  </span><span class="hl-5">// 03:00</span><br/><span class="hl-1">]</span><br/><span class="hl-5">// Total: 4 timestamps</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="integration-with-backtest-execution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Backtest Execution<a href="#integration-with-backtest-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The generated timeframe array drives the backtest execution loop in <code>BacktestLogicPrivateService</code>. Each timestamp represents a moment when the strategy's <code>getSignal()</code> function is evaluated.</p>
+<a id="backtest-loop-with-timeframe" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Loop with Timeframe<a href="#backtest-loop-with-timeframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/56_Timeframe_Generation_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Execution Flow in BacktestLogicPrivateService:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// 1. Retrieve timeframes</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">timeframes</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">frameCoreService</span><span class="hl-1">.</span><span class="hl-0">getTimeframe</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">.</span><span class="hl-4">context</span><span class="hl-1">.</span><span class="hl-4">frameName</span><br/><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">totalFrames</span><span class="hl-1"> = </span><span class="hl-4">timeframes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// 2. Iterate through timeframes</span><br/><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">i</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-3">while</span><span class="hl-1"> (</span><span class="hl-4">i</span><span class="hl-1"> &lt; </span><span class="hl-4">timeframes</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">when</span><span class="hl-1"> = </span><span class="hl-4">timeframes</span><span class="hl-1">[</span><span class="hl-4">i</span><span class="hl-1">];</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 3. Evaluate strategy at this timestamp</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">strategyCoreService</span><span class="hl-1">.</span><span class="hl-0">tick</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">when</span><span class="hl-1">, </span><span class="hl-7">true</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// 4. Handle result (opened, active, idle, closed)</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;opened&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Fetch candles and run backtest()</span><br/><span class="hl-1">    </span><span class="hl-5">// Skip timeframes until signal closes</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-4">i</span><span class="hl-1">++;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Timeframe Skipping:</strong> When a signal opens, the backtest fetches future candles and fast-forwards through the signal's lifetime. The loop skips timeframes by incrementing <code>i</code> until reaching the signal's <code>closeTimestamp</code>, avoiding redundant <code>tick()</code> calls while a position is active.</p>
+<hr>
+<a id="frame-lifecycle-callbacks" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Lifecycle Callbacks<a href="#frame-lifecycle-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>IFrameCallbacks</code> interface provides a hook for observing timeframe generation completion. This is primarily used for logging, validation, or custom analytics.</p>
+<a id="ontimeframe-callback" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onTimeframe Callback<a href="#ontimeframe-callback" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IFrameCallbacks</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">onTimeframe</span><span class="hl-1">: (</span><br/><span class="hl-1">    </span><span class="hl-4">timeframe</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">[],        </span><span class="hl-5">// Generated timestamp array</span><br/><span class="hl-1">    </span><span class="hl-4">startDate</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">,          </span><span class="hl-5">// Frame start (from schema)</span><br/><span class="hl-1">    </span><span class="hl-4">endDate</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">,            </span><span class="hl-5">// Frame end (from schema)</span><br/><span class="hl-1">    </span><span class="hl-4">interval</span><span class="hl-1">: </span><span class="hl-11">FrameInterval</span><span class="hl-1">   </span><span class="hl-5">// Interval used (from schema)</span><br/><span class="hl-1">  ) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage Example:</strong></p>
+<pre><code class="typescript"><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1-week-backtest&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-07T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">callbacks:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-0">onTimeframe</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">timeframe</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Generated </span><span class="hl-7">${</span><span class="hl-4">timeframe</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2"> timestamps`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Period: </span><span class="hl-7">${</span><span class="hl-4">startDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2"> to </span><span class="hl-7">${</span><span class="hl-4">endDate</span><span class="hl-9">.</span><span class="hl-0">toISOString</span><span class="hl-9">()</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Interval: </span><span class="hl-7">${</span><span class="hl-4">interval</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Validate generation</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">expectedCount</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">floor</span><span class="hl-1">(</span><br/><span class="hl-1">        (</span><span class="hl-4">endDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">() - </span><span class="hl-4">startDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">()) / (</span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1000</span><span class="hl-1">)</span><br/><span class="hl-1">      ) + </span><span class="hl-6">1</span><span class="hl-1">;</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">timeframe</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> !== </span><span class="hl-4">expectedCount</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`Expected </span><span class="hl-7">${</span><span class="hl-4">expectedCount</span><span class="hl-7">}</span><span class="hl-2"> timestamps, got </span><span class="hl-7">${</span><span class="hl-4">timeframe</span><span class="hl-9">.</span><span class="hl-4">length</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Common Use Cases:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Logging</strong></td>
+<td>Log timestamp count for audit trail</td>
+</tr>
+<tr>
+<td><strong>Validation</strong></td>
+<td>Verify generated array matches expected size</td>
+</tr>
+<tr>
+<td><strong>Progress Tracking</strong></td>
+<td>Update UI with timeframe generation completion</td>
+</tr>
+<tr>
+<td><strong>Analytics</strong></td>
+<td>Calculate estimated backtest duration based on frame size</td>
+</tr>
+<tr>
+<td><strong>Testing</strong></td>
+<td>Assert correct timestamp generation in unit tests</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="frame-validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Frame Validation<a href="#frame-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>FrameValidationService</code> ensures that registered <code>IFrameSchema</code> objects meet system requirements before they are stored in <code>FrameSchemaService</code>.</p>
+<a id="validation-rules" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Rules<a href="#validation-rules" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/56_Timeframe_Generation_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Validation Checks:</strong></p>
+<ol>
+<li><strong>frameName:</strong> Must be non-empty string</li>
+<li><strong>interval:</strong> Must be one of the valid <code>FrameInterval</code> values</li>
+<li><strong>startDate:</strong> Must be a <code>Date</code> object earlier than <code>endDate</code></li>
+<li><strong>endDate:</strong> Must be a <code>Date</code> object later than <code>startDate</code></li>
+<li><strong>callbacks:</strong> If provided, <code>onTimeframe</code> must be a function</li>
+</ol>
+<hr>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Timeframe generation has several performance implications for backtest execution:</p>
+<a id="memory-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Usage<a href="#memory-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Frame Configuration</th>
+<th>Timeframe Size</th>
+<th>Memory Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-day @ 1m interval</td>
+<td>~1,440 timestamps</td>
+<td>~12 KB</td>
+</tr>
+<tr>
+<td>1-week @ 1m interval</td>
+<td>~10,080 timestamps</td>
+<td>~80 KB</td>
+</tr>
+<tr>
+<td>1-month @ 1m interval</td>
+<td>~43,200 timestamps</td>
+<td>~345 KB</td>
+</tr>
+<tr>
+<td>1-year @ 1m interval</td>
+<td>~525,600 timestamps</td>
+<td>~4.2 MB</td>
+</tr>
+<tr>
+<td>1-year @ 1h interval</td>
+<td>~8,760 timestamps</td>
+<td>~70 KB</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Recommendation:</strong> For long-term backtests (&gt; 6 months), use hourly or daily intervals to reduce memory footprint and iteration overhead.</p>
+<a id="iteration-overhead" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Iteration Overhead<a href="#iteration-overhead" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each timestamp in the timeframe array requires:</p>
+<ol>
+<li><strong>Context setup:</strong> <code>ExecutionContextService.runInContext()</code> invocation</li>
+<li><strong>Strategy tick:</strong> <code>ClientStrategy.tick()</code> call with signal state checks</li>
+<li><strong>Exchange data:</strong> Potential <code>getAveragePrice()</code> VWAP calculation</li>
+<li><strong>Progress emission:</strong> <code>progressBacktestEmitter.next()</code> event</li>
+</ol>
+<p><strong>Optimization:</strong> The backtest loop skips timeframes when signals are active, reducing unnecessary ticks. When a signal opens, the loop increments <code>i</code> to skip past the signal's lifetime.</p>
+<hr>
+<a id="example-multi-timeframe-strategy-testing" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Example: Multi-Timeframe Strategy Testing<a href="#example-multi-timeframe-strategy-testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>A common pattern is to register multiple frames with different intervals to test how strategy performance varies with tick granularity:</p>
+<pre><code class="typescript"><span class="hl-5">// High-frequency backtest (1-minute ticks)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;scalping-frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-07T23:59:59Z&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Medium-frequency backtest (15-minute ticks)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;swing-frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-07T23:59:59Z&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Low-frequency backtest (hourly ticks)</span><br/><span class="hl-0">addFrame</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;position-frame&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">interval:</span><span class="hl-1"> </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2024-01-07T23:59:59Z&quot;</span><span class="hl-1">)</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Walker compares same strategy across different timeframes</span><br/><span class="hl-0">addWalker</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">walkerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;timeframe-comparison&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;scalping-frame&quot;</span><span class="hl-1">,  </span><span class="hl-5">// Will be overridden per strategy</span><br/><span class="hl-1">  </span><span class="hl-4">strategies:</span><span class="hl-1"> [</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">],</span><br/><span class="hl-1">  </span><span class="hl-4">metric:</span><span class="hl-1"> </span><span class="hl-2">&quot;sharpeRatio&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Run walker to find optimal tick interval</span><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">frame</span><span class="hl-1"> </span><span class="hl-7">of</span><span class="hl-1"> [</span><span class="hl-2">&quot;scalping-frame&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;swing-frame&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;position-frame&quot;</span><span class="hl-1">]) {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-4">frame</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">frame</span><span class="hl-7">}</span><span class="hl-2">: Sharpe=</span><span class="hl-7">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">sharpeRatio</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This approach allows empirical determination of the optimal evaluation frequency for a given strategy.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#timeframe-generation"><span>Timeframe <wbr/>Generation</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#frame-schema-configuration"><span>Frame <wbr/>Schema <wbr/>Configuration</span></a></li><li><ul><li><a href="#frame-schema-structure"><span>Frame <wbr/>Schema <wbr/>Structure</span></a></li></ul></li><li><a href="#frame-intervals"><span>Frame <wbr/>Intervals</span></a></li><li><a href="#timeframe-generation-architecture"><span>Timeframe <wbr/>Generation <wbr/>Architecture</span></a></li><li><a href="#framecoreservice-and-timeframe-retrieval"><span>Frame<wbr/>Core<wbr/>Service and <wbr/>Timeframe <wbr/>Retrieval</span></a></li><li><ul><li><a href="#timeframe-retrieval-flow"><span>Timeframe <wbr/>Retrieval <wbr/>Flow</span></a></li></ul></li><li><a href="#clientframe-implementation"><span>Client<wbr/>Frame <wbr/>Implementation</span></a></li><li><ul><li><a href="#timestamp-generation-algorithm"><span>Timestamp <wbr/>Generation <wbr/>Algorithm</span></a></li></ul></li><li><a href="#integration-with-backtest-execution"><span>Integration with <wbr/>Backtest <wbr/>Execution</span></a></li><li><ul><li><a href="#backtest-loop-with-timeframe"><span>Backtest <wbr/>Loop with <wbr/>Timeframe</span></a></li></ul></li><li><a href="#frame-lifecycle-callbacks"><span>Frame <wbr/>Lifecycle <wbr/>Callbacks</span></a></li><li><ul><li><a href="#ontimeframe-callback"><span>on<wbr/>Timeframe <wbr/>Callback</span></a></li></ul></li><li><a href="#frame-validation"><span>Frame <wbr/>Validation</span></a></li><li><ul><li><a href="#validation-rules"><span>Validation <wbr/>Rules</span></a></li></ul></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#memory-usage"><span>Memory <wbr/>Usage</span></a></li><li><a href="#iteration-overhead"><span>Iteration <wbr/>Overhead</span></a></li></ul></li><li><a href="#example-multi-timeframe-strategy-testing"><span>Example: <wbr/>Multi-<wbr/>Timeframe <wbr/>Strategy <wbr/>Testing</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,208 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/13_context_propagation | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_13_context_propagation.html">design/13_context_propagation</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="context-propagation" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Context Propagation<a href="#context-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document explains the context propagation system in backtest-kit, which uses <code>ExecutionContextService</code> and <code>MethodContextService</code> to pass runtime parameters and schema identifiers implicitly through the call stack without manual parameter threading. This pattern enables temporal isolation for look-ahead bias prevention and proper instance isolation across different execution contexts.</p>
+<p>For information about how these context services integrate with the dependency injection system, see <a href="design_12_dependency_injection_system.html">Dependency Injection System</a>. For details on how temporal isolation prevents look-ahead bias, see <a href="design_09_temporal_isolation_and_look-ahead_prevention.html">Temporal Isolation and Look-Ahead Prevention</a>.</p>
+<hr>
+<a id="the-problem-parameter-threading" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The Problem: Parameter Threading<a href="#the-problem-parameter-threading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Without context propagation, every function in the execution path would need explicit parameters for runtime context (symbol, timestamp, backtest flag) and schema identifiers (strategyName, exchangeName, frameName). This creates maintenance burden and tight coupling.</p>
+<p><img src="../media/13_Context_Propagation_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="context-services-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Services Overview<a href="#context-services-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system uses two scoped context services to eliminate parameter threading:</p>
+<table>
+<thead>
+<tr>
+<th>Context Service</th>
+<th>Scope</th>
+<th>Contains</th>
+<th>Used By</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ExecutionContextService</code></td>
+<td>Runtime execution</td>
+<td><code>symbol</code>, <code>when</code>, <code>backtest</code></td>
+<td>Core services, Client implementations</td>
+<td>Temporal isolation, preventing access to future data</td>
+</tr>
+<tr>
+<td><code>MethodContextService</code></td>
+<td>Schema routing</td>
+<td><code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code></td>
+<td>Connection services, Global services</td>
+<td>Instance selection, memoization keys</td>
+</tr>
+</tbody>
+</table>
+<p><img src="../media/13_Context_Propagation_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="executioncontextservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ExecutionContextService<a href="#executioncontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ExecutionContextService</code> provides runtime execution parameters that change for every tick/candle during strategy execution. It uses <code>di-scoped</code> library's <code>IScopedClassRun</code> interface to wrap execution in AsyncLocalStorage context.</p>
+<a id="context-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Structure<a href="#context-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IExecutionContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;      </span><span class="hl-5">// Trading pair (e.g., &quot;BTCUSDT&quot;)</span><br/><span class="hl-1">  </span><span class="hl-4">when</span><span class="hl-1">: </span><span class="hl-11">Date</span><span class="hl-1">;          </span><span class="hl-5">// Current timestamp for operation</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">;   </span><span class="hl-5">// true = backtest mode, false = live mode</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="key-properties" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Properties<a href="#key-properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Purpose</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair identifier</td>
+<td><code>&quot;BTCUSDT&quot;</code>, <code>&quot;ETHUSDT&quot;</code></td>
+</tr>
+<tr>
+<td><code>when</code></td>
+<td><code>Date</code></td>
+<td>Current execution timestamp</td>
+<td><code>new Date(&quot;2024-01-15T10:30:00Z&quot;)</code></td>
+</tr>
+<tr>
+<td><code>backtest</code></td>
+<td><code>boolean</code></td>
+<td>Execution mode flag</td>
+<td><code>true</code> (backtest), <code>false</code> (live)</td>
+</tr>
+</tbody>
+</table>
+<a id="temporal-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Temporal Isolation<a href="#temporal-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>when</code> property is <strong>critical</strong> for preventing look-ahead bias during backtesting. When <code>ClientExchange.getCandles()</code> is called, it uses <code>when</code> to fetch only historical data up to that timestamp, never future data.</p>
+<p><img src="../media/13_Context_Propagation_2.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="methodcontextservice" class="tsd-anchor"></a><h2 class="tsd-anchor-link">MethodContextService<a href="#methodcontextservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>MethodContextService</code> provides schema identifiers that determine which registered component instances to use. It enables proper memoization and instance isolation across different strategies, exchanges, and frames.</p>
+<a id="context-structure-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Structure<a href="#context-structure-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IMethodContext</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;  </span><span class="hl-5">// Exchange schema identifier</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;  </span><span class="hl-5">// Strategy schema identifier</span><br/><span class="hl-1">  </span><span class="hl-4">frameName</span><span class="hl-1">: </span><span class="hl-11">FrameName</span><span class="hl-1">;        </span><span class="hl-5">// Frame schema identifier (empty for live)</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="instance-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Instance Isolation<a href="#instance-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services use <code>MethodContextService.context</code> to build composite memoization keys, ensuring separate instances for different execution contexts.</p>
+<p><img src="../media/13_Context_Propagation_3.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="implementation-using-di-scoped" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Using di-scoped<a href="#implementation-using-di-scoped" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Both context services extend the <code>IScopedClassRun</code> interface from the <code>di-scoped</code> library, which provides AsyncLocalStorage-based context propagation.</p>
+<a id="service-declaration-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Declaration Pattern<a href="#service-declaration-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The context services are declared with a complex type signature that combines:</p>
+<ol>
+<li>Constructor signature</li>
+<li>Omitted prototype</li>
+<li><code>IScopedClassRun</code> interface with context parameter</li>
+</ol>
+<pre><code class="typescript"><span class="hl-7">declare</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ExecutionContextService</span><span class="hl-1">: </span><br/><span class="hl-1">  (</span><span class="hl-3">new</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> { </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">context</span><span class="hl-1">: </span><span class="hl-11">IExecutionContext</span><span class="hl-1"> }) </span><br/><span class="hl-1">  &amp; </span><span class="hl-11">Omit</span><span class="hl-1">&lt;{</span><br/><span class="hl-1">      </span><span class="hl-7">new</span><span class="hl-1"> (</span><span class="hl-4">context</span><span class="hl-1">: </span><span class="hl-11">IExecutionContext</span><span class="hl-1">): {</span><br/><span class="hl-1">        </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">context</span><span class="hl-1">: </span><span class="hl-11">IExecutionContext</span><span class="hl-1">;</span><br/><span class="hl-1">      };</span><br/><span class="hl-1">    }, </span><span class="hl-2">&quot;prototype&quot;</span><span class="hl-1">&gt; </span><br/><span class="hl-1">  &amp; </span><span class="hl-11">di_scoped</span><span class="hl-1">.</span><span class="hl-11">IScopedClassRun</span><span class="hl-1">&lt;[</span><span class="hl-10">context</span><span class="hl-1">: </span><span class="hl-11">IExecutionContext</span><span class="hl-1">]&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="execution-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Methods<a href="#execution-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IScopedClassRun</code> interface provides two key methods for wrapping execution:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Use Case</th>
+<th>Returns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runInContext()</code></td>
+<td>Wrap async function execution</td>
+<td>Single operations, API calls</td>
+<td><code>Promise&lt;T&gt;</code></td>
+</tr>
+<tr>
+<td><code>runAsyncIterator()</code></td>
+<td>Wrap async generator execution</td>
+<td>Backtest iteration, streaming</td>
+<td><code>AsyncIterator&lt;T&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Patterns<a href="#usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="pattern-1-backtest-execution-context" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 1: Backtest Execution Context<a href="#pattern-1-backtest-execution-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Backtest execution wraps the entire backtest iteration in both <code>ExecutionContextService</code> and <code>MethodContextService</code> contexts. The <code>when</code> parameter advances through timeframes, and <code>backtest</code> is always <code>true</code>.</p>
+<p><img src="../media/13_Context_Propagation_4.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="pattern-2-live-execution-context" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 2: Live Execution Context<a href="#pattern-2-live-execution-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live execution wraps each tick in execution context with <code>when</code> set to <code>Date.now()</code> and <code>backtest</code> set to <code>false</code>. The method context remains constant throughout the live session.</p>
+<p><img src="../media/13_Context_Propagation_5.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="pattern-3-connection-service-instance-selection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 3: Connection Service Instance Selection<a href="#pattern-3-connection-service-instance-selection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services use <code>MethodContextService.context</code> to retrieve the correct schema and build composite memoization keys for client instances.</p>
+<p><img src="../media/13_Context_Propagation_6.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="context-flow-through-system-layers" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Flow Through System Layers<a href="#context-flow-through-system-layers" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram shows how execution and method contexts flow through the service layer architecture, from public API down to client implementations.</p>
+<p><img src="../media/13_Context_Propagation_7.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="benefits-and-trade-offs" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Benefits and Trade-offs<a href="#benefits-and-trade-offs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="benefits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Benefits<a href="#benefits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Benefit</th>
+<th>Description</th>
+<th>Impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>No Parameter Threading</strong></td>
+<td>Eliminates need to pass context parameters through every function</td>
+<td>Reduces boilerplate by ~80%</td>
+</tr>
+<tr>
+<td><strong>Loose Coupling</strong></td>
+<td>Functions don't need to know about context structure</td>
+<td>Easier to refactor and extend</td>
+</tr>
+<tr>
+<td><strong>Temporal Isolation</strong></td>
+<td><code>ExecutionContextService.context.when</code> prevents look-ahead bias</td>
+<td>Ensures realistic backtest results</td>
+</tr>
+<tr>
+<td><strong>Instance Isolation</strong></td>
+<td><code>MethodContextService.context</code> enables proper memoization</td>
+<td>Prevents state leakage between executions</td>
+</tr>
+<tr>
+<td><strong>Type Safety</strong></td>
+<td>TypeScript discriminated unions for context access</td>
+<td>Compile-time error detection</td>
+</tr>
+</tbody>
+</table>
+<a id="implementation-details" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/13_Context_Propagation_8.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="dependency-injection-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Integration<a href="#dependency-injection-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Context services are registered in the DI container and injected into client implementations via constructor parameters.</p>
+<a id="di-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">DI Registration<a href="#di-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The context services are provided as singletons in the DI container at application startup.</p>
+<pre><code class="typescript"><span class="hl-5">// src/lib/core/types.ts</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">contextServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">executionContextService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;executionContextService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">methodContextService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;methodContextService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-5">// src/lib/core/provide.ts</span><br/><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">executionContextService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ExecutionContextService</span><span class="hl-1">());</span><br/><span class="hl-1">  </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">methodContextService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">MethodContextService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="client-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Client Injection<a href="#client-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client implementations receive context services through their constructor parameters, defined in their <code>*Params</code> interfaces.</p>
+<pre><code class="typescript"><span class="hl-5">// types.d.ts - IExchangeParams extends IExchangeSchema</span><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IExchangeParams</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IExchangeSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">logger</span><span class="hl-1">: </span><span class="hl-11">ILogger</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">execution</span><span class="hl-1">: </span><span class="hl-11">TExecutionContextService</span><span class="hl-1">;  </span><span class="hl-5">// Injected context service</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><img src="../media/13_Context_Propagation_9.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Context propagation in backtest-kit eliminates parameter threading by using two scoped services:</p>
+<ol>
+<li><strong>ExecutionContextService</strong> - Provides runtime parameters (<code>symbol</code>, <code>when</code>, <code>backtest</code>) for temporal isolation and look-ahead bias prevention</li>
+<li><strong>MethodContextService</strong> - Provides schema identifiers (<code>strategyName</code>, <code>exchangeName</code>, <code>frameName</code>) for instance selection and memoization</li>
+</ol>
+<p>Both services use <code>di-scoped</code> library's AsyncLocalStorage-based context propagation to make context implicitly available throughout the call stack without explicit parameter passing. This pattern reduces boilerplate, improves maintainability, and ensures proper isolation between different execution contexts.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#the-problem-parameter-threading"><span>The <wbr/>Problem: <wbr/>Parameter <wbr/>Threading</span></a></li><li><a href="#context-services-overview"><span>Context <wbr/>Services <wbr/>Overview</span></a></li><li><a href="#executioncontextservice"><span>Execution<wbr/>Context<wbr/>Service</span></a></li><li><ul><li><a href="#context-structure"><span>Context <wbr/>Structure</span></a></li><li><a href="#key-properties"><span>Key <wbr/>Properties</span></a></li><li><a href="#temporal-isolation"><span>Temporal <wbr/>Isolation</span></a></li></ul></li><li><a href="#methodcontextservice"><span>Method<wbr/>Context<wbr/>Service</span></a></li><li><ul><li><a href="#context-structure-1"><span>Context <wbr/>Structure</span></a></li><li><a href="#instance-isolation"><span>Instance <wbr/>Isolation</span></a></li></ul></li><li><a href="#implementation-using-di-scoped"><span>Implementation <wbr/>Using di-<wbr/>scoped</span></a></li><li><ul><li><a href="#service-declaration-pattern"><span>Service <wbr/>Declaration <wbr/>Pattern</span></a></li><li><a href="#execution-methods"><span>Execution <wbr/>Methods</span></a></li></ul></li><li><a href="#usage-patterns"><span>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#pattern-1-backtest-execution-context"><span>Pattern 1: <wbr/>Backtest <wbr/>Execution <wbr/>Context</span></a></li><li><a href="#pattern-2-live-execution-context"><span>Pattern 2: <wbr/>Live <wbr/>Execution <wbr/>Context</span></a></li><li><a href="#pattern-3-connection-service-instance-selection"><span>Pattern 3: <wbr/>Connection <wbr/>Service <wbr/>Instance <wbr/>Selection</span></a></li></ul></li><li><a href="#context-flow-through-system-layers"><span>Context <wbr/>Flow <wbr/>Through <wbr/>System <wbr/>Layers</span></a></li><li><a href="#benefits-and-trade-offs"><span>Benefits and <wbr/>Trade-<wbr/>offs</span></a></li><li><ul><li><a href="#benefits"><span>Benefits</span></a></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li></ul></li><li><a href="#dependency-injection-integration"><span>Dependency <wbr/>Injection <wbr/>Integration</span></a></li><li><ul><li><a href="#di-registration"><span>DI <wbr/>Registration</span></a></li><li><a href="#client-injection"><span>Client <wbr/>Injection</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

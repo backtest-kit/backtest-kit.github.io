@@ -1,0 +1,328 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/92_data_collection_pipeline | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_92_data_collection_pipeline.html">design/92_data_collection_pipeline</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="data-collection-pipeline" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Data Collection Pipeline<a href="#data-collection-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document describes the data collection phase of the AI-powered optimizer, where historical trading data is fetched from external sources, paginated, formatted into LLM conversation messages, and accumulated across multiple training ranges. For information about the overall optimizer architecture and how components connect, see <a href="design_91_optimizer_architecture.html">Optimizer Architecture</a>. For details on how the collected data is sent to the LLM after collection, see <a href="design_93_llm_integration.html">LLM Integration</a>.</p>
+<p>The data collection pipeline is implemented primarily in <code>ClientOptimizer.getData()</code> and processes sources sequentially for each training date range, building up a conversation history that provides market context for strategy generation.</p>
+<a id="source-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Source Configuration<a href="#source-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="source-type-definitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Source Type Definitions<a href="#source-type-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The optimizer supports two types of data source configurations, both defined in the <code>IOptimizerSchema.source</code> array:</p>
+<p><strong>Simple Function Source</strong></p>
+<p>A function implementing <code>IOptimizerSourceFn</code> that accepts pagination parameters and returns data:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">SimpleSoure</span><span class="hl-1"> = (</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">IOptimizerFetchArgs</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">Data</span><span class="hl-1">[] | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">Data</span><span class="hl-1">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This form uses default message formatters from <code>OptimizerTemplateService</code>.</p>
+<p><strong>Full Configuration Source</strong></p>
+<p>An object implementing <code>IOptimizerSource</code> with custom message formatters:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IOptimizerSource</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">fetch</span><span class="hl-1">: </span><span class="hl-11">IOptimizerSourceFn</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-0">user</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">string</span><span class="hl-1"> | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">assistant</span><span class="hl-1">?: (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">string</span><span class="hl-1"> | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This form allows customization of how data is presented to the LLM.</p>
+<a id="data-source-interface-requirements" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Source Interface Requirements<a href="#data-source-interface-requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All data returned from sources must implement <code>IOptimizerData</code> with a unique <code>id</code> field:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IOptimizerData</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">id</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1"> | </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>id</code> field enables deduplication when paginating through large datasets. Without unique IDs, the same records could be processed multiple times.</p>
+<p><img src="../media/92_Data_Collection_Pipeline_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Source Type Configuration Options</strong></p>
+<a id="pagination-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Pagination Architecture<a href="#pagination-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="automatic-pagination-with-functools-kit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Automatic Pagination with functools-kit<a href="#automatic-pagination-with-functools-kit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The optimizer uses <code>functools-kit</code> utilities to handle pagination automatically, eliminating the need for manual offset/limit management in user code. The <code>RESOLVE_PAGINATION_FN</code> function at <a href="">src/client/ClientOptimizer.ts:70-88</a> orchestrates this:</p>
+<p><img src="../media/92_Data_Collection_Pipeline_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: RESOLVE_PAGINATION_FN Pagination Pipeline</strong></p>
+<p>The pagination process consists of three stages implemented via functools-kit:</p>
+<ol>
+<li><strong>Iteration</strong>: <code>iterateDocuments</code> creates a generator that repeatedly invokes the user's <code>fetch</code> function with <code>createRequest</code> callback, incrementing <code>offset</code> by <code>ITERATION_LIMIT</code> (25) each iteration until a page returns fewer items than the limit</li>
+<li><strong>Deduplication</strong>: <code>distinctDocuments</code> pipes the generator through a filter using <code>(data) =&gt; data.id</code> as the comparison key to remove duplicate records across pages</li>
+<li><strong>Resolution</strong>: <code>resolveDocuments</code> consumes the async generator and accumulates all items into a final array</li>
+</ol>
+</thinking>
+<a id="fetch-arguments-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Fetch Arguments Structure<a href="#fetch-arguments-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When the pagination system calls the user's fetch function, it provides <code>IOptimizerFetchArgs</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Source</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>from <code>filterData</code></td>
+<td>Trading pair identifier (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>from <code>filterData</code></td>
+<td>Range start (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>from <code>filterData</code></td>
+<td>Range end (inclusive)</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td><code>number</code></td>
+<td><code>ITERATION_LIMIT</code></td>
+<td>Maximum records per page (25)</td>
+</tr>
+<tr>
+<td><code>offset</code></td>
+<td><code>number</code></td>
+<td>pagination loop</td>
+<td>Number of records to skip</td>
+</tr>
+</tbody>
+</table>
+<a id="fetch-arguments-structure-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Fetch Arguments Structure<a href="#fetch-arguments-structure-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When the pagination system calls the user's fetch function, it provides:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair identifier (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>startDate</code></td>
+<td><code>Date</code></td>
+<td>Range start (inclusive)</td>
+</tr>
+<tr>
+<td><code>endDate</code></td>
+<td><code>Date</code></td>
+<td>Range end (inclusive)</td>
+</tr>
+<tr>
+<td><code>limit</code></td>
+<td><code>number</code></td>
+<td>Maximum records per page (25)</td>
+</tr>
+<tr>
+<td><code>offset</code></td>
+<td><code>number</code></td>
+<td>Number of records to skip</td>
+</tr>
+</tbody>
+</table>
+<a id="data-collection-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Collection Execution Flow<a href="#data-collection-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="main-collection-function" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Main Collection Function<a href="#main-collection-function" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>GET_STRATEGY_DATA_FN</code> function at <a href="">src/client/ClientOptimizer.ts:99-215</a> implements the complete data collection pipeline. It is called by <code>ClientOptimizer.getData()</code> and processes all training ranges sequentially.</p>
+<p><img src="../media/92_Data_Collection_Pipeline_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: GET_STRATEGY_DATA_FN Execution Flow</strong></p>
+<a id="progress-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Progress Tracking<a href="#progress-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The optimizer emits <code>ProgressOptimizerContract</code> events at two key points:</p>
+<ol>
+<li><strong>Before processing each source</strong>: Shows incremental progress through all sources across all training ranges</li>
+<li><strong>After completing all sources</strong>: Emits final 100% completion</li>
+</ol>
+<p>Progress calculation:</p>
+<pre><code><span class="hl-4">totalSources</span><span class="hl-1"> = </span><span class="hl-4">rangeTrain</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> × </span><span class="hl-4">source</span><span class="hl-1">.</span><span class="hl-4">length</span><br/><span class="hl-4">progress</span><span class="hl-1"> = </span><span class="hl-4">processedSources</span><span class="hl-1"> / </span><span class="hl-4">totalSources</span>
+</code><button>Copy</button></pre>
+
+<p>The progress events are emitted via <code>progressOptimizerEmitter</code> which can be observed using <code>listenOptimizerProgress()</code>.</p>
+<a id="message-formatting-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Message Formatting System<a href="#message-formatting-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="default-message-formatters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Default Message Formatters<a href="#default-message-formatters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>OptimizerTemplateService</code> provides default formatters accessible via template delegation:</p>
+<p><strong>User Message Formatter</strong> (<code>DEFAULT_USER_FN</code> at <a href="">src/client/ClientOptimizer.ts:34-41</a>)</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">DEFAULT_USER_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">template</span><span class="hl-1">.</span><span class="hl-0">getUserMessage</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">);</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The default implementation in <code>OptimizerTemplateService.getUserMessage</code> at <a href="">src/lib/services/template/OptimizerTemplateService.ts:77-88</a> returns:</p>
+<pre><code><span class="hl-2">&quot;Прочитай данные и скажи ОК</span><span class="hl-14">\n\n</span><span class="hl-2">&quot;</span><span class="hl-1"> + </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Assistant Message Formatter</strong> (<code>DEFAULT_ASSISTANT_FN</code> at <a href="">src/client/ClientOptimizer.ts:53-60</a>)</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">DEFAULT_ASSISTANT_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">template</span><span class="hl-1">.</span><span class="hl-0">getAssistantMessage</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">);</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The default implementation in <code>OptimizerTemplateService.getAssistantMessage</code> at <a href="">src/lib/services/template/OptimizerTemplateService.ts:99-110</a> returns:</p>
+<pre><code><span class="hl-2">&quot;ОК&quot;</span>
+</code><button>Copy</button></pre>
+
+<p>These simple defaults acknowledge data receipt without processing, allowing the LLM to focus on later strategy generation prompts.</p>
+<a id="custom-message-formatters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Message Formatters<a href="#custom-message-formatters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Sources can override default formatters by providing <code>user</code> and <code>assistant</code> functions in the <code>IOptimizerSource</code> configuration:</p>
+<p><img src="../media/92_Data_Collection_Pipeline_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Message Formatter Selection in GET_STRATEGY_DATA_FN</strong></p>
+<p>Custom formatters (when provided in <code>IOptimizerSource</code>) receive:</p>
+<ul>
+<li><code>symbol</code>: Trading pair identifier</li>
+<li><code>data</code>: Complete deduplicated <code>Data[]</code> array from <code>RESOLVE_PAGINATION_FN</code></li>
+<li><code>name</code>: Source name from <code>source.name</code> or <code>DEFAULT_SOURCE_NAME</code></li>
+<li><code>self</code>: The <code>ClientOptimizer</code> instance for accessing <code>params.template</code></li>
+</ul>
+<p>They must return <code>string | Promise&lt;string&gt;</code> containing the message content.</p>
+<a id="message-list-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Message List Structure<a href="#message-list-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For each training range, the optimizer builds a <code>messageList</code> array by appending user/assistant pairs for each source:</p>
+<pre><code class="typescript"><span class="hl-10">messageList</span><span class="hl-1">: </span><span class="hl-4">MessageModel</span><span class="hl-1">[] = [</span><br/><span class="hl-1">  { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;user&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;&lt;formatted data from source 1&gt;&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;assistant&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;&lt;acknowledgment for source 1&gt;&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;user&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;&lt;formatted data from source 2&gt;&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  { </span><span class="hl-4">role:</span><span class="hl-1"> </span><span class="hl-2">&quot;assistant&quot;</span><span class="hl-1">, </span><span class="hl-4">content:</span><span class="hl-1"> </span><span class="hl-2">&quot;&lt;acknowledgment for source 2&gt;&quot;</span><span class="hl-1"> },</span><br/><span class="hl-1">  </span><span class="hl-5">// ... one pair per source</span><br/><span class="hl-1">]</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This conversation history provides the LLM with sequential context across multiple timeframes or data types before requesting a strategy recommendation.</p>
+<a id="multi-timeframe-data-collection-example" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Multi-Timeframe Data Collection Example<a href="#multi-timeframe-data-collection-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="ccxt-dumper-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CCXT Dumper Integration<a href="#ccxt-dumper-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo implementation shows a real-world pattern for collecting multi-timeframe technical indicator data from a historical database service:</p>
+<p><img src="../media/92_Data_Collection_Pipeline_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Multi-Timeframe Data Source Architecture</strong></p>
+<a id="source-configuration-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Source Configuration Pattern<a href="#source-configuration-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each timeframe source follows this structure:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Identifies the timeframe (e.g., &quot;long-term-range&quot;)</td>
+</tr>
+<tr>
+<td><code>fetch()</code></td>
+<td>Constructs URL with query params, calls REST API</td>
+</tr>
+<tr>
+<td><code>user()</code></td>
+<td>Formats data as markdown table with indicator metadata</td>
+</tr>
+<tr>
+<td><code>assistant()</code></td>
+<td>Returns acknowledgment message</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>user()</code> formatter typically includes:</p>
+<ol>
+<li><strong>Markdown table</strong>: Raw indicator values with timestamps</li>
+<li><strong>Data sources section</strong>: Explains each indicator's calculation period and units</li>
+<li><strong>Context information</strong>: Lookback periods, timeframe details</li>
+</ol>
+<p>This provides the LLM with both numerical data and interpretive context.</p>
+<a id="pagination-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pagination Implementation<a href="#pagination-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo sources use <code>fetchApi</code> from functools-kit with URL query parameters:</p>
+<pre><code class="javascript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">url</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">URL</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">process</span><span class="hl-9">.</span><span class="hl-4">env</span><span class="hl-9">.</span><span class="hl-8">CCXT_DUMPER_URL</span><span class="hl-7">}</span><span class="hl-2">/view/long-term-range`</span><span class="hl-1">);</span><br/><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">searchParams</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&quot;symbol&quot;</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">searchParams</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&quot;startDate&quot;</span><span class="hl-1">, </span><span class="hl-4">startDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">());</span><br/><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">searchParams</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&quot;endDate&quot;</span><span class="hl-1">, </span><span class="hl-4">endDate</span><span class="hl-1">.</span><span class="hl-0">getTime</span><span class="hl-1">());</span><br/><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">searchParams</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&quot;limit&quot;</span><span class="hl-1">, </span><span class="hl-4">limit</span><span class="hl-1"> || </span><span class="hl-6">1000</span><span class="hl-1">);</span><br/><span class="hl-4">url</span><span class="hl-1">.</span><span class="hl-4">searchParams</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-2">&quot;offset&quot;</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1"> || </span><span class="hl-6">0</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The CCXT Dumper service returns paginated results matching the limit/offset semantics expected by <code>RESOLVE_PAGINATION_FN</code>.</p>
+<a id="training-range-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Training Range Configuration<a href="#training-range-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The demo defines 7 consecutive training days and 1 test day:</p>
+<pre><code class="javascript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">TRAIN_RANGE</span><span class="hl-1"> = [</span><br/><span class="hl-1">  { </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;24 ноября 2025&quot;</span><span class="hl-1">, </span><span class="hl-4">startDate:</span><span class="hl-1"> ..., </span><span class="hl-4">endDate:</span><span class="hl-1"> ... },</span><br/><span class="hl-1">  { </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;25 ноября 2025&quot;</span><span class="hl-1">, </span><span class="hl-4">startDate:</span><span class="hl-1"> ..., </span><span class="hl-4">endDate:</span><span class="hl-1"> ... },</span><br/><span class="hl-1">  </span><span class="hl-5">// ... 5 more days</span><br/><span class="hl-1">];</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">TEST_RANGE</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;1 декабря 2025&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T00:00:00Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-2">&quot;2025-12-01T23:59:59Z&quot;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p>For each training day, the optimizer collects all 4 timeframes, generating 7 separate strategy variants (one per day) that will later be compared via Walker on the test range.</p>
+<a id="callbacks-and-lifecycle-hooks" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Callbacks and Lifecycle Hooks<a href="#callbacks-and-lifecycle-hooks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="available-callbacks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Available Callbacks<a href="#available-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The optimizer schema supports three callbacks related to data collection:</p>
+<table>
+<thead>
+<tr>
+<th>Callback</th>
+<th>Trigger Point</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onSourceData</code></td>
+<td>After each source fetch completes</td>
+<td><code>symbol, sourceName, data, startDate, endDate</code></td>
+</tr>
+<tr>
+<td><code>onData</code></td>
+<td>After all training ranges complete</td>
+<td><code>symbol, strategyList</code></td>
+</tr>
+<tr>
+<td><code>onCode</code></td>
+<td>After code generation (not collection phase)</td>
+<td><code>symbol, code</code></td>
+</tr>
+<tr>
+<td><code>onDump</code></td>
+<td>After file write (not collection phase)</td>
+<td><code>symbol, filepath</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>onSourceData</code> callback executes during collection and receives the raw deduplicated data array for each source, enabling:</p>
+<ul>
+<li>Data validation</li>
+<li>Logging/debugging</li>
+<li>Custom persistence</li>
+<li>Analytics</li>
+</ul>
+<a id="integration-with-optimizerconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Integration with OptimizerConnectionService<a href="#integration-with-optimizerconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>OptimizerConnectionService</code> retrieves the schema, merges templates, and instantiates <code>ClientOptimizer</code>:</p>
+<p><img src="../media/92_Data_Collection_Pipeline_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram: Service Layer Dependency Flow</strong></p>
+<p>The <code>OptimizerConnectionService.getOptimizer()</code> method at <a href="">src/lib/services/connection/OptimizerConnectionService.ts:59-113</a> is responsible for:</p>
+<ol>
+<li>Calling <code>optimizerSchemaService.get(optimizerName)</code> to retrieve <code>IOptimizerSchema</code></li>
+<li>Extracting <code>schema.template</code> partial overrides (if provided)</li>
+<li>Merging with default methods from <code>OptimizerTemplateService</code> to create complete <code>IOptimizerTemplate</code></li>
+<li>Constructing <code>ClientOptimizer</code> with <code>IOptimizerParams</code> (includes logger, merged template, callbacks)</li>
+<li>Passing <code>COMMIT_PROGRESS_FN</code> callback for emitting progress events to <code>progressOptimizerEmitter</code></li>
+<li>Memoizing the instance by <code>optimizerName</code> for reuse</li>
+</ol>
+<a id="error-handling-and-edge-cases" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Error Handling and Edge Cases<a href="#error-handling-and-edge-cases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="empty-data-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Empty Data Handling<a href="#empty-data-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If a source returns an empty array (no data for the date range), the optimizer still formats and appends message pairs to <code>messageList</code>. The LLM receives empty data context, which it may interpret as &quot;no trading activity&quot; or &quot;insufficient data.&quot;</p>
+<a id="missing-source-name" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Missing Source Name<a href="#missing-source-name" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>When using the simple function source type (<code>IOptimizerSourceFn</code> without configuration object), the name defaults to <code>DEFAULT_SOURCE_NAME = &quot;unknown&quot;</code> defined at <a href="">src/client/ClientOptimizer.ts:20</a>. This name appears in:</p>
+<ul>
+<li>Progress events (<code>ProgressOptimizerContract</code>)</li>
+<li>Callback parameters (<code>onSourceData</code>)</li>
+<li>Generated strategy metadata (<code>IOptimizerStrategy.name</code>)</li>
+</ul>
+<p>The name extraction logic at <a href="">src/client/ClientOptimizer.ts:188-191</a> handles both source types:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">name</span><span class="hl-1"> = </span><span class="hl-2">&quot;name&quot;</span><span class="hl-1"> </span><span class="hl-7">in</span><span class="hl-1"> </span><span class="hl-4">source</span><br/><span class="hl-1">  ? </span><span class="hl-4">source</span><span class="hl-1">.</span><span class="hl-4">name</span><span class="hl-1"> || </span><span class="hl-8">DEFAULT_SOURCE_NAME</span><br/><span class="hl-1">  : </span><span class="hl-8">DEFAULT_SOURCE_NAME</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="duplicate-id-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Duplicate ID Handling<a href="#duplicate-id-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>distinctDocuments</code> function compares records by their <code>id</code> field. If multiple records share the same ID across different pages, only the first occurrence is kept. This prevents double-counting but requires that source IDs are stable and unique.</p>
+<a id="async-formatter-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Async Formatter Execution<a href="#async-formatter-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both user and assistant formatters support async execution. The optimizer waits for both to resolve using <code>Promise.all()</code> before appending to <code>messageList</code>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> [</span><span class="hl-8">userContent</span><span class="hl-1">, </span><span class="hl-8">assistantContent</span><span class="hl-1">] = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-11">Promise</span><span class="hl-1">.</span><span class="hl-0">all</span><span class="hl-1">([</span><br/><span class="hl-1">  </span><span class="hl-0">user</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">),</span><br/><span class="hl-1">  </span><span class="hl-0">assistant</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">self</span><span class="hl-1">),</span><br/><span class="hl-1">]);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This enables formatters to perform async operations like:</p>
+<ul>
+<li>API calls for additional context</li>
+<li>Database lookups</li>
+<li>File I/O for templates</li>
+</ul>
+<a id="performance-considerations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="sequential-source-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Sequential Source Processing<a href="#sequential-source-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Sources are processed sequentially within each training range (not in parallel). This design choice:</p>
+<ul>
+<li>Simplifies progress tracking</li>
+<li>Preserves message ordering</li>
+<li>Reduces concurrent API load on external services</li>
+<li>Enables early error detection</li>
+</ul>
+<a id="memory-accumulation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory Accumulation<a href="#memory-accumulation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The complete <code>messageList</code> for each training range is held in memory until <code>getPrompt()</code> is called. For large datasets or many sources, this can consume significant memory. Consider:</p>
+<ul>
+<li>Limiting data returned per source</li>
+<li>Using summary statistics instead of raw records</li>
+<li>Processing ranges incrementally</li>
+</ul>
+<a id="pagination-limit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pagination Limit<a href="#pagination-limit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ITERATION_LIMIT = 25</code> controls page size for pagination. Smaller values mean more API calls but less memory per request. Larger values reduce API overhead but require more memory per page.</p>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The data collection pipeline transforms external data sources into structured LLM conversation context through these key operations:</p>
+<ol>
+<li><strong>Source registration</strong> via <code>IOptimizerSchema.source</code> array</li>
+<li><strong>Pagination</strong> via functools-kit utilities for large datasets</li>
+<li><strong>Message formatting</strong> with customizable user/assistant functions</li>
+<li><strong>Training range iteration</strong> to generate multiple strategy variants</li>
+<li><strong>Progress tracking</strong> with <code>ProgressOptimizerContract</code> events</li>
+<li><strong>Callback hooks</strong> for monitoring and validation</li>
+</ol>
+<p>The collected data (represented as <code>IOptimizerStrategy[]</code>) serves as input to the LLM integration phase described in <a href="design_93_llm_integration.html">LLM Integration</a>, where it is combined with system prompts to generate trading strategy recommendations.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#data-collection-pipeline"><span>Data <wbr/>Collection <wbr/>Pipeline</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#source-configuration"><span>Source <wbr/>Configuration</span></a></li><li><ul><li><a href="#source-type-definitions"><span>Source <wbr/>Type <wbr/>Definitions</span></a></li><li><a href="#data-source-interface-requirements"><span>Data <wbr/>Source <wbr/>Interface <wbr/>Requirements</span></a></li></ul></li><li><a href="#pagination-architecture"><span>Pagination <wbr/>Architecture</span></a></li><li><ul><li><a href="#automatic-pagination-with-functools-kit"><span>Automatic <wbr/>Pagination with functools-<wbr/>kit</span></a></li><li><a href="#fetch-arguments-structure"><span>Fetch <wbr/>Arguments <wbr/>Structure</span></a></li><li><a href="#fetch-arguments-structure-1"><span>Fetch <wbr/>Arguments <wbr/>Structure</span></a></li></ul></li><li><a href="#data-collection-execution-flow"><span>Data <wbr/>Collection <wbr/>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#main-collection-function"><span>Main <wbr/>Collection <wbr/>Function</span></a></li><li><a href="#progress-tracking"><span>Progress <wbr/>Tracking</span></a></li></ul></li><li><a href="#message-formatting-system"><span>Message <wbr/>Formatting <wbr/>System</span></a></li><li><ul><li><a href="#default-message-formatters"><span>Default <wbr/>Message <wbr/>Formatters</span></a></li><li><a href="#custom-message-formatters"><span>Custom <wbr/>Message <wbr/>Formatters</span></a></li><li><a href="#message-list-structure"><span>Message <wbr/>List <wbr/>Structure</span></a></li></ul></li><li><a href="#multi-timeframe-data-collection-example"><span>Multi-<wbr/>Timeframe <wbr/>Data <wbr/>Collection <wbr/>Example</span></a></li><li><ul><li><a href="#ccxt-dumper-integration"><span>CCXT <wbr/>Dumper <wbr/>Integration</span></a></li><li><a href="#source-configuration-pattern"><span>Source <wbr/>Configuration <wbr/>Pattern</span></a></li><li><a href="#pagination-implementation"><span>Pagination <wbr/>Implementation</span></a></li><li><a href="#training-range-configuration"><span>Training <wbr/>Range <wbr/>Configuration</span></a></li></ul></li><li><a href="#callbacks-and-lifecycle-hooks"><span>Callbacks and <wbr/>Lifecycle <wbr/>Hooks</span></a></li><li><ul><li><a href="#available-callbacks"><span>Available <wbr/>Callbacks</span></a></li><li><a href="#integration-with-optimizerconnectionservice"><span>Integration with <wbr/>Optimizer<wbr/>Connection<wbr/>Service</span></a></li></ul></li><li><a href="#error-handling-and-edge-cases"><span>Error <wbr/>Handling and <wbr/>Edge <wbr/>Cases</span></a></li><li><ul><li><a href="#empty-data-handling"><span>Empty <wbr/>Data <wbr/>Handling</span></a></li><li><a href="#missing-source-name"><span>Missing <wbr/>Source <wbr/>Name</span></a></li><li><a href="#duplicate-id-handling"><span>Duplicate ID <wbr/>Handling</span></a></li><li><a href="#async-formatter-execution"><span>Async <wbr/>Formatter <wbr/>Execution</span></a></li></ul></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><ul><li><a href="#sequential-source-processing"><span>Sequential <wbr/>Source <wbr/>Processing</span></a></li><li><a href="#memory-accumulation"><span>Memory <wbr/>Accumulation</span></a></li><li><a href="#pagination-limit"><span>Pagination <wbr/>Limit</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

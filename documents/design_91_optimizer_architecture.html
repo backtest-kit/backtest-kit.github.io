@@ -1,0 +1,794 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/91_optimizer_architecture | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_91_optimizer_architecture.html">design/91_optimizer_architecture</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="optimizer-architecture" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Optimizer Architecture<a href="#optimizer-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="optimizer-architecture-1" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Optimizer Architecture<a href="#optimizer-architecture-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer system generates executable trading strategy code through LLM-based analysis of historical data. Unlike Backtest, Live, and Walker modes which execute strategies, the Optimizer produces <code>.mjs</code> files containing complete strategy implementations with <code>addStrategy</code>, <code>addExchange</code>, <code>addFrame</code>, and <code>addWalker</code> configurations.</p>
+<p>The system consists of four primary components organized in a layered service architecture:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>File Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OptimizerUtils</code></td>
+<td><a href="">src/classes/Optimizer.ts</a></td>
+<td>Public API entry point with <code>getData</code>, <code>getCode</code>, <code>dump</code> methods</td>
+</tr>
+<tr>
+<td><code>OptimizerGlobalService</code></td>
+<td><a href="">src/lib/services/global/OptimizerGlobalService.ts</a></td>
+<td>Validation and delegation layer</td>
+</tr>
+<tr>
+<td><code>OptimizerConnectionService</code></td>
+<td><a href="">src/lib/services/connection/OptimizerConnectionService.ts</a></td>
+<td>Template merging and <code>ClientOptimizer</code> instantiation with memoization</td>
+</tr>
+<tr>
+<td><code>ClientOptimizer</code></td>
+<td><a href="">src/client/ClientOptimizer.ts</a></td>
+<td>Core implementation with data collection, code generation, and file output</td>
+</tr>
+</tbody>
+</table>
+<p>Supporting services:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>File Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>OptimizerSchemaService</code></td>
+<td><a href="">src/lib/services/schema/OptimizerSchemaService.ts</a></td>
+<td>Registry for <code>IOptimizerSchema</code> configurations</td>
+</tr>
+<tr>
+<td><code>OptimizerTemplateService</code></td>
+<td><a href="">src/lib/services/template/OptimizerTemplateService.ts</a></td>
+<td>Default implementations for 11 code generation methods</td>
+</tr>
+<tr>
+<td><code>OptimizerValidationService</code></td>
+<td><a href="">src/lib/services/validation/OptimizerValidationService.ts</a></td>
+<td>Validates optimizer existence before operations</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Related Pages:</strong></p>
+<ul>
+<li>Data collection implementation: see page 16.5.2</li>
+<li>Ollama API integration: see page 16.5.3</li>
+<li>Template methods and code sections: see page 16.5.4</li>
+<li><code>rangeTrain</code> and <code>rangeTest</code> configuration: see page 16.5.5</li>
+</ul>
+<p>&lt;/old_str&gt;</p>
+<p>&lt;old_str&gt;</p>
+<a id="clientoptimizer" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ClientOptimizer<a href="#clientoptimizer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientOptimizer</code> is the main client class that performs optimizer operations. It accepts <code>IOptimizerParams</code> (which extends <code>IOptimizerSchema</code> with <code>logger: ILogger</code> and complete <code>template: IOptimizerTemplate</code>) and an <code>onProgress</code> callback for progress emission via <code>progressOptimizerEmitter</code>.</p>
+<p><strong>Class Declaration:</strong></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">ClientOptimizer</span><span class="hl-1"> </span><span class="hl-7">implements</span><span class="hl-1"> </span><span class="hl-11">IOptimizer</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-11">IOptimizerParams</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-0">onProgress</span><span class="hl-1">: (</span><span class="hl-4">progress</span><span class="hl-1">: </span><span class="hl-11">ProgressOptimizerContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1">,</span><br/><span class="hl-1">  ) {}</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Constructor Parameters:</strong></p>
+<ul>
+<li><code>params: IOptimizerParams</code> - Configuration with resolved dependencies (logger, template, callbacks)</li>
+<li><code>onProgress: (progress: ProgressOptimizerContract) =&gt; void</code> - Progress event emitter that fires during data collection</li>
+</ul>
+<p><strong>Public Methods:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Implementation</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getData</code></td>
+<td><code>symbol: string</code></td>
+<td><code>Promise&lt;IOptimizerStrategy[]&gt;</code></td>
+<td><a href="">line 410-415</a></td>
+<td>Fetches data from all sources and generates strategy metadata with LLM conversation history</td>
+</tr>
+<tr>
+<td><code>getCode</code></td>
+<td><code>symbol: string</code></td>
+<td><code>Promise&lt;string&gt;</code></td>
+<td><a href="">line 424-429</a></td>
+<td>Generates complete executable <code>.mjs</code> file with 11 code sections</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>symbol: string, path?: string</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td><a href="">line 438-444</a></td>
+<td>Saves generated code to <code>{path}/{optimizerName}_{symbol}.mjs</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Internal Function Delegation:</strong></p>
+<p>The class delegates to three internal functions defined at module scope:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET_STRATEGY_DATA_FN</code></td>
+<td><a href="">line 99-215</a></td>
+<td>Iterates through <code>rangeTrain</code> × <code>source</code> combinations, paginates data, builds message history, calls <code>getPrompt()</code></td>
+</tr>
+<tr>
+<td><code>GET_STRATEGY_CODE_FN</code></td>
+<td><a href="">line 225-350</a></td>
+<td>Calls <code>getData()</code>, then assembles 11 code sections using template methods</td>
+</tr>
+<tr>
+<td><code>GET_STRATEGY_DUMP_FN</code></td>
+<td><a href="">line 360-384</a></td>
+<td>Calls <code>getCode()</code>, creates directory, writes file with <code>fs.writeFile()</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Helper Functions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Location</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DEFAULT_USER_FN</code></td>
+<td><a href="">line 34-41</a></td>
+<td>Delegates to <code>template.getUserMessage()</code> for default user message formatting</td>
+</tr>
+<tr>
+<td><code>DEFAULT_ASSISTANT_FN</code></td>
+<td><a href="">line 53-60</a></td>
+<td>Delegates to <code>template.getAssistantMessage()</code> for default assistant message formatting</td>
+</tr>
+<tr>
+<td><code>RESOLVE_PAGINATION_FN</code></td>
+<td><a href="">line 70-88</a></td>
+<td>Uses <code>iterateDocuments</code> and <code>distinctDocuments</code> from functools-kit for pagination with deduplication</td>
+</tr>
+<tr>
+<td><code>CREATE_PREFIX_FN</code></td>
+<td><a href="">line 22</a></td>
+<td>Generates random base36 prefix for generated code identifiers</td>
+</tr>
+</tbody>
+</table>
+<p>&lt;/old_str&gt;
+&lt;new_str&gt;
+The Optimizer system consists of four primary components organized in a layered architecture:</p>
+<a id="component-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Component Architecture<a href="#component-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Diagram: Optimizer Service Layer Hierarchy</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Architectural Patterns:</strong></p>
+<ol>
+<li>
+<p><strong>Memoization</strong>: <code>OptimizerConnectionService.getOptimizer()</code> caches <code>ClientOptimizer</code> instances by <code>optimizerName</code> using <code>memoize([optimizerName] =&gt; optimizerName)</code> from functools-kit <a href="">src/lib/services/connection/OptimizerConnectionService.ts:59-113</a></p>
+</li>
+<li>
+<p><strong>Template Merging</strong>: <code>OptimizerConnectionService</code> merges user-provided <code>Partial&lt;IOptimizerTemplate&gt;</code> from schema with <code>OptimizerTemplateService</code> defaults, ensuring all 11 methods have implementations <a href="">src/lib/services/connection/OptimizerConnectionService.ts:72-97</a></p>
+</li>
+<li>
+<p><strong>Validation Chain</strong>: <code>OptimizerGlobalService</code> calls <code>OptimizerValidationService.validate()</code> before delegating to <code>OptimizerConnectionService</code>, ensuring optimizer exists <a href="">src/lib/services/global/OptimizerGlobalService.ts:45-48</a></p>
+</li>
+<li>
+<p><strong>Function Delegation</strong>: <code>ClientOptimizer</code> public methods delegate to module-scoped functions (<code>GET_STRATEGY_DATA_FN</code>, <code>GET_STRATEGY_CODE_FN</code>, <code>GET_STRATEGY_DUMP_FN</code>) that accept <code>self: ClientOptimizer</code> as the last parameter <a href="">src/client/ClientOptimizer.ts:410-444</a></p>
+</li>
+</ol>
+<a id="data-flow-through-components" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Flow Through Components<a href="#data-flow-through-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><strong>Diagram: getData() Method Call Chain</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_1.svg" alt="Mermaid Diagram"></p>
+<a id="core-components" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Components<a href="#core-components" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="core-components-1" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Core Components<a href="#core-components-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="optimizerconnectionservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerConnectionService<a href="#optimizerconnectionservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>OptimizerConnectionService</code> implements the connection service pattern, providing memoized <code>ClientOptimizer</code> instances with template merging and dependency injection.</p>
+<p><strong>Class Structure:</strong></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">OptimizerConnectionService</span><span class="hl-1"> </span><span class="hl-7">implements</span><span class="hl-1"> </span><span class="hl-11">TOptimizer</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">optimizerSchemaService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">OptimizerSchemaService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">optimizerSchemaService</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">optimizerTemplateService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">OptimizerTemplateService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-4">getOptimizer</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">([</span><span class="hl-4">optimizerName</span><span class="hl-1">] </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">optimizerName</span><span class="hl-1">, ...);</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getData</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">optimizerName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getCode</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">optimizerName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">dump</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">optimizerName</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">?) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Dependency Injection:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Dependency</th>
+<th>TYPES Symbol</th>
+<th>Usage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LoggerService</code></td>
+<td><code>TYPES.loggerService</code></td>
+<td>Logging throughout the service layer</td>
+</tr>
+<tr>
+<td><code>OptimizerSchemaService</code></td>
+<td><code>TYPES.optimizerSchemaService</code></td>
+<td>Retrieving <code>IOptimizerSchema</code> by <code>optimizerName</code></td>
+</tr>
+<tr>
+<td><code>OptimizerTemplateService</code></td>
+<td><code>TYPES.optimizerTemplateService</code></td>
+<td>Default <code>IOptimizerTemplate</code> method implementations</td>
+</tr>
+</tbody>
+</table>
+<p><strong>getOptimizer Method:</strong></p>
+<p>The <code>getOptimizer</code> method uses memoization to cache <code>ClientOptimizer</code> instances per <code>optimizerName</code> <a href="">src/lib/services/connection/OptimizerConnectionService.ts:59-113</a>:</p>
+<p><strong>Template Merging Algorithm:</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> { </span><span class="hl-8">getPrompt</span><span class="hl-1">, </span><span class="hl-8">rangeTest</span><span class="hl-1">, </span><span class="hl-8">rangeTrain</span><span class="hl-1">, </span><span class="hl-8">source</span><span class="hl-1">, </span><span class="hl-4">template</span><span class="hl-1">: </span><span class="hl-8">rawTemplate</span><span class="hl-1"> = {}, </span><span class="hl-8">callbacks</span><span class="hl-1"> } = </span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerSchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Destructure with defaults</span><br/><span class="hl-7">const</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-8">getAssistantMessage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getAssistantMessage</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getExchangeTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getExchangeTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getFrameTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getFrameTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getJsonDumpTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getJsonDumpTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getJsonTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getJsonTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getLauncherTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getLauncherTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getStrategyTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getStrategyTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getTextTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getTextTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getTopBanner</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getTopBanner</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getUserMessage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getUserMessage</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getWalkerTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getWalkerTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">} = </span><span class="hl-4">rawTemplate</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">template</span><span class="hl-1">: </span><span class="hl-11">IOptimizerTemplate</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">getAssistantMessage</span><span class="hl-1">, </span><span class="hl-4">getExchangeTemplate</span><span class="hl-1">, </span><span class="hl-4">getFrameTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getJsonDumpTemplate</span><span class="hl-1">, </span><span class="hl-4">getJsonTemplate</span><span class="hl-1">, </span><span class="hl-4">getLauncherTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getStrategyTemplate</span><span class="hl-1">, </span><span class="hl-4">getTextTemplate</span><span class="hl-1">, </span><span class="hl-4">getTopBanner</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getUserMessage</span><span class="hl-1">, </span><span class="hl-4">getWalkerTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ClientOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName</span><span class="hl-1">, </span><span class="hl-4">logger:</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">, </span><span class="hl-4">getPrompt</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTest</span><span class="hl-1">, </span><span class="hl-4">rangeTrain</span><span class="hl-1">, </span><span class="hl-4">source</span><span class="hl-1">, </span><span class="hl-4">template</span><span class="hl-1">, </span><span class="hl-4">callbacks</span><br/><span class="hl-1">}, </span><span class="hl-8">COMMIT_PROGRESS_FN</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This destructuring pattern ensures:</p>
+<ul>
+<li>User-provided methods from <code>schema.template</code> take precedence</li>
+<li>Missing methods fall back to <code>OptimizerTemplateService</code> defaults</li>
+<li>All 11 required <code>IOptimizerTemplate</code> methods are present</li>
+<li>Type safety enforced by <code>IOptimizerTemplate</code> interface</li>
+</ul>
+<p><strong>Progress Emission:</strong></p>
+<p><code>COMMIT_PROGRESS_FN</code> emits <code>ProgressOptimizerContract</code> events to <code>progressOptimizerEmitter</code> <a href="">src/lib/services/connection/OptimizerConnectionService.ts:20-21</a>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">COMMIT_PROGRESS_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">progress</span><span class="hl-1">: </span><span class="hl-11">ProgressOptimizerContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><br/><span class="hl-1">  </span><span class="hl-4">progressOptimizerEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">progress</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Public Methods:</strong></p>
+<p>All three public methods follow the same pattern: retrieve memoized <code>ClientOptimizer</code> instance, then delegate:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Lines</th>
+<th>Delegation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getData</code></td>
+<td><a href="">122-132</a></td>
+<td><code>optimizer.getData(symbol)</code></td>
+</tr>
+<tr>
+<td><code>getCode</code></td>
+<td><a href="">141-151</a></td>
+<td><code>optimizer.getCode(symbol)</code></td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><a href="">160-171</a></td>
+<td><code>optimizer.dump(symbol, path)</code></td>
+</tr>
+</tbody>
+</table>
+<a id="optimizertemplateservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerTemplateService<a href="#optimizertemplateservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>OptimizerTemplateService</code> implements <code>IOptimizerTemplate</code>, providing default code generation methods that output TypeScript/JavaScript code snippets.</p>
+<p><strong>Implementation:</strong></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">OptimizerTemplateService</span><span class="hl-1"> </span><span class="hl-7">implements</span><span class="hl-1"> </span><span class="hl-11">IOptimizerTemplate</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">loggerService</span><span class="hl-1"> = </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getTopBanner</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getUserMessage</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getAssistantMessage</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">data</span><span class="hl-1">, </span><span class="hl-4">name</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...};</span><br/><span class="hl-1">  </span><span class="hl-5">// ... 8 more methods</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Template Methods:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Lines</th>
+<th>Generated Code</th>
+<th>Parameters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getTopBanner</code></td>
+<td><a href="">36-66</a></td>
+<td>Shebang, imports, <code>WARN_KB</code> constant</td>
+<td><code>symbol</code></td>
+</tr>
+<tr>
+<td><code>getUserMessage</code></td>
+<td><a href="">77-88</a></td>
+<td>Default LLM user prompt with data</td>
+<td><code>symbol, data[], name</code></td>
+</tr>
+<tr>
+<td><code>getAssistantMessage</code></td>
+<td><a href="">99-110</a></td>
+<td>Default LLM assistant response</td>
+<td><code>symbol, data[], name</code></td>
+</tr>
+<tr>
+<td><code>getWalkerTemplate</code></td>
+<td><a href="">122-157</a></td>
+<td><code>addWalker({...})</code> call</td>
+<td><code>walkerName, exchangeName, frameName, strategies[]</code></td>
+</tr>
+<tr>
+<td><code>getStrategyTemplate</code></td>
+<td><a href="">168-304</a></td>
+<td><code>addStrategy({...})</code> with multi-timeframe <code>getSignal</code></td>
+<td><code>strategyName, interval, prompt</code></td>
+</tr>
+<tr>
+<td><code>getExchangeTemplate</code></td>
+<td><a href="">314-342</a></td>
+<td><code>addExchange({...})</code> with CCXT Binance</td>
+<td><code>symbol, exchangeName</code></td>
+</tr>
+<tr>
+<td><code>getFrameTemplate</code></td>
+<td><a href="">354-385</a></td>
+<td><code>addFrame({...})</code> with dates</td>
+<td><code>symbol, frameName, interval, startDate, endDate</code></td>
+</tr>
+<tr>
+<td><code>getLauncherTemplate</code></td>
+<td><a href="">395-443</a></td>
+<td><code>Walker.background()</code> + event listeners</td>
+<td><code>symbol, walkerName</code></td>
+</tr>
+<tr>
+<td><code>getTextTemplate</code></td>
+<td><a href="">555-612</a></td>
+<td><code>async function text(messages)</code></td>
+<td><code>symbol</code></td>
+</tr>
+<tr>
+<td><code>getJsonTemplate</code></td>
+<td><a href="">629-712</a></td>
+<td><code>async function json(messages)</code> with schema</td>
+<td><code>symbol</code></td>
+</tr>
+<tr>
+<td><code>getJsonDumpTemplate</code></td>
+<td><a href="">452-546</a></td>
+<td><code>async function dumpJson(...)</code></td>
+<td><code>symbol</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Escape Sequence Pattern:</strong></p>
+<p>All template methods escape user inputs to prevent code injection <a href="">src/lib/services/template/OptimizerTemplateService.ts:136-147</a>, <a href="">183-192</a>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">escapedStrategyName</span><span class="hl-1"> = </span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/</span><span class="hl-14">\\</span><span class="hl-15">/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-14">\\\\</span><span class="hl-2">&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/&quot;/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-14">\\</span><span class="hl-2">&quot;&#39;</span><span class="hl-1">);</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">escapedPrompt</span><span class="hl-1"> = </span><span class="hl-0">String</span><span class="hl-1">(</span><span class="hl-4">plainPrompt</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/</span><span class="hl-14">\\</span><span class="hl-15">/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-14">\\\\</span><span class="hl-2">&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/`/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-14">\\</span><span class="hl-2">`&#39;</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">replace</span><span class="hl-1">(</span><span class="hl-15">/</span><span class="hl-14">\$</span><span class="hl-15">/</span><span class="hl-7">g</span><span class="hl-1">, </span><span class="hl-2">&#39;</span><span class="hl-14">\\</span><span class="hl-2">$&#39;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Multi-Timeframe getSignal Function:</strong></p>
+<p><code>getStrategyTemplate</code> generates a <code>getSignal</code> implementation that performs 4-stage analysis <a href="">src/lib/services/template/OptimizerTemplateService.ts:202-300</a>:</p>
+<ol>
+<li>
+<p><strong>Candle Fetching</strong> <a href="">202-205</a>:</p>
+<pre><code class="javascript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">microTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1m&quot;</span><span class="hl-1">, </span><span class="hl-6">30</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mainTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;5m&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">shortTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;15m&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">mediumTermCandles</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">getCandles</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-2">&quot;1h&quot;</span><span class="hl-1">, </span><span class="hl-6">24</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong>Message Building</strong> <a href="">214-276</a>: Four user/assistant message pairs for 1h → 15m → 5m → 1m analysis</p>
+</li>
+<li>
+<p><strong>Signal Generation</strong> <a href="">279-290</a>: Final LLM prompt with strategy description</p>
+</li>
+<li>
+<p><strong>Result Processing</strong> <a href="">294-300</a>: UUID generation, JSON signal, and <code>dumpJson</code> call</p>
+</li>
+</ol>
+<a id="clientoptimizer-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ClientOptimizer<a href="#clientoptimizer-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientOptimizer</code> implements <code>IOptimizer</code>, delegating operations to module-scoped functions with <code>self: ClientOptimizer</code> context.</p>
+<p><strong>Class Structure:</strong></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">ClientOptimizer</span><span class="hl-1"> </span><span class="hl-7">implements</span><span class="hl-1"> </span><span class="hl-11">IOptimizer</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-4">params</span><span class="hl-1">: </span><span class="hl-11">IOptimizerParams</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-7">readonly</span><span class="hl-1"> </span><span class="hl-0">onProgress</span><span class="hl-1">: (</span><span class="hl-4">progress</span><span class="hl-1">: </span><span class="hl-11">ProgressOptimizerContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1">,</span><br/><span class="hl-1">  ) {}</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getData</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">GET_STRATEGY_DATA_FN</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-7">this</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">getCode</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">GET_STRATEGY_CODE_FN</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-7">this</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">dump</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1"> = </span><span class="hl-2">&quot;./&quot;</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">GET_STRATEGY_DUMP_FN</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">path</span><span class="hl-1">, </span><span class="hl-7">this</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Constructor Parameters:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>params</code></td>
+<td><code>IOptimizerParams</code></td>
+<td>Extends <code>IOptimizerSchema</code> with <code>logger: ILogger</code> and complete <code>template: IOptimizerTemplate</code></td>
+</tr>
+<tr>
+<td><code>onProgress</code></td>
+<td><code>(progress: ProgressOptimizerContract) =&gt; void</code></td>
+<td>Callback for emitting progress via <code>progressOptimizerEmitter</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>IOptimizerParams Interface:</strong></p>
+<p><a href="">src/interfaces/Optimizer.interface.ts:438-451</a></p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IOptimizerParams</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IOptimizerSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">logger</span><span class="hl-1">: </span><span class="hl-11">ILogger</span><span class="hl-1">;              </span><span class="hl-5">// Injected by OptimizerConnectionService</span><br/><span class="hl-1">  </span><span class="hl-4">template</span><span class="hl-1">: </span><span class="hl-11">IOptimizerTemplate</span><span class="hl-1">; </span><span class="hl-5">// Merged from schema + defaults</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Internal Function Delegation:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Lines</th>
+<th>Operation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET_STRATEGY_DATA_FN</code></td>
+<td><a href="">99-215</a></td>
+<td>Iterates <code>rangeTrain</code> × <code>source</code>, fetches data with pagination, builds <code>MessageModel[]</code> arrays, calls <code>getPrompt()</code></td>
+</tr>
+<tr>
+<td><code>GET_STRATEGY_CODE_FN</code></td>
+<td><a href="">225-350</a></td>
+<td>Calls <code>getData()</code>, assembles 11 code sections using template methods, joins with newlines</td>
+</tr>
+<tr>
+<td><code>GET_STRATEGY_DUMP_FN</code></td>
+<td><a href="">360-384</a></td>
+<td>Calls <code>getCode()</code>, creates directory with <code>mkdir({recursive: true})</code>, writes <code>.mjs</code> file</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Helper Functions:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Lines</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DEFAULT_USER_FN</code></td>
+<td><a href="">34-41</a></td>
+<td>Delegates to <code>template.getUserMessage(symbol, data, name)</code></td>
+</tr>
+<tr>
+<td><code>DEFAULT_ASSISTANT_FN</code></td>
+<td><a href="">53-60</a></td>
+<td>Delegates to <code>template.getAssistantMessage(symbol, data, name)</code></td>
+</tr>
+<tr>
+<td><code>RESOLVE_PAGINATION_FN</code></td>
+<td><a href="">70-88</a></td>
+<td>Uses <code>iterateDocuments</code> + <code>distinctDocuments</code> from functools-kit for paginated fetching with deduplication by <code>data.id</code></td>
+</tr>
+<tr>
+<td><code>CREATE_PREFIX_FN</code></td>
+<td><a href="">22</a></td>
+<td>Generates random base36 string for identifier prefixes: <code>(Math.random() + 1).toString(36).substring(7)</code></td>
+</tr>
+</tbody>
+</table>
+<a id="operation-execution-flows" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Operation Execution Flows<a href="#operation-execution-flows" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="getdata-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getData Flow<a href="#getdata-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Diagram: GET_STRATEGY_DATA_FN Execution</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Data Structures:</strong></p>
+<p><code>IOptimizerStrategy</code> <a href="">src/interfaces/Optimizer.interface.ts:100-123</a>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">name</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">messages</span><span class="hl-1">: </span><span class="hl-4">MessageModel</span><span class="hl-1">[];  </span><span class="hl-5">// Full conversation history</span><br/><span class="hl-1">  </span><span class="hl-10">strategy</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;          </span><span class="hl-5">// Output from getPrompt()</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><code>ProgressOptimizerContract</code> <a href="">src/contract/ProgressOptimizer.contract.ts</a>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">optimizerName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">totalSources</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">processedSources</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-10">progress</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">;  </span><span class="hl-5">// 0.0 to 1.0</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>RESOLVE_PAGINATION_FN Implementation:</strong></p>
+<p><a href="">src/client/ClientOptimizer.ts:70-88</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-0">RESOLVE_PAGINATION_FN</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> &lt;</span><span class="hl-11">Data</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IOptimizerData</span><span class="hl-1"> = </span><span class="hl-11">any</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  </span><span class="hl-4">fetch</span><span class="hl-1">: </span><span class="hl-11">IOptimizerSourceFn</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">filterData</span><span class="hl-1">: </span><span class="hl-11">IOptimizerFilterArgs</span><br/><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">iterator</span><span class="hl-1"> = </span><span class="hl-0">iterateDocuments</span><span class="hl-1">&lt;</span><span class="hl-11">Data</span><span class="hl-1">&gt;({</span><br/><span class="hl-1">    </span><span class="hl-4">limit:</span><span class="hl-1"> </span><span class="hl-8">ITERATION_LIMIT</span><span class="hl-1">,  </span><span class="hl-5">// 25</span><br/><span class="hl-1">    </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">createRequest</span><span class="hl-1">({ </span><span class="hl-4">limit</span><span class="hl-1">, </span><span class="hl-4">offset</span><span class="hl-1"> }) {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">fetch</span><span class="hl-1">({</span><br/><span class="hl-1">        </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-4">filterData</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">startDate:</span><span class="hl-1"> </span><span class="hl-4">filterData</span><span class="hl-1">.</span><span class="hl-4">startDate</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">endDate:</span><span class="hl-1"> </span><span class="hl-4">filterData</span><span class="hl-1">.</span><span class="hl-4">endDate</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">limit</span><span class="hl-1">,</span><br/><span class="hl-1">        </span><span class="hl-4">offset</span><span class="hl-1">,</span><br/><span class="hl-1">      });</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">distinct</span><span class="hl-1"> = </span><span class="hl-0">distinctDocuments</span><span class="hl-1">(</span><span class="hl-4">iterator</span><span class="hl-1">, (</span><span class="hl-4">data</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">id</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">resolveDocuments</span><span class="hl-1">(</span><span class="hl-4">distinct</span><span class="hl-1">);</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Implementation Steps:</strong></p>
+<ol>
+<li>
+<p><strong>Progress Initialization</strong> <a href="">line 101-102</a>: Calculate total data collection operations:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">totalSources</span><span class="hl-1"> = </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">rangeTrain</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> * </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">source</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1">;</span><br/><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">processedSources</span><span class="hl-1"> = </span><span class="hl-6">0</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong>Range Iteration</strong> <a href="">line 104-198</a>: For each <code>IOptimizerRange</code> in <code>rangeTrain</code>, create fresh <code>messageList: MessageModel[]</code> to accumulate conversation history</p>
+</li>
+<li>
+<p><strong>Progress Emission</strong> <a href="">line 108-114</a>: Emit progress before processing each source:</p>
+<pre><code class="typescript"><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-0">onProgress</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">optimizerName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">totalSources</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">processedSources</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">progress:</span><span class="hl-1"> </span><span class="hl-4">totalSources</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> ? </span><span class="hl-4">processedSources</span><span class="hl-1"> / </span><span class="hl-4">totalSources</span><span class="hl-1"> : </span><span class="hl-6">0</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><strong>Pagination with Deduplication</strong> <a href="">line 70-88</a>: Use functools-kit utilities:</p>
+<ul>
+<li><code>iterateDocuments</code> with <code>limit: ITERATION_LIMIT</code> (25) for automatic pagination</li>
+<li><code>distinctDocuments(iterator, (data) =&gt; data.id)</code> to remove duplicates by <code>id</code> field</li>
+<li><code>resolveDocuments</code> to materialize async iterator into array</li>
+</ul>
+</li>
+<li>
+<p><strong>Message Formatting</strong> <a href="">line 132-145, 172-184</a>: Format data into user/assistant message pairs using custom or default formatters</p>
+</li>
+<li>
+<p><strong>Strategy Generation</strong> <a href="">line 196</a>: Call user-provided <code>getPrompt(symbol, messageList)</code> to generate strategy description from conversation context</p>
+</li>
+<li>
+<p><strong>Result Aggregation</strong> <a href="">line 192-197</a>: Push <code>IOptimizerStrategy</code> object with <code>symbol</code>, <code>name</code>, <code>messages</code>, and <code>strategy</code> fields</p>
+</li>
+<li>
+<p><strong>Callback Invocation</strong> <a href="">line 210-212</a>: If <code>callbacks?.onData</code> is provided, invoke with complete strategy list</p>
+</li>
+</ol>
+<p><strong>Data Structures:</strong></p>
+<ul>
+<li>
+<p><code>IOptimizerStrategy</code> <a href="">line 192-197</a>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">name</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">messages</span><span class="hl-1">: </span><span class="hl-4">MessageModel</span><span class="hl-1">[],  </span><span class="hl-5">// Full conversation history</span><br/><span class="hl-1">  </span><span class="hl-10">strategy</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">           </span><span class="hl-5">// Output from getPrompt()</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+<li>
+<p><code>ProgressOptimizerContract</code> <a href="">line 108-114</a>:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">optimizerName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">totalSources</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">processedSources</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-10">progress</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">  </span><span class="hl-5">// 0.0 to 1.0</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+</li>
+</ul>
+<a id="optimizerschemaservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">OptimizerSchemaService<a href="#optimizerschemaservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>OptimizerSchemaService</code> is a standard schema service that maintains a registry mapping <code>optimizerName</code> to <code>IOptimizerSchema</code>. It follows the same pattern as other schema services in the codebase (<code>StrategySchemaService</code>, <code>ExchangeSchemaService</code>, etc.).</p>
+<p>For schema service architecture details, see <a href="design_43_schema_services.html">Schema Services</a>.</p>
+<a id="template-merging-pattern" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Template Merging Pattern<a href="#template-merging-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>OptimizerConnectionService.getOptimizer()</code> merges user-provided <code>Partial&lt;IOptimizerTemplate&gt;</code> with <code>OptimizerTemplateService</code> defaults using destructuring assignment <a href="">src/lib/services/connection/OptimizerConnectionService.ts:62-97</a>.</p>
+<p><strong>Diagram: Template Merging Process</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Implementation:</strong></p>
+<p><a href="">src/lib/services/connection/OptimizerConnectionService.ts:62-97</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-8">getPrompt</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">rangeTest</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">rangeTrain</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">source</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">template</span><span class="hl-1">: </span><span class="hl-8">rawTemplate</span><span class="hl-1"> = {},  </span><span class="hl-5">// Partial&lt;IOptimizerTemplate&gt; from schema</span><br/><span class="hl-1">  </span><span class="hl-8">callbacks</span><span class="hl-1">,</span><br/><span class="hl-1">} = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerSchemaService</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">optimizerName</span><span class="hl-1">);</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-8">getAssistantMessage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getAssistantMessage</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getExchangeTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getExchangeTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getFrameTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getFrameTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getJsonDumpTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getJsonDumpTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getJsonTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getJsonTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getLauncherTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getLauncherTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getStrategyTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getStrategyTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getTextTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getTextTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getTopBanner</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getTopBanner</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getUserMessage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getUserMessage</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-8">getWalkerTemplate</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">optimizerTemplateService</span><span class="hl-1">.</span><span class="hl-4">getWalkerTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">} = </span><span class="hl-4">rawTemplate</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">template</span><span class="hl-1">: </span><span class="hl-11">IOptimizerTemplate</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">getAssistantMessage</span><span class="hl-1">, </span><span class="hl-4">getExchangeTemplate</span><span class="hl-1">, </span><span class="hl-4">getFrameTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getJsonDumpTemplate</span><span class="hl-1">, </span><span class="hl-4">getJsonTemplate</span><span class="hl-1">, </span><span class="hl-4">getLauncherTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getStrategyTemplate</span><span class="hl-1">, </span><span class="hl-4">getTextTemplate</span><span class="hl-1">, </span><span class="hl-4">getTopBanner</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">getUserMessage</span><span class="hl-1">, </span><span class="hl-4">getWalkerTemplate</span><span class="hl-1">,</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Pattern Benefits:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Benefit</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Partial Overrides</strong></td>
+<td>Users specify only methods they want to customize, not all 11</td>
+</tr>
+<tr>
+<td><strong>Type Safety</strong></td>
+<td>TypeScript enforces <code>IOptimizerTemplate</code> interface, ensuring all methods exist</td>
+</tr>
+<tr>
+<td><strong>No Runtime Errors</strong></td>
+<td>Destructuring with defaults guarantees no <code>undefined</code> methods</td>
+</tr>
+<tr>
+<td><strong>Consistent Interface</strong></td>
+<td><code>ClientOptimizer</code> always receives complete <code>IOptimizerTemplate</code> object</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example Usage:</strong></p>
+<pre><code class="typescript"><span class="hl-0">addOptimizer</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">optimizerName:</span><span class="hl-1"> </span><span class="hl-2">&quot;custom_opt&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTrain:</span><span class="hl-1"> [...],</span><br/><span class="hl-1">  </span><span class="hl-4">rangeTest:</span><span class="hl-1"> {...},</span><br/><span class="hl-1">  </span><span class="hl-4">source:</span><span class="hl-1"> [...],</span><br/><span class="hl-1">  </span><span class="hl-0">getPrompt</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">messages</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {...},</span><br/><span class="hl-1">  </span><span class="hl-4">template:</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Override only strategy template, use defaults for other 10 methods</span><br/><span class="hl-1">    </span><span class="hl-0">getStrategyTemplate</span><span class="hl-4">:</span><span class="hl-1"> </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">name</span><span class="hl-1">, </span><span class="hl-4">interval</span><span class="hl-1">, </span><span class="hl-4">prompt</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`addStrategy({strategyName: &quot;</span><span class="hl-7">${</span><span class="hl-4">name</span><span class="hl-7">}</span><span class="hl-2">&quot;, ...customLogic});`</span><span class="hl-1">;</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="getdata-method-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getData Method Flow<a href="#getdata-method-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getData</code> method collects data from all configured sources and builds LLM conversation histories for strategy generation.</p>
+<p><img src="../media/91_Optimizer_Architecture_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Steps:</strong></p>
+<ol>
+<li><strong>Progress Initialization</strong>: Calculate <code>totalSources = rangeTrain.length * source.length</code> <a href="">src/client/ClientOptimizer.ts:101-102</a></li>
+<li><strong>Range Iteration</strong>: For each training range, create a fresh <code>messageList</code> <a href="">src/client/ClientOptimizer.ts:104-105</a></li>
+<li><strong>Source Processing</strong>: For each source, emit progress, paginate data, format messages <a href="">src/client/ClientOptimizer.ts:107-186</a></li>
+<li><strong>Pagination</strong>: Use <code>iterateDocuments</code> from <code>functools-kit</code> with <code>distinctDocuments</code> for deduplication <a href="">src/client/ClientOptimizer.ts:70-88</a></li>
+<li><strong>Message Formatting</strong>: Call user/assistant formatters, append to conversation history <a href="">src/client/ClientOptimizer.ts:132-145</a></li>
+<li><strong>Strategy Generation</strong>: Call <code>getPrompt()</code> with complete message history <a href="">src/client/ClientOptimizer.ts:196</a></li>
+<li><strong>Callback Execution</strong>: Invoke <code>onData</code> callback if provided <a href="">src/client/ClientOptimizer.ts:210-212</a></li>
+</ol>
+<a id="getcode-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getCode Flow<a href="#getcode-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Diagram: GET_STRATEGY_CODE_FN Section Assembly</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_5.svg" alt="Mermaid Diagram"></p>
+<p><strong>Identifier Naming Convention:</strong></p>
+<p>All generated identifiers use a random base36 prefix to prevent collisions <a href="">src/client/ClientOptimizer.ts:228</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Entity</th>
+<th>Naming Pattern</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Exchange</td>
+<td><code>{prefix}_exchange</code></td>
+<td><code>x7kl9m_exchange</code></td>
+</tr>
+<tr>
+<td>Training Frame</td>
+<td><code>{prefix}_train_frame-{n}</code></td>
+<td><code>x7kl9m_train_frame-1</code></td>
+</tr>
+<tr>
+<td>Test Frame</td>
+<td><code>{prefix}_test_frame</code></td>
+<td><code>x7kl9m_test_frame</code></td>
+</tr>
+<tr>
+<td>Strategy</td>
+<td><code>{prefix}_strategy-{n}</code></td>
+<td><code>x7kl9m_strategy-1</code></td>
+</tr>
+<tr>
+<td>Walker</td>
+<td><code>{prefix}_walker</code></td>
+<td><code>x7kl9m_walker</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Section Order Table:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Order</th>
+<th>Lines</th>
+<th>Template Method</th>
+<th>Generated Code</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><a href="">233-236</a></td>
+<td><code>getTopBanner</code></td>
+<td><code>#!/usr/bin/env node</code>, imports, <code>WARN_KB</code> constant</td>
+</tr>
+<tr>
+<td>2</td>
+<td><a href="">239-242</a></td>
+<td><code>getJsonDumpTemplate</code></td>
+<td><code>async function dumpJson(resultId, history, result)</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td><a href="">245-248</a></td>
+<td><code>getTextTemplate</code></td>
+<td><code>async function text(messages)</code> with Ollama deepseek-v3.1</td>
+</tr>
+<tr>
+<td>4</td>
+<td><a href="">250-253</a></td>
+<td><code>getJsonTemplate</code></td>
+<td><code>async function json(messages)</code> with JSON schema</td>
+</tr>
+<tr>
+<td>5</td>
+<td><a href="">256-264</a></td>
+<td><code>getExchangeTemplate</code></td>
+<td><code>addExchange({exchangeName, getCandles: ccxt.binance, ...})</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td><a href="">267-282</a></td>
+<td><code>getFrameTemplate</code> (loop)</td>
+<td><code>addFrame({frameName, interval: '1m', startDate, endDate})</code> × N</td>
+</tr>
+<tr>
+<td>7</td>
+<td><a href="">285-297</a></td>
+<td><code>getFrameTemplate</code></td>
+<td><code>addFrame({frameName: test_frame, ...})</code></td>
+</tr>
+<tr>
+<td>8</td>
+<td><a href="">300-314</a></td>
+<td><code>getStrategyTemplate</code> (loop)</td>
+<td><code>addStrategy({strategyName, interval: '5m', getSignal: async...})</code> × N</td>
+</tr>
+<tr>
+<td>9</td>
+<td><a href="">317-332</a></td>
+<td><code>getWalkerTemplate</code></td>
+<td><code>addWalker({walkerName, exchangeName, frameName, strategies: [...]})</code></td>
+</tr>
+<tr>
+<td>10</td>
+<td><a href="">335-341</a></td>
+<td><code>getLauncherTemplate</code></td>
+<td><code>Walker.background()</code>, <code>listenSignalBacktest()</code>, <code>listenWalkerComplete()</code>, etc.</td>
+</tr>
+</tbody>
+</table>
+<a id="dump-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dump Flow<a href="#dump-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Diagram: GET_STRATEGY_DUMP_FN File Write</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>File Path Construction:</strong></p>
+<p><a href="">src/client/ClientOptimizer.ts:367-373</a></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">dir</span><span class="hl-1"> = </span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">cwd</span><span class="hl-1">(), </span><span class="hl-4">path</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">mkdir</span><span class="hl-1">(</span><span class="hl-4">dir</span><span class="hl-1">, { </span><span class="hl-4">recursive:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> });</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">filename</span><span class="hl-1"> = </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">self</span><span class="hl-9">.</span><span class="hl-4">params</span><span class="hl-9">.</span><span class="hl-4">optimizerName</span><span class="hl-7">}</span><span class="hl-2">_</span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">.mjs`</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">filepath</span><span class="hl-1"> = </span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-4">dir</span><span class="hl-1">, </span><span class="hl-4">filename</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example Outputs:</strong></p>
+<table>
+<thead>
+<tr>
+<th>optimizerName</th>
+<th>symbol</th>
+<th>path</th>
+<th>Output File</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;trend_analyzer&quot;</code></td>
+<td><code>&quot;BTCUSDT&quot;</code></td>
+<td><code>&quot;./strategies&quot;</code></td>
+<td><code>{cwd}/strategies/trend_analyzer_BTCUSDT.mjs</code></td>
+</tr>
+<tr>
+<td><code>&quot;volume_strategy&quot;</code></td>
+<td><code>&quot;ETHUSDT&quot;</code></td>
+<td><code>&quot;./output&quot;</code></td>
+<td><code>{cwd}/output/volume_strategy_ETHUSDT.mjs</code></td>
+</tr>
+<tr>
+<td><code>&quot;custom_opt&quot;</code></td>
+<td><code>&quot;BNBUSDT&quot;</code></td>
+<td><code>&quot;./&quot;</code></td>
+<td><code>{cwd}/custom_opt_BNBUSDT.mjs</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Error Handling:</strong></p>
+<p>Try-catch block with three-step handling <a href="">src/client/ClientOptimizer.ts:367-383</a>:</p>
+<ol>
+<li><strong>Directory Creation</strong>: <code>mkdir(dir, {recursive: true})</code> creates parent directories if needed</li>
+<li><strong>File Write</strong>: <code>writeFile(filepath, report, &quot;utf-8&quot;)</code> writes complete code string</li>
+<li><strong>Error Logging</strong>: On failure, logs warning with <code>logger.warn()</code> and re-throws for upstream handling</li>
+</ol>
+<p><strong>Callback Invocation:</strong></p>
+<p><code>onDump</code> callback executes after successful file write <a href="">src/client/ClientOptimizer.ts:377-379</a>:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">callbacks</span><span class="hl-1">?.</span><span class="hl-4">onDump</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">self</span><span class="hl-1">.</span><span class="hl-4">params</span><span class="hl-1">.</span><span class="hl-4">callbacks</span><span class="hl-1">.</span><span class="hl-0">onDump</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">filepath</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="dependency-injection-and-service-registration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection and Service Registration<a href="#dependency-injection-and-service-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer system integrates with the broader dependency injection architecture through standard TYPES symbols and service registration.</p>
+<p><strong>TYPES Symbols:</strong></p>
+<p>The following symbols identify Optimizer-related services in the dependency injection container:</p>
+<ul>
+<li><code>TYPES.optimizerSchemaService</code> - Schema registry service</li>
+<li><code>TYPES.optimizerConnectionService</code> - Connection service with memoized client instances</li>
+<li><code>TYPES.optimizerTemplateService</code> - Default template implementation</li>
+</ul>
+<p><strong>Service Composition:</strong></p>
+<p><img src="../media/91_Optimizer_Architecture_7.svg" alt="Mermaid Diagram"></p>
+<p>The Optimizer services follow the same dependency injection pattern as other framework components. For comprehensive coverage of the DI system, see <a href="design_12_dependency_injection_system.html">Dependency Injection System</a>.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#optimizer-architecture"><span>Optimizer <wbr/>Architecture</span></a><a href="#optimizer-architecture-1"><span>Optimizer <wbr/>Architecture</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><ul><li><a href="#clientoptimizer"><span>Client<wbr/>Optimizer</span></a></li></ul></li><li><a href="#component-architecture"><span>Component <wbr/>Architecture</span></a></li><li><a href="#data-flow-through-components"><span>Data <wbr/>Flow <wbr/>Through <wbr/>Components</span></a></li><li><a href="#core-components"><span>Core <wbr/>Components</span></a></li><li><a href="#core-components-1"><span>Core <wbr/>Components</span></a></li><li><ul><li><a href="#optimizerconnectionservice"><span>Optimizer<wbr/>Connection<wbr/>Service</span></a></li><li><a href="#optimizertemplateservice"><span>Optimizer<wbr/>Template<wbr/>Service</span></a></li><li><a href="#clientoptimizer-1"><span>Client<wbr/>Optimizer</span></a></li></ul></li><li><a href="#operation-execution-flows"><span>Operation <wbr/>Execution <wbr/>Flows</span></a></li><li><ul><li><a href="#getdata-flow"><span>get<wbr/>Data <wbr/>Flow</span></a></li><li><a href="#optimizerschemaservice"><span>Optimizer<wbr/>Schema<wbr/>Service</span></a></li></ul></li><li><a href="#template-merging-pattern"><span>Template <wbr/>Merging <wbr/>Pattern</span></a></li><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><ul><li><a href="#getdata-method-flow"><span>get<wbr/>Data <wbr/>Method <wbr/>Flow</span></a></li><li><a href="#getcode-flow"><span>get<wbr/>Code <wbr/>Flow</span></a></li><li><a href="#dump-flow"><span>dump <wbr/>Flow</span></a></li></ul></li><li><a href="#dependency-injection-and-service-registration"><span>Dependency <wbr/>Injection and <wbr/>Service <wbr/>Registration</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

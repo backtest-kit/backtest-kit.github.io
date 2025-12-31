@@ -1,0 +1,436 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/32_client_implementations | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_32_client_implementations.html">design/32_client_implementations</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="client-implementations" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Client Implementations<a href="#client-implementations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This document describes the <strong>client implementation classes</strong> that form the core business logic layer of backtest-kit. Client implementations are concrete classes that execute trading operations: signal generation, market data fetching, risk validation, position sizing, partial profit tracking, and strategy optimization.</p>
+<p>For schema definitions that configure these clients, see <a href="design_24_component_schemas.html">Component Schemas</a>. For the service layer that routes operations to client instances, see <a href="design_40_service_layer.html">Service Layer</a>. For the signal lifecycle state machine, see <a href="design_48_signal_lifecycle.html">Signal Lifecycle</a>.</p>
+<hr>
+<a id="client-architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Client Architecture Overview<a href="#client-architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Client implementations sit between the <strong>connection service layer</strong> and the <strong>trading domain logic</strong>. They are instantiated by connection services and cached using memoization patterns to ensure singleton behavior per trading context.</p>
+<a id="system-layer-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">System Layer Hierarchy<a href="#system-layer-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="clientstrategy" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientStrategy<a href="#clientstrategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientStrategy</code> implements the <code>IStrategy</code> interface and is the most complex client class. It manages the complete signal lifecycle from generation through validation, monitoring, and closure.</p>
+<a id="core-responsibilities" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Responsibilities<a href="#core-responsibilities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>Methods</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal Generation</strong></td>
+<td><code>GET_SIGNAL_FN</code></td>
+<td>Calls user's <code>getSignal()</code> with throttling and timeout</td>
+</tr>
+<tr>
+<td><strong>Validation</strong></td>
+<td><code>VALIDATE_SIGNAL_FN</code></td>
+<td>Multi-layer validation: types, prices, logic, distance, time</td>
+</tr>
+<tr>
+<td><strong>State Machine</strong></td>
+<td><code>tick()</code>, <code>backtest()</code></td>
+<td>Manages transitions between idle → scheduled → pending → active → closed</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td><code>setPendingSignal()</code>, <code>setScheduledSignal()</code></td>
+<td>Atomic writes for crash recovery</td>
+</tr>
+<tr>
+<td><strong>Lifecycle Callbacks</strong></td>
+<td><code>onOpen</code>, <code>onActive</code>, <code>onClose</code>, <code>onSchedule</code>, <code>onCancel</code></td>
+<td>User event notifications</td>
+</tr>
+</tbody>
+</table>
+<a id="instance-creation-and-memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Instance Creation and Memoization<a href="#instance-creation-and-memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_1.svg" alt="Mermaid Diagram"></p>
+<a id="signal-validation-pipeline" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Validation Pipeline<a href="#signal-validation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientStrategy</code> performs extensive validation using <code>VALIDATE_SIGNAL_FN</code> before allowing signal creation. This function prevents logically impossible or financially dangerous signals.</p>
+<table>
+<thead>
+<tr>
+<th>Validation Category</th>
+<th>Checks Performed</th>
+<th>Example Rejection</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Required Fields</strong></td>
+<td><code>id</code>, <code>symbol</code>, <code>position</code>, <code>_isScheduled</code> must exist</td>
+<td><code>id === undefined</code></td>
+</tr>
+<tr>
+<td><strong>NaN/Infinity Protection</strong></td>
+<td>All prices and <code>currentPrice</code> must be finite numbers</td>
+<td><code>priceOpen === NaN</code></td>
+</tr>
+<tr>
+<td><strong>Positive Prices</strong></td>
+<td><code>priceOpen</code>, <code>priceTakeProfit</code>, <code>priceStopLoss</code> &gt; 0</td>
+<td><code>priceStopLoss === 0</code></td>
+</tr>
+<tr>
+<td><strong>Long Position Logic</strong></td>
+<td><code>priceTakeProfit &gt; priceOpen &gt; priceStopLoss</code></td>
+<td>TP=40000, Open=42000</td>
+</tr>
+<tr>
+<td><strong>Short Position Logic</strong></td>
+<td><code>priceStopLoss &gt; priceOpen &gt; priceTakeProfit</code></td>
+<td>SL=40000, Open=42000</td>
+</tr>
+<tr>
+<td><strong>Instant Closure Protection</strong></td>
+<td>Current price not already beyond TP/SL</td>
+<td>Long with <code>currentPrice &gt;= TP</code></td>
+</tr>
+<tr>
+<td><strong>Minimum TP Distance</strong></td>
+<td><code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> enforced</td>
+<td>TP only 0.05% from open</td>
+</tr>
+<tr>
+<td><strong>Minimum SL Distance</strong></td>
+<td><code>CC_MIN_STOPLOSS_DISTANCE_PERCENT</code> enforced</td>
+<td>SL only 0.01% from open</td>
+</tr>
+<tr>
+<td><strong>Maximum SL Distance</strong></td>
+<td><code>CC_MAX_STOPLOSS_DISTANCE_PERCENT</code> enforced</td>
+<td>SL 50% away from open</td>
+</tr>
+<tr>
+<td><strong>Time Validation</strong></td>
+<td><code>minuteEstimatedTime</code> must be positive integer</td>
+<td><code>minuteEstimatedTime === 0</code></td>
+</tr>
+<tr>
+<td><strong>Maximum Lifetime</strong></td>
+<td><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code> enforced</td>
+<td><code>minuteEstimatedTime &gt; 10080</code> (7 days)</td>
+</tr>
+</tbody>
+</table>
+<a id="signal-generation-with-throttling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Generation with Throttling<a href="#signal-generation-with-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_2.svg" alt="Mermaid Diagram"></p>
+<a id="scheduled-signal-activation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Scheduled Signal Activation Logic<a href="#scheduled-signal-activation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Scheduled signals (limit orders) require special handling for activation and cancellation. The logic checks both price conditions and stop loss violations.</p>
+<p><img src="../media/32_Client_Implementations_3.svg" alt="Mermaid Diagram"></p>
+<a id="method-reference" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Reference<a href="#method-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Signature</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>tick()</code></td>
+<td><code>(symbol, strategyName) =&gt; Promise&lt;IStrategyTickResult&gt;</code></td>
+<td>Single execution cycle for live trading</td>
+</tr>
+<tr>
+<td><code>backtest()</code></td>
+<td><code>(symbol, strategyName, candles) =&gt; Promise&lt;IStrategyBacktestResult&gt;</code></td>
+<td>Fast-forward through historical candles</td>
+</tr>
+<tr>
+<td><code>waitForInit()</code></td>
+<td><code>() =&gt; Promise&lt;void&gt;</code></td>
+<td>Load persisted state from disk (live mode only)</td>
+</tr>
+<tr>
+<td><code>getPendingSignal()</code></td>
+<td><code>(symbol, strategyName) =&gt; Promise&lt;ISignalRow | null&gt;</code></td>
+<td>Retrieve active pending signal</td>
+</tr>
+<tr>
+<td><code>stop()</code></td>
+<td><code>(symbol, strategyName, backtest) =&gt; Promise&lt;void&gt;</code></td>
+<td>Prevent new signal generation</td>
+</tr>
+<tr>
+<td><code>setPendingSignal()</code></td>
+<td><code>(signal) =&gt; Promise&lt;void&gt;</code></td>
+<td>Persist pending signal atomically</td>
+</tr>
+<tr>
+<td><code>setScheduledSignal()</code></td>
+<td><code>(signal) =&gt; Promise&lt;void&gt;</code></td>
+<td>Persist scheduled signal atomically</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="clientexchange" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientExchange<a href="#clientexchange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientExchange</code> implements the <code>IExchange</code> interface and provides market data with temporal isolation guarantees.</p>
+<a id="core-responsibilities-1" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Responsibilities<a href="#core-responsibilities-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>Methods</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Candle Fetching</strong></td>
+<td><code>getCandles()</code></td>
+<td>Retrieves historical OHLCV data with temporal bounds</td>
+</tr>
+<tr>
+<td><strong>VWAP Calculation</strong></td>
+<td><code>getAveragePrice()</code></td>
+<td>Volume-weighted average of last N candles</td>
+</tr>
+<tr>
+<td><strong>Price Formatting</strong></td>
+<td><code>formatPrice()</code>, <code>formatQuantity()</code></td>
+<td>Display formatting for UI</td>
+</tr>
+<tr>
+<td><strong>Temporal Isolation</strong></td>
+<td>Context awareness</td>
+<td>Prevents look-ahead bias via <code>ExecutionContextService</code></td>
+</tr>
+</tbody>
+</table>
+<a id="vwap-pricing-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">VWAP Pricing Implementation<a href="#vwap-pricing-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system uses <strong>Volume Weighted Average Price (VWAP)</strong> instead of simple close prices for realistic execution simulation. VWAP is calculated from the last <code>CC_AVG_PRICE_CANDLES_COUNT</code> (default: 5) one-minute candles.</p>
+<p><img src="../media/32_Client_Implementations_4.svg" alt="Mermaid Diagram"></p>
+<p>**Formula (from <a href="">src/client/ClientStrategy.ts:478-489</a>):</p>
+<pre><code><span class="hl-4">typicalPrice</span><span class="hl-1"> = (</span><span class="hl-4">high</span><span class="hl-1"> + </span><span class="hl-4">low</span><span class="hl-1"> + </span><span class="hl-4">close</span><span class="hl-1">) / </span><span class="hl-6">3</span><br/><span class="hl-4">sumPriceVolume</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">typicalPrice</span><span class="hl-1"> × </span><span class="hl-4">volume</span><span class="hl-1">)</span><br/><span class="hl-4">totalVolume</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">volume</span><span class="hl-1">)</span><br/><span class="hl-8">VWAP</span><span class="hl-1"> = </span><span class="hl-4">sumPriceVolume</span><span class="hl-1"> / </span><span class="hl-4">totalVolume</span>
+</code><button>Copy</button></pre>
+
+<p>If <code>totalVolume === 0</code>, fallback to simple average: <code>Σ(close) / candles.length</code></p>
+<a id="temporal-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Temporal Isolation<a href="#temporal-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientExchange.getCandles()</code> uses <code>ExecutionContextService</code> to enforce temporal bounds. In backtest mode, it <strong>never returns data from the future</strong>, preventing look-ahead bias.</p>
+<hr>
+<a id="clientrisk" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientRisk<a href="#clientrisk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientRisk</code> implements the <code>IRisk</code> interface and enforces portfolio-level constraints through validation chains.</p>
+<a id="core-responsibilities-2" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Responsibilities<a href="#core-responsibilities-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Responsibility</th>
+<th>Methods</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Signal Validation</strong></td>
+<td><code>checkSignal()</code></td>
+<td>Runs validation chain against pending signal</td>
+</tr>
+<tr>
+<td><strong>Position Tracking</strong></td>
+<td><code>addSignal()</code>, <code>removeSignal()</code></td>
+<td>Tracks active positions per strategy</td>
+</tr>
+<tr>
+<td><strong>Persistence</strong></td>
+<td>Via <code>PersistRiskAdapter</code></td>
+<td>Atomic state saves for crash recovery</td>
+</tr>
+<tr>
+<td><strong>Validation Callbacks</strong></td>
+<td><code>onAllowed</code>, <code>onRejected</code></td>
+<td>User notifications for validation results</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-chain-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Chain Execution<a href="#validation-chain-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_5.svg" alt="Mermaid Diagram"></p>
+<a id="position-tracking-with-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Tracking with Persistence<a href="#position-tracking-with-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>ClientRisk</code> maintains <code>_activePositionsMap</code> to track concurrent positions per strategy. This enables <code>maxConcurrentPositions</code> enforcement and portfolio-level risk management.</p>
+<p><strong>Data Structure:</strong></p>
+<pre><code class="typescript"><span class="hl-4">_activePositionsMap</span><span class="hl-1"> = </span><span class="hl-4">Map</span><span class="hl-1">&lt;</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">Set</span><span class="hl-1">&lt;</span><span class="hl-4">strategyIdentifier</span><span class="hl-1">&gt;&gt;</span><br/><span class="hl-5">// Example: Map { &quot;BTCUSDT&quot; =&gt; Set { &quot;strategy1:riskA&quot;, &quot;strategy2:riskA&quot; } }</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Persistence:</strong> State saved to <code>./dump/data/risk/{riskName}.json</code> via <code>PersistRiskAdapter</code> after every <code>addSignal()</code> or <code>removeSignal()</code> call.</p>
+<hr>
+<a id="clientsizing" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientSizing<a href="#clientsizing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientSizing</code> implements the <code>ISizing</code> interface and calculates position sizes based on account balance and risk parameters.</p>
+<a id="sizing-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Sizing Methods<a href="#sizing-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Formula</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Fixed Percentage</strong></td>
+<td><code>position = balance × fixedPercent / 100</code></td>
+<td>Conservative, predictable sizing</td>
+</tr>
+<tr>
+<td><strong>Kelly Criterion</strong></td>
+<td><code>f* = (p × b - q) / b</code><br/>where p=winRate, b=avgWin/avgLoss</td>
+<td>Optimal growth, requires historical data</td>
+</tr>
+<tr>
+<td><strong>ATR-Based</strong></td>
+<td><code>position = (balance × riskPercent) / (ATR × atrMultiplier)</code></td>
+<td>Volatility-adjusted sizing</td>
+</tr>
+</tbody>
+</table>
+<a id="position-constraints" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Constraints<a href="#position-constraints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All methods respect constraints from <code>ISizingSchema</code>:</p>
+<ul>
+<li><code>minPositionSize</code>: Minimum position value</li>
+<li><code>maxPositionSize</code>: Maximum position value</li>
+<li><code>maxPositionPercent</code>: Maximum % of account balance</li>
+</ul>
+<hr>
+<a id="clientpartial" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientPartial<a href="#clientpartial" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientPartial</code> implements the <code>IPartial</code> interface and tracks profit/loss milestones for active signals.</p>
+<a id="milestone-levels" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Milestone Levels<a href="#milestone-levels" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Event Type</th>
+<th>Levels</th>
+<th>Trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Partial Profit</strong></td>
+<td><code>TP_LEVEL1</code>, <code>TP_LEVEL2</code>, <code>TP_LEVEL3</code></td>
+<td>33%, 66%, 100% toward TP</td>
+</tr>
+<tr>
+<td><strong>Partial Loss</strong></td>
+<td><code>SL_LEVEL1</code>, <code>SL_LEVEL2</code></td>
+<td>50%, 100% toward SL</td>
+</tr>
+</tbody>
+</table>
+<a id="monitoring-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Monitoring Flow<a href="#monitoring-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_6.svg" alt="Mermaid Diagram"></p>
+<p><strong>State Persistence:</strong> <code>./dump/data/partial/{strategy}/{symbol}.json</code> stores already-emitted milestones to prevent duplicate events after crash recovery.</p>
+<hr>
+<a id="clientframe" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientFrame<a href="#clientframe" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientFrame</code> implements the <code>IFrame</code> interface and generates timeframes for backtesting.</p>
+<a id="timeframe-generation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timeframe Generation<a href="#timeframe-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Example:</strong></p>
+<ul>
+<li><code>startDate</code>: 2025-01-01 00:00:00</li>
+<li><code>endDate</code>: 2025-01-02 00:00:00</li>
+<li><code>interval</code>: 1h</li>
+<li><strong>Output:</strong> 24 Date objects, one per hour</li>
+</ul>
+<hr>
+<a id="clientoptimizer" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ClientOptimizer<a href="#clientoptimizer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>ClientOptimizer</code> implements the <code>IOptimizer</code> interface and generates executable strategy code using LLMs.</p>
+<a id="architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Architecture<a href="#architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_8.svg" alt="Mermaid Diagram"></p>
+<a id="data-source-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Source Pattern<a href="#data-source-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>IOptimizerSource</code> can be a function or an object:</p>
+<p><strong>Function-based:</strong></p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">fetch</span><span class="hl-1">: (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">any</span><span class="hl-1">[]&gt;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Object-based:</strong></p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">fetch</span><span class="hl-1">: (</span><span class="hl-4">params</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">any</span><span class="hl-1">[]&gt;,</span><br/><span class="hl-1">  </span><span class="hl-10">user</span><span class="hl-1">: (</span><span class="hl-4">doc</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">,      </span><span class="hl-5">// Format as user message</span><br/><span class="hl-1">  </span><span class="hl-10">assistant</span><span class="hl-1">: (</span><span class="hl-4">doc</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">string</span><span class="hl-1">   </span><span class="hl-5">// Format as assistant message</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Pagination:</strong> Uses <code>iterateDocuments()</code> for paginated fetching and <code>distinctDocuments()</code> for deduplication by ID.</p>
+<hr>
+<a id="common-patterns-across-clients" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Common Patterns Across Clients<a href="#common-patterns-across-clients" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="memoization-for-instance-caching" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoization for Instance Caching<a href="#memoization-for-instance-caching" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All connection services use <code>memoize()</code> from functools-kit to cache client instances:</p>
+<pre><code class="typescript"><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">getStrategy</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  ([</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">:</span><span class="hl-7">${</span><span class="hl-4">backtest</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">,</span><br/><span class="hl-1">  (</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ClientStrategy</span><span class="hl-1">({...})</span><br/><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Cache keys include:</strong></p>
+<ul>
+<li><code>symbol</code>: Trading pair</li>
+<li><code>strategyName</code> or component name</li>
+<li><code>backtest</code>: Boolean flag (separate instances for backtest vs live)</li>
+</ul>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Singleton behavior per context</li>
+<li>Preserved state across calls</li>
+<li>Memory efficiency</li>
+</ul>
+<a id="persistence-adapters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Adapters<a href="#persistence-adapters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client implementations that require crash recovery use persistence adapters:</p>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>File Path</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PersistSignalAdapter</code></td>
+<td><code>./dump/data/signal/{strategy}/{symbol}.json</code></td>
+<td>Active pending signals</td>
+</tr>
+<tr>
+<td><code>PersistRiskAdapter</code></td>
+<td><code>./dump/data/risk/{riskName}.json</code></td>
+<td>Portfolio position counts</td>
+</tr>
+<tr>
+<td><code>PersistScheduleAdapter</code></td>
+<td><code>./dump/data/schedule/{strategy}/{symbol}.json</code></td>
+<td>Scheduled signals (limit orders)</td>
+</tr>
+<tr>
+<td><code>PersistPartialAdapter</code></td>
+<td><code>./dump/data/partial/{strategy}/{symbol}.json</code></td>
+<td>Emitted milestone levels</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Atomic Write Pattern:</strong></p>
+<ol>
+<li>Write to temporary file: <code>data.json.tmp</code></li>
+<li>Call <code>fsync()</code> to ensure disk write</li>
+<li>Rename <code>data.json.tmp</code> → <code>data.json</code> (atomic operation)</li>
+</ol>
+<a id="context-dependency-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Dependency Injection<a href="#context-dependency-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All clients receive <code>ExecutionContextService</code> and <code>MethodContextService</code> in their constructor parameters:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyParams</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">execution</span><span class="hl-1">: </span><span class="hl-11">TExecutionContextService</span><span class="hl-1">;  </span><span class="hl-5">// Runtime context (symbol, when, backtest)</span><br/><span class="hl-1">  </span><span class="hl-4">method</span><span class="hl-1">: </span><span class="hl-11">TMethodContextService</span><span class="hl-1">;        </span><span class="hl-5">// Schema context (strategyName, exchangeName)</span><br/><span class="hl-1">  </span><span class="hl-5">// ... other dependencies</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>ExecutionContextService provides:</strong></p>
+<ul>
+<li><code>context.symbol</code>: Current trading pair</li>
+<li><code>context.when</code>: Current timestamp (Date object)</li>
+<li><code>context.backtest</code>: Boolean flag for mode</li>
+</ul>
+<p><strong>MethodContextService provides:</strong></p>
+<ul>
+<li><code>context.strategyName</code>: Active strategy identifier</li>
+<li><code>context.exchangeName</code>: Active exchange identifier</li>
+<li><code>context.frameName</code>: Active frame identifier (backtest only)</li>
+</ul>
+<p>These contexts use <code>AsyncLocalStorage</code> for implicit propagation without manual parameter threading.</p>
+<a id="event-emission" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emission<a href="#event-emission" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client implementations emit events through RxJS Subjects after state changes:</p>
+<pre><code class="typescript"><span class="hl-5">// ClientStrategy emits signals</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tickResult</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalBacktestEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tickResult</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">signalLiveEmitter</span><span class="hl-1">.</span><span class="hl-0">next</span><span class="hl-1">(</span><span class="hl-4">tickResult</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Emitters used by clients:</strong></p>
+<ul>
+<li><code>signalEmitter</code>: All signals (backtest + live)</li>
+<li><code>signalBacktestEmitter</code>: Backtest-only signals</li>
+<li><code>signalLiveEmitter</code>: Live-only signals</li>
+<li><code>errorEmitter</code>: Exception propagation</li>
+<li><code>partialProfitSubject</code>: TP milestone events</li>
+<li><code>partialLossSubject</code>: SL milestone events</li>
+</ul>
+<hr>
+<a id="client-lifecycle-management" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Client Lifecycle Management<a href="#client-lifecycle-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="initialization-sequence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Initialization Sequence<a href="#initialization-sequence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_9.svg" alt="Mermaid Diagram"></p>
+<a id="cleanup-and-disposal" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cleanup and Disposal<a href="#cleanup-and-disposal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/32_Client_Implementations_10.svg" alt="Mermaid Diagram"></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#client-implementations"><span>Client <wbr/>Implementations</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#client-architecture-overview"><span>Client <wbr/>Architecture <wbr/>Overview</span></a></li><li><ul><li><a href="#system-layer-hierarchy"><span>System <wbr/>Layer <wbr/>Hierarchy</span></a></li></ul></li><li><a href="#clientstrategy"><span>Client<wbr/>Strategy</span></a></li><li><ul><li><a href="#core-responsibilities"><span>Core <wbr/>Responsibilities</span></a></li><li><a href="#instance-creation-and-memoization"><span>Instance <wbr/>Creation and <wbr/>Memoization</span></a></li><li><a href="#signal-validation-pipeline"><span>Signal <wbr/>Validation <wbr/>Pipeline</span></a></li><li><a href="#signal-generation-with-throttling"><span>Signal <wbr/>Generation with <wbr/>Throttling</span></a></li><li><a href="#scheduled-signal-activation-logic"><span>Scheduled <wbr/>Signal <wbr/>Activation <wbr/>Logic</span></a></li><li><a href="#method-reference"><span>Method <wbr/>Reference</span></a></li></ul></li><li><a href="#clientexchange"><span>Client<wbr/>Exchange</span></a></li><li><ul><li><a href="#core-responsibilities-1"><span>Core <wbr/>Responsibilities</span></a></li><li><a href="#vwap-pricing-implementation"><span>VWAP <wbr/>Pricing <wbr/>Implementation</span></a></li><li><a href="#temporal-isolation"><span>Temporal <wbr/>Isolation</span></a></li></ul></li><li><a href="#clientrisk"><span>Client<wbr/>Risk</span></a></li><li><ul><li><a href="#core-responsibilities-2"><span>Core <wbr/>Responsibilities</span></a></li><li><a href="#validation-chain-execution"><span>Validation <wbr/>Chain <wbr/>Execution</span></a></li><li><a href="#position-tracking-with-persistence"><span>Position <wbr/>Tracking with <wbr/>Persistence</span></a></li></ul></li><li><a href="#clientsizing"><span>Client<wbr/>Sizing</span></a></li><li><ul><li><a href="#sizing-methods"><span>Sizing <wbr/>Methods</span></a></li><li><a href="#position-constraints"><span>Position <wbr/>Constraints</span></a></li></ul></li><li><a href="#clientpartial"><span>Client<wbr/>Partial</span></a></li><li><ul><li><a href="#milestone-levels"><span>Milestone <wbr/>Levels</span></a></li><li><a href="#monitoring-flow"><span>Monitoring <wbr/>Flow</span></a></li></ul></li><li><a href="#clientframe"><span>Client<wbr/>Frame</span></a></li><li><ul><li><a href="#timeframe-generation"><span>Timeframe <wbr/>Generation</span></a></li></ul></li><li><a href="#clientoptimizer"><span>Client<wbr/>Optimizer</span></a></li><li><ul><li><a href="#architecture"><span>Architecture</span></a></li><li><a href="#data-source-pattern"><span>Data <wbr/>Source <wbr/>Pattern</span></a></li></ul></li><li><a href="#common-patterns-across-clients"><span>Common <wbr/>Patterns <wbr/>Across <wbr/>Clients</span></a></li><li><ul><li><a href="#memoization-for-instance-caching"><span>Memoization for <wbr/>Instance <wbr/>Caching</span></a></li><li><a href="#persistence-adapters"><span>Persistence <wbr/>Adapters</span></a></li><li><a href="#context-dependency-injection"><span>Context <wbr/>Dependency <wbr/>Injection</span></a></li><li><a href="#event-emission"><span>Event <wbr/>Emission</span></a></li></ul></li><li><a href="#client-lifecycle-management"><span>Client <wbr/>Lifecycle <wbr/>Management</span></a></li><li><ul><li><a href="#initialization-sequence"><span>Initialization <wbr/>Sequence</span></a></li><li><a href="#cleanup-and-disposal"><span>Cleanup and <wbr/>Disposal</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

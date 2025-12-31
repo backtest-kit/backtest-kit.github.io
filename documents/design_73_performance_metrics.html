@@ -1,0 +1,367 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/73_performance_metrics | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_73_performance_metrics.html">design/73_performance_metrics</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="performance-metrics" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Performance Metrics<a href="#performance-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This page documents the performance tracking system implemented by <code>PerformanceMarkdownService</code>, which collects timing metrics, calculates statistical aggregates, and generates bottleneck analysis reports. The system tracks operation durations throughout strategy execution and identifies performance bottlenecks.</p>
+<p>For broader markdown report generation architecture and event subscription patterns, see <a href="design_72_markdown_report_generation.html">Markdown Report Generation</a>. For trading performance statistics including Sharpe ratio, PNL calculations, and win rate metrics, see <a href="design_74_statistics_calculation.html">Statistics Calculation</a>.</p>
+<hr>
+<a id="performance-tracking-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Tracking Architecture<a href="#performance-tracking-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The performance tracking system follows a publish-subscribe pattern where code execution emits timing events that are collected, aggregated, and analyzed by <code>PerformanceMarkdownService</code>.</p>
+<p><img src="../media/73_Performance_Metrics_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Flow Description</strong>:</p>
+<ol>
+<li><strong>Emission</strong>: Code execution emits <code>PerformanceContract</code> events via <code>performanceEmitter</code></li>
+<li><strong>Collection</strong>: <code>PerformanceMarkdownService.track()</code> receives events and stores them in memoized <code>PerformanceStorage</code> instances</li>
+<li><strong>Aggregation</strong>: Events are grouped by <code>metricType</code> and statistical calculations are performed</li>
+<li><strong>Analysis</strong>: Metrics are sorted by total duration to identify bottlenecks</li>
+<li><strong>Reporting</strong>: Markdown tables present performance data with percentiles and wait times</li>
+</ol>
+<hr>
+<a id="performancecontract-data-model" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PerformanceContract Data Model<a href="#performancecontract-data-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>PerformanceContract</code> interface defines the structure of performance tracking events emitted during execution.</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>metricType</code></td>
+<td><code>PerformanceMetricType</code></td>
+<td>Categorizes the operation being measured</td>
+</tr>
+<tr>
+<td><code>duration</code></td>
+<td><code>number</code></td>
+<td>Time taken for operation in milliseconds</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td><code>number</code></td>
+<td>Unix timestamp in milliseconds when event occurred</td>
+</tr>
+<tr>
+<td><code>previousTimestamp</code></td>
+<td><code>number | null</code></td>
+<td>Timestamp of previous event of same type (for wait time calculation)</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string | undefined</code></td>
+<td>Trading pair symbol (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td><code>string | undefined</code></td>
+<td>Strategy identifier for the operation</td>
+</tr>
+</tbody>
+</table>
+<a id="performancemetrictype" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PerformanceMetricType<a href="#performancemetrictype" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Common metric types used throughout the system:</p>
+<ul>
+<li><strong>Strategy Operations</strong>: <code>&quot;strategy.tick&quot;</code>, <code>&quot;strategy.getSignal&quot;</code>, <code>&quot;strategy.backtest&quot;</code></li>
+<li><strong>Exchange Operations</strong>: <code>&quot;exchange.getCandles&quot;</code>, <code>&quot;exchange.getAveragePrice&quot;</code></li>
+<li><strong>Risk Operations</strong>: <code>&quot;risk.checkSignal&quot;</code>, <code>&quot;risk.addSignal&quot;</code>, <code>&quot;risk.removeSignal&quot;</code></li>
+<li><strong>Sizing Operations</strong>: <code>&quot;sizing.calculate&quot;</code></li>
+<li><strong>Orchestration</strong>: <code>&quot;backtest.iteration&quot;</code>, <code>&quot;live.iteration&quot;</code>, <code>&quot;walker.strategy&quot;</code></li>
+</ul>
+<hr>
+<a id="performancemarkdownservice-implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PerformanceMarkdownService Implementation<a href="#performancemarkdownservice-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/73_Performance_Metrics_1.svg" alt="Mermaid Diagram"></p>
+<a id="class-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Class Structure<a href="#class-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>PerformanceMarkdownService</strong> <a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:312-476</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>loggerService</code></td>
+<td><code>LoggerService</code></td>
+<td>Debug logging via dependency injection</td>
+</tr>
+<tr>
+<td><code>getStorage</code></td>
+<td><code>Memoized function</code></td>
+<td>Returns or creates <code>PerformanceStorage</code> per symbol-strategy pair</td>
+</tr>
+<tr>
+<td><code>track</code></td>
+<td><code>async (event) =&gt; void</code></td>
+<td>Processes performance events and adds to storage</td>
+</tr>
+<tr>
+<td><code>getData</code></td>
+<td><code>async (symbol, strategyName)</code></td>
+<td>Returns aggregated statistics</td>
+</tr>
+<tr>
+<td><code>getReport</code></td>
+<td><code>async (symbol, strategyName, columns)</code></td>
+<td>Generates markdown report</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>async (symbol, strategyName, path, columns)</code></td>
+<td>Saves report to disk</td>
+</tr>
+<tr>
+<td><code>clear</code></td>
+<td><code>async (ctx?)</code></td>
+<td>Clears storage (all or specific symbol-strategy)</td>
+</tr>
+<tr>
+<td><code>init</code></td>
+<td><code>singleshot async ()</code></td>
+<td>Subscribes to <code>performanceEmitter</code> once</td>
+</tr>
+</tbody>
+</table>
+<p><strong>PerformanceStorage</strong> <a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:81-283</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>_events</code></td>
+<td><code>PerformanceContract[]</code></td>
+<td>Bounded queue (max 10,000 events)</td>
+</tr>
+<tr>
+<td><code>addEvent</code></td>
+<td><code>(event) =&gt; void</code></td>
+<td>Unshifts event, trims queue if exceeded</td>
+</tr>
+<tr>
+<td><code>getData</code></td>
+<td><code>async (strategyName)</code></td>
+<td>Calculates statistics grouped by metric type</td>
+</tr>
+<tr>
+<td><code>getReport</code></td>
+<td><code>async (strategyName, columns)</code></td>
+<td>Generates markdown with tables and summaries</td>
+</tr>
+<tr>
+<td><code>dump</code></td>
+<td><code>async (strategyName, path, columns)</code></td>
+<td>Writes markdown file to disk</td>
+</tr>
+</tbody>
+</table>
+<a id="storage-boundaries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Storage Boundaries<a href="#storage-boundaries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Maximum Events Per Storage Instance</strong>: 10,000 (vs 250 for other markdown services)</p>
+<p>This higher limit accommodates fine-grained performance tracking where operations occur more frequently than trading signals.</p>
+<p><strong>Memoization Key</strong>: <code>&quot;${symbol}:${strategyName}&quot;</code></p>
+<p>Each symbol-strategy combination maintains isolated storage, preventing cross-contamination of performance data.</p>
+<hr>
+<a id="performance-metrics-collection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Metrics Collection<a href="#performance-metrics-collection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="statistical-calculations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Statistical Calculations<a href="#statistical-calculations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/73_Performance_Metrics_2.svg" alt="Mermaid Diagram"></p>
+<a id="metric-definitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Metric Definitions<a href="#metric-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Statistic</th>
+<th>Calculation</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>count</code></td>
+<td>Number of events</td>
+<td>Volume of operations performed</td>
+</tr>
+<tr>
+<td><code>totalDuration</code></td>
+<td>Sum of all durations</td>
+<td>Total time spent in this operation</td>
+</tr>
+<tr>
+<td><code>avgDuration</code></td>
+<td><code>totalDuration / count</code></td>
+<td>Average time per operation</td>
+</tr>
+<tr>
+<td><code>minDuration</code></td>
+<td>Minimum duration</td>
+<td>Best case performance</td>
+</tr>
+<tr>
+<td><code>maxDuration</code></td>
+<td>Maximum duration</td>
+<td>Worst case performance</td>
+</tr>
+<tr>
+<td><code>stdDev</code></td>
+<td>Standard deviation</td>
+<td>Variability in operation times</td>
+</tr>
+<tr>
+<td><code>median</code></td>
+<td>50th percentile</td>
+<td>Typical operation time (unaffected by outliers)</td>
+</tr>
+<tr>
+<td><code>p95</code></td>
+<td>95th percentile</td>
+<td>Upper bound for most operations</td>
+</tr>
+<tr>
+<td><code>p99</code></td>
+<td>99th percentile</td>
+<td>Upper bound for nearly all operations</td>
+</tr>
+<tr>
+<td><code>avgWaitTime</code></td>
+<td>Mean time between consecutive events</td>
+<td>Operation frequency</td>
+</tr>
+<tr>
+<td><code>minWaitTime</code></td>
+<td>Shortest wait between events</td>
+<td>Maximum throughput observed</td>
+</tr>
+<tr>
+<td><code>maxWaitTime</code></td>
+<td>Longest wait between events</td>
+<td>Minimum throughput observed</td>
+</tr>
+</tbody>
+</table>
+<a id="percentile-calculation-algorithm" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Percentile Calculation Algorithm<a href="#percentile-calculation-algorithm" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:68-72</a>:</p>
+<pre><code class="typescript"><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">percentile</span><span class="hl-1">(</span><span class="hl-4">sortedArray</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">[], </span><span class="hl-4">p</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">): </span><span class="hl-11">number</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">sortedArray</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> === </span><span class="hl-6">0</span><span class="hl-1">) </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">index</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">ceil</span><span class="hl-1">((</span><span class="hl-4">sortedArray</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> * </span><span class="hl-4">p</span><span class="hl-1">) / </span><span class="hl-6">100</span><span class="hl-1">) - </span><span class="hl-6">1</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">sortedArray</span><span class="hl-1">[</span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">max</span><span class="hl-1">(</span><span class="hl-6">0</span><span class="hl-1">, </span><span class="hl-4">index</span><span class="hl-1">)];</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="report-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Generation<a href="#report-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="markdown-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Markdown Report Structure<a href="#markdown-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/73_Performance_Metrics_3.svg" alt="Mermaid Diagram"></p>
+<a id="bottleneck-analysis" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Bottleneck Analysis<a href="#bottleneck-analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The report automatically identifies bottlenecks by sorting metrics in descending order of <code>totalDuration</code>. This places the most time-consuming operations at the top of both the time distribution section and the detailed metrics table.</p>
+<p><strong>Time Distribution Calculation</strong> <a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:232-235</a>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">percentages</span><span class="hl-1"> = </span><span class="hl-4">sortedMetrics</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-4">metric</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pct</span><span class="hl-1"> = (</span><span class="hl-4">metric</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1"> / </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1">) * </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-2">`- **</span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2">**: </span><span class="hl-7">${</span><span class="hl-4">pct</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">1</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">% (</span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">totalDuration</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">ms total)`</span><span class="hl-1">;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="column-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Column Configuration<a href="#column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Performance reports use the <code>ColumnModel&lt;MetricStats&gt;</code> interface defined in <a href="">src/model/Column.model.ts:26-38</a>. Default columns are specified in <code>COLUMN_CONFIG.performance_columns</code>.</p>
+<p><strong>Columns Type Definition</strong> <a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:47</a>:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">Columns</span><span class="hl-1"> = </span><span class="hl-11">ColumnModel</span><span class="hl-1">&lt;</span><span class="hl-11">MetricStats</span><span class="hl-1">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The column system allows customization of which statistics appear in reports and how they are formatted.</p>
+<hr>
+<a id="event-subscription-and-listeners" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Subscription and Listeners<a href="#event-subscription-and-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="listenperformance-function" class="tsd-anchor"></a><h3 class="tsd-anchor-link">listenPerformance Function<a href="#listenperformance-function" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Users subscribe to performance events using the <code>listenPerformance</code> function exported from the public API.</p>
+<p><a href="">src/function/event.ts:295-310</a>:</p>
+<pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">listenPerformance</span><span class="hl-1">(</span><span class="hl-0">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-11">PerformanceContract</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-8">LISTEN_PERFORMANCE_METHOD_NAME</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">performanceEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-0">queued</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fn</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">)));</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key Features</strong>:</p>
+<ul>
+<li><strong>Queued Processing</strong>: Callbacks are wrapped with <code>queued()</code> from functools-kit, ensuring sequential execution even for async handlers</li>
+<li><strong>Unsubscribe Support</strong>: Returns unsubscribe function to stop listening</li>
+<li><strong>Logging</strong>: All listener registrations are logged via <code>loggerService</code></li>
+</ul>
+<a id="internal-subscription" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Internal Subscription<a href="#internal-subscription" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>PerformanceMarkdownService</code> subscribes to the <code>performanceEmitter</code> automatically during initialization:</p>
+<p><a href="">src/lib/services/markdown/PerformanceMarkdownService.ts:445-450</a>:</p>
+<pre><code class="typescript"><span class="hl-4">protected</span><span class="hl-1"> </span><span class="hl-4">init</span><span class="hl-1"> = </span><span class="hl-0">singleshot</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;performanceMarkdownService init&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">performanceEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">track</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The <code>singleshot</code> wrapper ensures subscription happens only once, even if multiple operations trigger initialization.</p>
+<hr>
+<a id="usage-examples" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Examples<a href="#usage-examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="basic-performance-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Performance Tracking<a href="#basic-performance-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenPerformance</span><span class="hl-1">, </span><span class="hl-4">Backtest</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Subscribe to performance events</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenPerformance</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">duration</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Run backtest (emits performance events automatically)</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">run</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">frameName:</span><span class="hl-1"> </span><span class="hl-2">&quot;1d-backtest&quot;</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Stop listening</span><br/><span class="hl-0">unsubscribe</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="generating-performance-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Generating Performance Reports<a href="#generating-performance-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Performance</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Get performance statistics</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Total time:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1">, </span><span class="hl-2">&quot;ms&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Events:&quot;</span><span class="hl-1">, </span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">totalEvents</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Identify bottlenecks (sorted by totalDuration descending)</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">bottlenecks</span><span class="hl-1"> = </span><span class="hl-4">Object</span><span class="hl-1">.</span><span class="hl-0">values</span><span class="hl-1">(</span><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">metricStats</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">sort</span><span class="hl-1">((</span><span class="hl-4">a</span><span class="hl-1">, </span><span class="hl-4">b</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">b</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1"> - </span><span class="hl-4">a</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1">)</span><br/><span class="hl-1">  .</span><span class="hl-0">slice</span><span class="hl-1">(</span><span class="hl-6">0</span><span class="hl-1">, </span><span class="hl-6">3</span><span class="hl-1">);</span><br/><br/><span class="hl-4">bottlenecks</span><span class="hl-1">.</span><span class="hl-0">forEach</span><span class="hl-1">(</span><span class="hl-4">metric</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">totalDuration</span><span class="hl-7">}</span><span class="hl-2">ms (</span><span class="hl-7">${</span><span class="hl-4">metric</span><span class="hl-9">.</span><span class="hl-4">count</span><span class="hl-7">}</span><span class="hl-2"> calls)`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Generate and save report</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-5">// Saved to: ./dump/performance/my-strategy.md</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="custom-column-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Column Configuration<a href="#custom-column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Performance</span><span class="hl-1">, </span><span class="hl-4">ColumnModel</span><span class="hl-1">, </span><span class="hl-4">MetricStats</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Define custom columns</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">customColumns</span><span class="hl-1">: </span><span class="hl-11">ColumnModel</span><span class="hl-1">&lt;</span><span class="hl-11">MetricStats</span><span class="hl-1">&gt;[] = [</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;metric&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Operation&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">stat</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">stat</span><span class="hl-1">.</span><span class="hl-4">metricType</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;count&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Calls&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">stat</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">stat</span><span class="hl-1">.</span><span class="hl-4">count</span><span class="hl-1">.</span><span class="hl-0">toString</span><span class="hl-1">(),</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;total&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Total Time (ms)&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">stat</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">stat</span><span class="hl-1">.</span><span class="hl-4">totalDuration</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">2</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  {</span><br/><span class="hl-1">    </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;p99&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;P99 (ms)&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">stat</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">stat</span><span class="hl-1">.</span><span class="hl-4">p99</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">2</span><span class="hl-1">),</span><br/><span class="hl-1">    </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">];</span><br/><br/><span class="hl-5">// Generate report with custom columns</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">markdown</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">customColumns</span><br/><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">markdown</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="monitoring-live-trading-performance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Monitoring Live Trading Performance<a href="#monitoring-live-trading-performance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenPerformance</span><span class="hl-1">, </span><span class="hl-4">Live</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">operationCounts</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Map</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-11">number</span><span class="hl-1">&gt;();</span><br/><br/><span class="hl-0">listenPerformance</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">count</span><span class="hl-1"> = </span><span class="hl-4">operationCounts</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">metricType</span><span class="hl-1">) || </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">operationCounts</span><span class="hl-1">.</span><span class="hl-0">set</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">metricType</span><span class="hl-1">, </span><span class="hl-4">count</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Alert on slow operations</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">duration</span><span class="hl-1"> &gt; </span><span class="hl-6">1000</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">`Slow operation: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2"> took </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">duration</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Log periodic summary</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">count</span><span class="hl-1"> % </span><span class="hl-6">100</span><span class="hl-1"> === </span><span class="hl-6">0</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">count</span><span class="hl-7">}</span><span class="hl-2"> operations completed`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Start live trading</span><br/><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">background</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName:</span><span class="hl-1"> </span><span class="hl-2">&quot;binance&quot;</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="clearing-performance-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Clearing Performance Data<a href="#clearing-performance-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">Performance</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Clear specific symbol-strategy pair</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">({ </span><br/><span class="hl-1">  </span><span class="hl-4">symbol:</span><span class="hl-1"> </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">strategyName:</span><span class="hl-1"> </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1"> </span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Clear all performance data</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Performance</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="integration-with-other-systems" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Systems<a href="#integration-with-other-systems" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="relationship-to-other-markdown-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Relationship to Other Markdown Services<a href="#relationship-to-other-markdown-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>PerformanceMarkdownService</code> follows the same architectural patterns as other markdown services:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Purpose</th>
+<th>Max Events</th>
+<th>Key Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestMarkdownService</code></td>
+<td>Trading signal analysis</td>
+<td>250</td>
+<td>Sharpe ratio, win rate</td>
+</tr>
+<tr>
+<td><code>LiveMarkdownService</code></td>
+<td>Real-time trading events</td>
+<td>250</td>
+<td>PNL, signal lifecycle</td>
+</tr>
+<tr>
+<td><code>WalkerMarkdownService</code></td>
+<td>Strategy comparison</td>
+<td>N/A</td>
+<td>Best performer by metric</td>
+</tr>
+<tr>
+<td><code>PerformanceMarkdownService</code></td>
+<td>Execution profiling</td>
+<td>10,000</td>
+<td>Duration, percentiles</td>
+</tr>
+<tr>
+<td><code>PartialMarkdownService</code></td>
+<td>Profit/loss milestones</td>
+<td>250</td>
+<td>Partial exits</td>
+</tr>
+<tr>
+<td><code>RiskMarkdownService</code></td>
+<td>Risk rejections</td>
+<td>250</td>
+<td>Rejection reasons</td>
+</tr>
+</tbody>
+</table>
+<p>The higher event limit (10,000 vs 250) reflects the granularity of performance tracking compared to trading events.</p>
+<a id="performance-event-sources" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Event Sources<a href="#performance-event-sources" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Performance events can be emitted from any code that executes during strategy lifecycle:</p>
+<ul>
+<li><strong>ClientStrategy</strong>: Signal generation, tick processing, backtest iterations</li>
+<li><strong>ClientExchange</strong>: Candle fetching, VWAP calculations</li>
+<li><strong>ClientRisk</strong>: Risk validation checks</li>
+<li><strong>ClientSizing</strong>: Position size calculations</li>
+<li><strong>Logic Services</strong>: Backtest/Live/Walker orchestration</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#performance-metrics"><span>Performance <wbr/>Metrics</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#performance-tracking-architecture"><span>Performance <wbr/>Tracking <wbr/>Architecture</span></a></li><li><a href="#performancecontract-data-model"><span>Performance<wbr/>Contract <wbr/>Data <wbr/>Model</span></a></li><li><ul><li><a href="#performancemetrictype"><span>Performance<wbr/>Metric<wbr/>Type</span></a></li></ul></li><li><a href="#performancemarkdownservice-implementation"><span>Performance<wbr/>Markdown<wbr/>Service <wbr/>Implementation</span></a></li><li><ul><li><a href="#class-structure"><span>Class <wbr/>Structure</span></a></li><li><a href="#storage-boundaries"><span>Storage <wbr/>Boundaries</span></a></li></ul></li><li><a href="#performance-metrics-collection"><span>Performance <wbr/>Metrics <wbr/>Collection</span></a></li><li><ul><li><a href="#statistical-calculations"><span>Statistical <wbr/>Calculations</span></a></li><li><a href="#metric-definitions"><span>Metric <wbr/>Definitions</span></a></li><li><a href="#percentile-calculation-algorithm"><span>Percentile <wbr/>Calculation <wbr/>Algorithm</span></a></li></ul></li><li><a href="#report-generation"><span>Report <wbr/>Generation</span></a></li><li><ul><li><a href="#markdown-report-structure"><span>Markdown <wbr/>Report <wbr/>Structure</span></a></li><li><a href="#bottleneck-analysis"><span>Bottleneck <wbr/>Analysis</span></a></li><li><a href="#column-configuration"><span>Column <wbr/>Configuration</span></a></li></ul></li><li><a href="#event-subscription-and-listeners"><span>Event <wbr/>Subscription and <wbr/>Listeners</span></a></li><li><ul><li><a href="#listenperformance-function"><span>listen<wbr/>Performance <wbr/>Function</span></a></li><li><a href="#internal-subscription"><span>Internal <wbr/>Subscription</span></a></li></ul></li><li><a href="#usage-examples"><span>Usage <wbr/>Examples</span></a></li><li><ul><li><a href="#basic-performance-tracking"><span>Basic <wbr/>Performance <wbr/>Tracking</span></a></li><li><a href="#generating-performance-reports"><span>Generating <wbr/>Performance <wbr/>Reports</span></a></li><li><a href="#custom-column-configuration"><span>Custom <wbr/>Column <wbr/>Configuration</span></a></li><li><a href="#monitoring-live-trading-performance"><span>Monitoring <wbr/>Live <wbr/>Trading <wbr/>Performance</span></a></li><li><a href="#clearing-performance-data"><span>Clearing <wbr/>Performance <wbr/>Data</span></a></li></ul></li><li><a href="#integration-with-other-systems"><span>Integration with <wbr/>Other <wbr/>Systems</span></a></li><li><ul><li><a href="#relationship-to-other-markdown-services"><span>Relationship to <wbr/>Other <wbr/>Markdown <wbr/>Services</span></a></li><li><a href="#performance-event-sources"><span>Performance <wbr/>Event <wbr/>Sources</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,778 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/71_reporting_and_analytics | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_71_reporting_and_analytics.html">design/71_reporting_and_analytics</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="reporting-and-analytics" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Reporting and Analytics<a href="#reporting-and-analytics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document describes the reporting and analytics capabilities of the backtest-kit framework. The system provides markdown-based reports for both backtest and live trading modes, accumulating signal events and calculating performance statistics.</p>
+<p>For information about signal lifecycle and PnL calculations that feed into reports, see <a href="design_48_signal_lifecycle.html">Signal Lifecycle</a>. For details on the public API methods to retrieve reports, see <a href="design_18_backtest_api.html">Backtest API</a> and <a href="design_19_live_trading_api.html">Live Trading API</a>.</p>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The reporting system consists of four specialized markdown services that passively observe execution events and accumulate them for analysis:</p>
+<ul>
+<li><strong>BacktestMarkdownService</strong>: Accumulates only closed signals from backtest execution</li>
+<li><strong>LiveMarkdownService</strong>: Accumulates all tick events (idle, opened, active, closed) from live trading</li>
+<li><strong>WalkerMarkdownService</strong>: Accumulates strategy comparison results with best strategy selection</li>
+<li><strong>ScheduleMarkdownService</strong>: Tracks scheduled and cancelled signals to measure limit order effectiveness</li>
+</ul>
+<p>All services operate independently from the main execution flow, subscribing to events via event emitters and maintaining isolated storage per strategy/walker. Reports are generated on-demand and can be exported to markdown files in <code>./logs/{mode}/</code> directories.</p>
+<p>Additionally, the framework provides performance profiling via <code>performanceEmitter</code>, which tracks execution timing metrics for bottleneck analysis.</p>
+<p><strong>Reporting System Architecture Diagram</strong></p>
+<p><img src="../media/71_Reporting_and_Analytics_0.svg" alt="Mermaid Diagram"></p>
+<a id="service-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Architecture<a href="#service-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtestmarkdownservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">BacktestMarkdownService<a href="#backtestmarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>BacktestMarkdownService</code> class is designed for post-execution analysis of backtest results. It only processes closed signals, ignoring opened and active states to focus on completed trades.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Event Source</strong></td>
+<td><code>signalBacktestEmitter</code></td>
+</tr>
+<tr>
+<td><strong>Event Types</strong></td>
+<td>Only <code>closed</code> actions</td>
+</tr>
+<tr>
+<td><strong>Storage Model</strong></td>
+<td>Accumulates all closed signals chronologically in <code>_signalList</code> array</td>
+</tr>
+<tr>
+<td><strong>Default Output Path</strong></td>
+<td><code>./logs/backtest/{strategyName}.md</code></td>
+</tr>
+<tr>
+<td><strong>Initialization</strong></td>
+<td>Automatic via <code>singleshot</code> decorator on first method call</td>
+</tr>
+<tr>
+<td><strong>Memoization Key</strong></td>
+<td><code>strategyName</code></td>
+</tr>
+</tbody>
+</table>
+<p>The service maintains a memoized <code>ReportStorage</code> instance per strategy name via <code>getStorage = memoize((strategyName) =&gt; new ReportStorage())</code>, ensuring isolated data collection when multiple strategies run concurrently. The storage accumulates <code>IStrategyTickResultClosed</code> objects in an internal array.</p>
+<p>The <code>tick()</code> method filters events:</p>
+<pre><code class="typescript"><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> !== </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Ignore non-closed events</span><br/><span class="hl-1">}</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">storage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">getStorage</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-0">addSignal</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="livemarkdownservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">LiveMarkdownService<a href="#livemarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>LiveMarkdownService</code> class provides operational visibility into live trading activity. Unlike the backtest service, it captures all tick events to provide a complete audit trail.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Event Source</strong></td>
+<td><code>signalLiveEmitter</code></td>
+</tr>
+<tr>
+<td><strong>Event Types</strong></td>
+<td><code>idle</code>, <code>opened</code>, <code>active</code>, <code>closed</code></td>
+</tr>
+<tr>
+<td><strong>Storage Model</strong></td>
+<td>Updates existing events by <code>signalId</code> for active/closed, appends for idle/opened</td>
+</tr>
+<tr>
+<td><strong>Max Events</strong></td>
+<td>250 events (with FIFO eviction via <code>shift()</code>)</td>
+</tr>
+<tr>
+<td><strong>Default Output Path</strong></td>
+<td><code>./logs/live/{strategyName}.md</code></td>
+</tr>
+<tr>
+<td><strong>Initialization</strong></td>
+<td>Automatic via <code>singleshot</code> decorator on first method call</td>
+</tr>
+<tr>
+<td><strong>Memoization Key</strong></td>
+<td><code>strategyName</code></td>
+</tr>
+</tbody>
+</table>
+<p>The service uses a more sophisticated storage mechanism that replaces existing events with the same <code>signalId</code> for <code>active</code> and <code>closed</code> actions, ensuring the report shows the latest state of each signal. This prevents duplicate entries when a signal transitions from <code>active</code> to <code>closed</code>.</p>
+<p>For <code>idle</code> events, the service implements smart replacement logic:</p>
+<ul>
+<li>If the last event is <code>idle</code> and no <code>opened</code>/<code>active</code> events follow it, replace it (avoids idle spam)</li>
+<li>Otherwise, append the new idle event</li>
+</ul>
+<a id="walkermarkdownservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">WalkerMarkdownService<a href="#walkermarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>WalkerMarkdownService</code> class generates comparison reports for multi-strategy backtests executed via <code>Walker.run()</code>. It accumulates results from each strategy and ranks them by a configurable metric.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Event Source</strong></td>
+<td><code>walkerEmitter</code> (progress) and <code>walkerCompleteSubject</code> (final results)</td>
+</tr>
+<tr>
+<td><strong>Event Types</strong></td>
+<td>Strategy completion events with statistics</td>
+</tr>
+<tr>
+<td><strong>Storage Model</strong></td>
+<td>Accumulates per-strategy results in <code>_strategyResults</code> map</td>
+</tr>
+<tr>
+<td><strong>Default Output Path</strong></td>
+<td><code>./logs/walker/{walkerName}-{symbol}.md</code></td>
+</tr>
+<tr>
+<td><strong>Initialization</strong></td>
+<td>Automatic via <code>singleshot</code> decorator on first method call</td>
+</tr>
+<tr>
+<td><strong>Memoization Key</strong></td>
+<td><code>${walkerName}:${symbol}</code></td>
+</tr>
+</tbody>
+</table>
+<p>The service provides <code>getData()</code> which returns:</p>
+<ul>
+<li><code>bestStrategy</code>: Strategy name with highest metric value</li>
+<li><code>bestMetric</code>: The metric value of the best strategy</li>
+<li><code>strategies</code>: Array of all strategies with their stats and metric values, sorted descending</li>
+</ul>
+<p>Metrics supported for comparison (specified in <code>IWalkerSchema.metric</code>):</p>
+<ul>
+<li><code>sharpeRatio</code> (default)</li>
+<li><code>winRate</code></li>
+<li><code>avgPnl</code></li>
+<li><code>totalPnl</code></li>
+<li><code>certaintyRatio</code></li>
+</ul>
+<a id="schedulemarkdownservice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ScheduleMarkdownService<a href="#schedulemarkdownservice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ScheduleMarkdownService</code> class tracks scheduled signals (limit orders) and their outcomes to measure strategy effectiveness with limit orders.</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Event Source</strong></td>
+<td><code>signalEmitter</code> (both live and backtest)</td>
+</tr>
+<tr>
+<td><strong>Event Types</strong></td>
+<td><code>scheduled</code>, <code>cancelled</code></td>
+</tr>
+<tr>
+<td><strong>Storage Model</strong></td>
+<td>Updates existing events by <code>signalId</code> for cancelled, appends for scheduled</td>
+</tr>
+<tr>
+<td><strong>Max Events</strong></td>
+<td>250 events (with FIFO eviction via <code>shift()</code>)</td>
+</tr>
+<tr>
+<td><strong>Default Output Path</strong></td>
+<td><code>./logs/schedule/{strategyName}.md</code></td>
+</tr>
+<tr>
+<td><strong>Initialization</strong></td>
+<td>Automatic via <code>singleshot</code> decorator on first method call</td>
+</tr>
+<tr>
+<td><strong>Memoization Key</strong></td>
+<td><code>strategyName</code></td>
+</tr>
+</tbody>
+</table>
+<p>The service calculates key metrics for limit order effectiveness:</p>
+<ul>
+<li><strong>Cancellation Rate</strong>: <code>(totalCancelled / totalScheduled) * 100</code> - Lower is better</li>
+<li><strong>Average Wait Time</strong>: Mean duration for cancelled signals in minutes</li>
+</ul>
+<p>Scheduled signals are created when <code>signal.priceOpen</code> is specified (price must reach entry before activation). They transition to <code>cancelled</code> if:</p>
+<ol>
+<li>Timeout expires (<code>CC_SCHEDULE_AWAIT_MINUTES</code> minutes pass without activation)</li>
+<li>Stop loss price is hit before entry price</li>
+</ol>
+<a id="report-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Report Structure<a href="#report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="column-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Column Configuration<a href="#column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both services define their reports using a <code>Column</code> interface that specifies extraction and formatting logic:</p>
+<p><img src="../media/71_Reporting_and_Analytics_1.svg" alt="Mermaid Diagram"></p>
+<a id="backtest-report-columns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Report Columns<a href="#backtest-report-columns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The backtest report focuses on completed trade analysis with the following columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Format</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signal ID</td>
+<td>Plain text</td>
+<td><code>data.signal.id</code></td>
+</tr>
+<tr>
+<td>Symbol</td>
+<td>Plain text</td>
+<td><code>data.signal.symbol</code></td>
+</tr>
+<tr>
+<td>Position</td>
+<td>Uppercase</td>
+<td><code>data.signal.position.toUpperCase()</code></td>
+</tr>
+<tr>
+<td>Note</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td><code>data.signal.note ?? &quot;N/A&quot;</code></td>
+</tr>
+<tr>
+<td>Open Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td><code>data.signal.priceOpen.toFixed(8)</code></td>
+</tr>
+<tr>
+<td>Close Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td><code>data.currentPrice.toFixed(8)</code></td>
+</tr>
+<tr>
+<td>Take Profit</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td><code>data.signal.priceTakeProfit.toFixed(8)</code></td>
+</tr>
+<tr>
+<td>Stop Loss</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td><code>data.signal.priceStopLoss.toFixed(8)</code></td>
+</tr>
+<tr>
+<td>PNL (net)</td>
+<td>Fixed 2 decimals + &quot;%&quot; with sign</td>
+<td><code>${pnl &gt; 0 ? &quot;+&quot; : &quot;&quot;}${pnl.toFixed(2)}%</code></td>
+</tr>
+<tr>
+<td>Close Reason</td>
+<td>Plain text</td>
+<td><code>data.closeReason</code></td>
+</tr>
+<tr>
+<td>Duration (min)</td>
+<td>Integer minutes</td>
+<td><code>Math.round((closeTimestamp - pendingAt) / 60000)</code></td>
+</tr>
+<tr>
+<td>Open Time</td>
+<td>ISO 8601</td>
+<td><code>new Date(data.signal.pendingAt).toISOString()</code></td>
+</tr>
+<tr>
+<td>Close Time</td>
+<td>ISO 8601</td>
+<td><code>new Date(data.closeTimestamp).toISOString()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="live-report-columns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Report Columns<a href="#live-report-columns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The live trading report includes all event types with these columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Format</th>
+<th>Nullable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Timestamp</td>
+<td>ISO 8601</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>Uppercase (IDLE, OPENED, ACTIVE, CLOSED)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Symbol</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Signal ID</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Position</td>
+<td>Uppercase or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Note</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Current Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Open Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot; or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Take Profit</td>
+<td>Fixed 8 decimals + &quot; USD&quot; or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Stop Loss</td>
+<td>Fixed 8 decimals + &quot; USD&quot; or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>PNL (net)</td>
+<td>Fixed 2 decimals + &quot;%&quot; with sign or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Close Reason</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Duration (min)</td>
+<td>Integer minutes or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>The nullable columns are only populated for relevant event types (e.g., <code>pnl</code> only exists for <code>closed</code> events, <code>signalId</code> does not exist for <code>idle</code> events).</p>
+<a id="schedule-report-columns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schedule Report Columns<a href="#schedule-report-columns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The schedule report tracks scheduled and cancelled limit order signals:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Format</th>
+<th>Nullable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Timestamp</td>
+<td>ISO 8601</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Action</td>
+<td>Uppercase (SCHEDULED, CANCELLED)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Symbol</td>
+<td>Plain text</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Signal ID</td>
+<td>Plain text</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Position</td>
+<td>Uppercase</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Note</td>
+<td>Plain text or &quot;N/A&quot;</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Current Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Entry Price</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Take Profit</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Stop Loss</td>
+<td>Fixed 8 decimals + &quot; USD&quot;</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Wait Time (min)</td>
+<td>Integer minutes or &quot;N/A&quot;</td>
+<td>Yes (only for cancelled)</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>Wait Time</code> column shows how long the signal waited before cancellation (timeout or SL hit before entry).</p>
+<a id="walker-report-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Walker Report Structure<a href="#walker-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Walker reports are different from signal-based reports. Instead of a table of individual signals, they display a comparison table of strategies with their aggregate statistics.</p>
+<p><strong>Walker Report Format</strong></p>
+<pre><code class="markdown"># Walker Comparison: my-walker
+
+Symbol: BTCUSDT
+Metric: sharpeRatio
+
+| Strategy | Win Rate | Avg PNL | Total PNL | Sharpe Ratio | Metric Value |
+|----------|----------|---------|-----------|--------------|--------------|
+| strategy-a | 65.2% | +1.85% | +45.3% | 1.92 | 1.92 |
+| strategy-b | 58.3% | +1.45% | +38.7% | 1.67 | 1.67 |
+| strategy-c | 52.1% | +1.12% | +28.4% | 1.34 | 1.34 |
+
+Best Strategy: strategy-a
+Best Metric: 1.92
+</code><button type="button">Copy</button></pre>
+
+<p>The table is sorted descending by the selected metric, making it easy to identify the best-performing strategy at a glance.</p>
+<a id="data-storage-and-event-processing" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Storage and Event Processing<a href="#data-storage-and-event-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="reportstorage-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ReportStorage Implementation<a href="#reportstorage-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both services use an internal <code>ReportStorage</code> class to manage data accumulation:</p>
+<p><img src="../media/71_Reporting_and_Analytics_2.svg" alt="Mermaid Diagram"></p>
+<a id="backtest-event-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Event Processing<a href="#backtest-event-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The backtest service implements a simple append-only model:</p>
+<pre><code class="typescript"><span class="hl-5">// Simplified logic from BacktestMarkdownService.tick()</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> !== </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1">; </span><span class="hl-5">// Ignore non-closed events</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">storage</span><span class="hl-1"> = </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">getStorage</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">);</span><br/><span class="hl-4">storage</span><span class="hl-1">.</span><span class="hl-0">addSignal</span><span class="hl-1">(</span><span class="hl-4">data</span><span class="hl-1">); </span><span class="hl-5">// Append to list</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each closed signal is appended to the <code>_signalList</code> array without modification.</p>
+<a id="live-event-processing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Event Processing<a href="#live-event-processing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The live service implements an update-or-append model to handle signal state transitions:</p>
+<p><img src="../media/71_Reporting_and_Analytics_3.svg" alt="Mermaid Diagram"></p>
+<p>This design ensures that each signal appears only once in the final report, showing its most recent state.</p>
+<a id="statistics-calculation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Statistics Calculation<a href="#statistics-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="common-metrics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Metrics<a href="#common-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both <code>BacktestMarkdownService</code> and <code>LiveMarkdownService</code> calculate comprehensive performance statistics using the <code>getData()</code> method. All numeric metrics return <code>null</code> if the calculation would produce <code>NaN</code>, <code>Infinity</code>, or non-numeric values (via <code>isUnsafe()</code> guard function).</p>
+<p><strong>Safe Math Guard Function</strong></p>
+<pre><code class="typescript"><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">isUnsafe</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">): </span><span class="hl-11">boolean</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-7">typeof</span><span class="hl-1"> </span><span class="hl-4">value</span><span class="hl-1"> !== </span><span class="hl-2">&quot;number&quot;</span><span class="hl-1">) </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-0">isNaN</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">)) </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-0">isFinite</span><span class="hl-1">(</span><span class="hl-4">value</span><span class="hl-1">)) </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">false</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This prevents display of invalid metrics like <code>NaN%</code> or <code>Infinity</code> in reports, returning <code>null</code> instead which renders as &quot;N/A&quot; in markdown.</p>
+<a id="statistical-metrics-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Statistical Metrics Table<a href="#statistical-metrics-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Formula</th>
+<th>Implementation</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Total Signals/Events</strong></td>
+<td>Count of closed signals</td>
+<td><code>signalList.length</code> or <code>eventList.filter(e =&gt; e.action === &quot;closed&quot;).length</code></td>
+<td>Total completed trades</td>
+</tr>
+<tr>
+<td><strong>Win Count</strong></td>
+<td>Signals with PNL &gt; 0</td>
+<td><code>signals.filter(s =&gt; s.pnl.pnlPercentage &gt; 0).length</code></td>
+<td>Number of profitable trades</td>
+</tr>
+<tr>
+<td><strong>Loss Count</strong></td>
+<td>Signals with PNL &lt; 0</td>
+<td><code>signals.filter(s =&gt; s.pnl.pnlPercentage &lt; 0).length</code></td>
+<td>Number of losing trades</td>
+</tr>
+<tr>
+<td><strong>Win Rate</strong></td>
+<td><code>(winCount / totalSignals) * 100</code></td>
+<td>Percentage (0-100)</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Average PNL</strong></td>
+<td><code>sum(pnl) / totalSignals</code></td>
+<td>Mean percentage return per trade</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Total PNL</strong></td>
+<td><code>sum(pnl)</code></td>
+<td>Cumulative percentage return</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Standard Deviation</strong></td>
+<td><code>sqrt(variance)</code> where <code>variance = sum((pnl - avgPnl)^2) / totalSignals</code></td>
+<td>Volatility of returns</td>
+<td>Lower is better</td>
+</tr>
+<tr>
+<td><strong>Sharpe Ratio</strong></td>
+<td><code>avgPnl / stdDev</code> (risk-free rate = 0)</td>
+<td>Risk-adjusted return</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Annualized Sharpe Ratio</strong></td>
+<td><code>sharpeRatio * sqrt(365)</code></td>
+<td>Sharpe scaled to yearly basis</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Certainty Ratio</strong></td>
+<td><code>avgWin / abs(avgLoss)</code></td>
+<td>Ratio of average win to average loss</td>
+<td>Higher is better</td>
+</tr>
+<tr>
+<td><strong>Expected Yearly Returns</strong></td>
+<td><code>avgPnl * tradesPerYear</code> where <code>tradesPerYear = 365 / avgDurationDays</code></td>
+<td>Projected annual return</td>
+<td>Higher is better</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Sharpe Ratio Calculation Example</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgPnl</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">s</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">totalSignals</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">returns</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">s</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">variance</span><span class="hl-1"> = </span><span class="hl-4">returns</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">r</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">pow</span><span class="hl-1">(</span><span class="hl-4">r</span><span class="hl-1"> - </span><span class="hl-4">avgPnl</span><span class="hl-1">, </span><span class="hl-6">2</span><span class="hl-1">), </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">totalSignals</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stdDev</span><span class="hl-1"> = </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">sqrt</span><span class="hl-1">(</span><span class="hl-4">variance</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">sharpeRatio</span><span class="hl-1"> = </span><span class="hl-4">stdDev</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> ? </span><span class="hl-4">avgPnl</span><span class="hl-1"> / </span><span class="hl-4">stdDev</span><span class="hl-1"> : </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">annualizedSharpeRatio</span><span class="hl-1"> = </span><span class="hl-4">sharpeRatio</span><span class="hl-1"> * </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">sqrt</span><span class="hl-1">(</span><span class="hl-6">365</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Certainty Ratio Calculation Example</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">wins</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-0">filter</span><span class="hl-1">(</span><span class="hl-4">s</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">losses</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-0">filter</span><span class="hl-1">(</span><span class="hl-4">s</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1"> &lt; </span><span class="hl-6">0</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgWin</span><span class="hl-1"> = </span><span class="hl-4">wins</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> </span><br/><span class="hl-1">  ? </span><span class="hl-4">wins</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">s</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">wins</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> </span><br/><span class="hl-1">  : </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgLoss</span><span class="hl-1"> = </span><span class="hl-4">losses</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> </span><br/><span class="hl-1">  ? </span><span class="hl-4">losses</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">((</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">s</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">, </span><span class="hl-6">0</span><span class="hl-1">) / </span><span class="hl-4">losses</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> </span><br/><span class="hl-1">  : </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">certaintyRatio</span><span class="hl-1"> = </span><span class="hl-4">avgLoss</span><span class="hl-1"> &lt; </span><span class="hl-6">0</span><span class="hl-1"> ? </span><span class="hl-4">avgWin</span><span class="hl-1"> / </span><span class="hl-4">Math</span><span class="hl-1">.</span><span class="hl-0">abs</span><span class="hl-1">(</span><span class="hl-4">avgLoss</span><span class="hl-1">) : </span><span class="hl-6">0</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Expected Yearly Returns Calculation Example</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgDurationMs</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-0">reduce</span><span class="hl-1">(</span><br/><span class="hl-1">  (</span><span class="hl-4">sum</span><span class="hl-1">, </span><span class="hl-4">s</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">sum</span><span class="hl-1"> + (</span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">closeTimestamp</span><span class="hl-1"> - </span><span class="hl-4">s</span><span class="hl-1">.</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pendingAt</span><span class="hl-1">), </span><br/><span class="hl-1">  </span><span class="hl-6">0</span><br/><span class="hl-1">) / </span><span class="hl-4">totalSignals</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgDurationDays</span><span class="hl-1"> = </span><span class="hl-4">avgDurationMs</span><span class="hl-1"> / (</span><span class="hl-6">1000</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">24</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tradesPerYear</span><span class="hl-1"> = </span><span class="hl-4">avgDurationDays</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1"> ? </span><span class="hl-6">365</span><span class="hl-1"> / </span><span class="hl-4">avgDurationDays</span><span class="hl-1"> : </span><span class="hl-6">0</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">expectedYearlyReturns</span><span class="hl-1"> = </span><span class="hl-4">avgPnl</span><span class="hl-1"> * </span><span class="hl-4">tradesPerYear</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All calculations return <code>null</code> if the result is unsafe, which renders as &quot;N/A&quot; in markdown reports.</p>
+<a id="backtest-statistics-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Statistics Interface<a href="#backtest-statistics-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">BacktestStatistics</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">signalList</span><span class="hl-1">: </span><span class="hl-11">IStrategyTickResultClosed</span><span class="hl-1">[];</span><br/><span class="hl-1">  </span><span class="hl-4">totalSignals</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">winCount</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">lossCount</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">avgPnl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">annualizedSharpeRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">certaintyRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">expectedYearlyReturns</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-statistics-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Statistics Interface<a href="#live-statistics-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">LiveStatistics</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">eventList</span><span class="hl-1">: </span><span class="hl-11">TickEvent</span><span class="hl-1">[];</span><br/><span class="hl-1">  </span><span class="hl-4">totalEvents</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalClosed</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">winCount</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">lossCount</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">avgPnl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">stdDev</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">annualizedSharpeRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">certaintyRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">expectedYearlyReturns</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The only difference from backtest statistics is that <code>eventList</code> includes all event types (idle, opened, active, closed), not just closed signals.</p>
+<a id="schedule-statistics-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schedule Statistics Interface<a href="#schedule-statistics-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">ScheduleStatistics</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">eventList</span><span class="hl-1">: </span><span class="hl-11">ScheduledEvent</span><span class="hl-1">[];</span><br/><span class="hl-1">  </span><span class="hl-4">totalEvents</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalScheduled</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalCancelled</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">cancellationRate</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">avgWaitTime</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Schedule statistics focus on limit order effectiveness rather than trading performance.</p>
+<a id="performance-profiling" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance Profiling<a href="#performance-profiling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework provides built-in performance profiling via the <code>performanceEmitter</code> to track execution timing for bottleneck analysis.</p>
+<a id="performance-metrics-event" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Metrics Event<a href="#performance-metrics-event" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">PerformanceContract</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">metricType</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">duration</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">; </span><span class="hl-5">// milliseconds</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">timestamp</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="metric-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Metric Types<a href="#metric-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework emits the following metric types during execution:</p>
+<table>
+<thead>
+<tr>
+<th>Metric Type</th>
+<th>Description</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>backtest_total</code></td>
+<td>Total backtest execution time</td>
+<td>Entire <code>Backtest.run()</code> duration</td>
+</tr>
+<tr>
+<td><code>backtest_timeframe</code></td>
+<td>Time to generate timeframe array</td>
+<td><code>Frame.getTimeframe()</code> call</td>
+</tr>
+<tr>
+<td><code>backtest_signal</code></td>
+<td>Time per signal generation + validation</td>
+<td><code>Strategy.tick()</code> call</td>
+</tr>
+<tr>
+<td><code>live_tick</code></td>
+<td>Time per live tick iteration</td>
+<td>Each iteration of <code>Live.run()</code> loop</td>
+</tr>
+</tbody>
+</table>
+<a id="listening-to-performance-events" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Listening to Performance Events<a href="#listening-to-performance-events" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenPerformance</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">unsubscribe</span><span class="hl-1"> = </span><span class="hl-0">listenPerformance</span><span class="hl-1">((</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">metricType</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">event</span><span class="hl-9">.</span><span class="hl-4">duration</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">ms`</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">duration</span><span class="hl-1"> &gt; </span><span class="hl-6">100</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-2">&quot;Slow operation detected:&quot;</span><span class="hl-1">, </span><span class="hl-4">event</span><span class="hl-1">.</span><span class="hl-4">metricType</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Later: stop listening</span><br/><span class="hl-0">unsubscribe</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Events are processed sequentially via <code>queued()</code> wrapper to prevent concurrent callback execution, ensuring consistent metric aggregation even with async callbacks.</p>
+<a id="public-api-methods" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Methods<a href="#public-api-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="getdata-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getData() Methods<a href="#getdata-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All markdown services provide a <code>getData()</code> method that returns structured statistics without formatting:</p>
+<table>
+<thead>
+<tr>
+<th>API Method</th>
+<th>Return Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Backtest.getData(strategyName)</code></td>
+<td><code>BacktestStatistics</code></td>
+<td>All closed signals with calculated metrics</td>
+</tr>
+<tr>
+<td><code>Live.getData(strategyName)</code></td>
+<td><code>LiveStatistics</code></td>
+<td>All events (idle/opened/active/closed) with metrics</td>
+</tr>
+<tr>
+<td><code>Schedule.getData(strategyName)</code></td>
+<td><code>ScheduleStatistics</code></td>
+<td>Scheduled/cancelled events with cancellation metrics</td>
+</tr>
+<tr>
+<td><code>Walker.getData(symbol, walkerName)</code></td>
+<td><code>IWalkerResults</code></td>
+<td>Strategy comparison with best strategy selection</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Usage Example</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Get backtest statistics</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backtestStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Sharpe Ratio:&quot;</span><span class="hl-1">, </span><span class="hl-4">backtestStats</span><span class="hl-1">.</span><span class="hl-4">sharpeRatio</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Win Rate:&quot;</span><span class="hl-1">, </span><span class="hl-4">backtestStats</span><span class="hl-1">.</span><span class="hl-4">winRate</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Get live statistics</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">liveStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Total Events:&quot;</span><span class="hl-1">, </span><span class="hl-4">liveStats</span><span class="hl-1">.</span><span class="hl-4">totalEvents</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Closed Signals:&quot;</span><span class="hl-1">, </span><span class="hl-4">liveStats</span><span class="hl-1">.</span><span class="hl-4">totalClosed</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Get schedule statistics</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">scheduleStats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Cancellation Rate:&quot;</span><span class="hl-1">, </span><span class="hl-4">scheduleStats</span><span class="hl-1">.</span><span class="hl-4">cancellationRate</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Avg Wait Time:&quot;</span><span class="hl-1">, </span><span class="hl-4">scheduleStats</span><span class="hl-1">.</span><span class="hl-4">avgWaitTime</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Get walker results</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">walkerResults</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best Strategy:&quot;</span><span class="hl-1">, </span><span class="hl-4">walkerResults</span><span class="hl-1">.</span><span class="hl-4">bestStrategy</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Best Metric:&quot;</span><span class="hl-1">, </span><span class="hl-4">walkerResults</span><span class="hl-1">.</span><span class="hl-4">bestMetric</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="getreport-methods" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getReport() Methods<a href="#getreport-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All markdown services expose a <code>getReport()</code> method that returns a markdown-formatted string:</p>
+<p><strong>Report Generation Flow Diagram</strong></p>
+<p><img src="../media/71_Reporting_and_Analytics_4.svg" alt="Mermaid Diagram"></p>
+<p><strong>Usage Example</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Backtest</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">backtestReport</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">backtestReport</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Live</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">liveReport</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">liveReport</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Schedule</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">scheduleReport</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">scheduleReport</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Walker</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">walkerReport</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">getReport</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-4">walkerReport</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="dump-methods---saving-reports-to-disk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dump() Methods - Saving Reports to Disk<a href="#dump-methods---saving-reports-to-disk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>dump()</code> method writes reports to the file system:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Default Path</th>
+<th>File Name</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Backtest.dump(strategyName, path?)</code></td>
+<td><code>./logs/backtest/</code></td>
+<td><code>{strategyName}.md</code></td>
+<td>Creates directory recursively, overwrites existing file</td>
+</tr>
+<tr>
+<td><code>Live.dump(strategyName, path?)</code></td>
+<td><code>./logs/live/</code></td>
+<td><code>{strategyName}.md</code></td>
+<td>Creates directory recursively, overwrites existing file</td>
+</tr>
+<tr>
+<td><code>Schedule.dump(strategyName, path?)</code></td>
+<td><code>./logs/schedule/</code></td>
+<td><code>{strategyName}.md</code></td>
+<td>Creates directory recursively, overwrites existing file</td>
+</tr>
+<tr>
+<td><code>Walker.dump(symbol, walkerName, path?)</code></td>
+<td><code>./logs/walker/</code></td>
+<td><code>{walkerName}-{symbol}.md</code></td>
+<td>Creates directory recursively, overwrites existing file</td>
+</tr>
+</tbody>
+</table>
+<p>The method uses Node.js <code>fs/promises</code> for async file operations:</p>
+<pre><code class="typescript"><span class="hl-5">// Internal implementation</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">dir</span><span class="hl-1"> = </span><span class="hl-0">join</span><span class="hl-1">(</span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-0">cwd</span><span class="hl-1">(), </span><span class="hl-4">path</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">mkdir</span><span class="hl-1">(</span><span class="hl-4">dir</span><span class="hl-1">, { </span><span class="hl-4">recursive:</span><span class="hl-1"> </span><span class="hl-7">true</span><span class="hl-1"> });</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-0">writeFile</span><span class="hl-1">(</span><span class="hl-4">filepath</span><span class="hl-1">, </span><span class="hl-4">markdown</span><span class="hl-1">, </span><span class="hl-2">&quot;utf-8&quot;</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Report saved: </span><span class="hl-7">${</span><span class="hl-4">filepath</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Error handling logs failures to console but does not throw exceptions, ensuring that report generation failures don't crash the main application.</p>
+<p><strong>Usage Example</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Save to default paths</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Save to custom paths</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./custom/path&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="clear-methods---clearing-accumulated-data" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear() Methods - Clearing Accumulated Data<a href="#clear-methods---clearing-accumulated-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>clear()</code> method resets accumulated data by removing memoized <code>ReportStorage</code> instances:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Backtest.clear(strategyName?)</code></td>
+<td>Clears backtest report data for strategy (or all if omitted)</td>
+</tr>
+<tr>
+<td><code>Live.clear(strategyName?)</code></td>
+<td>Clears live report data for strategy (or all if omitted)</td>
+</tr>
+<tr>
+<td><code>Schedule.clear(strategyName?)</code></td>
+<td>Clears schedule report data for strategy (or all if omitted)</td>
+</tr>
+<tr>
+<td><code>Walker.clear(walkerName?)</code></td>
+<td>Clears walker report data for walker (or all if omitted)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation Detail</strong></p>
+<p>The <code>clear()</code> method delegates to the memoized <code>getStorage</code> function's <code>clear()</code> method, which is provided by the <code>memoize()</code> utility from <code>functools-kit</code>:</p>
+<pre><code class="typescript"><span class="hl-5">// Service implementation</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">getStorage</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">&lt;(</span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">ReportStorage</span><span class="hl-1">&gt;(</span><br/><span class="hl-1">  ([</span><span class="hl-4">strategyName</span><span class="hl-1">]) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">strategyName</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">, </span><span class="hl-5">// Key function</span><br/><span class="hl-1">  () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ReportStorage</span><span class="hl-1">() </span><span class="hl-5">// Factory function</span><br/><span class="hl-1">);</span><br/><br/><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">clear</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">strategyName</span><span class="hl-1">?: </span><span class="hl-11">StrategyName</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">getStorage</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-4">strategyName</span><span class="hl-1">); </span><span class="hl-5">// Clear cache entry</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li>Clearing with a specific key removes only that cache entry</li>
+<li>Clearing without arguments removes all cached instances</li>
+</ul>
+<p><strong>Usage Example</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Clear specific strategy/walker data</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">(</span><span class="hl-2">&quot;my-walker&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Clear all accumulated data</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Schedule</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">clear</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="initialization-and-event-subscription" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Initialization and Event Subscription<a href="#initialization-and-event-subscription" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="automatic-initialization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Automatic Initialization<a href="#automatic-initialization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both services use the <code>singleshot</code> decorator from <code>functools-kit</code> to ensure initialization happens exactly once:</p>
+<p><img src="../media/71_Reporting_and_Analytics_5.svg" alt="Mermaid Diagram"></p>
+<p>The <code>init()</code> method is protected and automatically invoked on first service use. It subscribes the service's <code>tick()</code> method to the appropriate signal emitter.</p>
+<a id="event-emitter-binding" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Emitter Binding<a href="#event-emitter-binding" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/71_Reporting_and_Analytics_6.svg" alt="Mermaid Diagram"></p>
+<p>The emitters are defined in <code>src/config/emitters.ts</code> and use the event system to decouple signal generation from report accumulation.</p>
+<a id="markdown-table-formatting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Markdown Table Formatting<a href="#markdown-table-formatting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All markdown services use the <code>str.newline()</code> utility from <code>functools-kit</code> to generate markdown tables. The table formatting follows GitHub Flavored Markdown syntax:</p>
+<pre><code><span class="hl-1">| </span><span class="hl-4">Column</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1"> | </span><span class="hl-4">Column</span><span class="hl-1"> </span><span class="hl-6">2</span><span class="hl-1"> | </span><span class="hl-4">Column</span><span class="hl-1"> </span><span class="hl-6">3</span><span class="hl-1"> |</span><br/><span class="hl-1">|----------|----------|----------|</span><br/><span class="hl-1">| </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1">  | </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">2</span><span class="hl-1">  | </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">3</span><span class="hl-1">  |</span><br/><span class="hl-1">| </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">4</span><span class="hl-1">  | </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">  | </span><span class="hl-4">Value</span><span class="hl-1"> </span><span class="hl-6">6</span><span class="hl-1">  |</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Table Generation Process</strong></p>
+<ol>
+<li>Define column configuration with <code>key</code>, <code>label</code>, and <code>format</code> function</li>
+<li>Extract column headers: <code>columns.map(col =&gt; col.label)</code></li>
+<li>Create separator row: <code>columns.map(() =&gt; &quot;---&quot;)</code></li>
+<li>Map each signal/event to data row: <code>signals.map(signal =&gt; columns.map(col =&gt; col.format(signal)))</code></li>
+<li>Combine into table: <code>[header, separator, ...rows]</code></li>
+<li>Format each row: <code>row =&gt; \</code>| ${row.join(&quot; | &quot;)} |``</li>
+<li>Join with newlines via <code>str.newline()</code></li>
+<li>Wrap in markdown document with title and statistics</li>
+</ol>
+<p><strong>Implementation Example</strong></p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">header</span><span class="hl-1"> = </span><span class="hl-4">columns</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-4">col</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">col</span><span class="hl-1">.</span><span class="hl-4">label</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">separator</span><span class="hl-1"> = </span><span class="hl-4">columns</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(() </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">&quot;---&quot;</span><span class="hl-1">);</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">rows</span><span class="hl-1"> = </span><span class="hl-4">signalList</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-4">signal</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">((</span><span class="hl-4">col</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">col</span><span class="hl-1">.</span><span class="hl-0">format</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">))</span><br/><span class="hl-1">);</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tableData</span><span class="hl-1"> = [</span><span class="hl-4">header</span><span class="hl-1">, </span><span class="hl-4">separator</span><span class="hl-1">, ...</span><span class="hl-4">rows</span><span class="hl-1">];</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">table</span><span class="hl-1"> = </span><span class="hl-4">str</span><span class="hl-1">.</span><span class="hl-0">newline</span><span class="hl-1">(</span><span class="hl-4">tableData</span><span class="hl-1">.</span><span class="hl-0">map</span><span class="hl-1">(</span><span class="hl-4">row</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-2">`| </span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-0">join</span><span class="hl-9">(</span><span class="hl-2">&quot; | &quot;</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2"> |`</span><span class="hl-1">));</span><br/><br/><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">str</span><span class="hl-1">.</span><span class="hl-0">newline</span><span class="hl-1">(</span><br/><span class="hl-1">  </span><span class="hl-2">`# Report Title`</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">table</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">&quot;&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-2">`**Statistics here**`</span><br/><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="integration-with-execution-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Execution Flow<a href="#integration-with-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The markdown services operate completely independently from the main execution loop:</p>
+<p><img src="../media/71_Reporting_and_Analytics_7.svg" alt="Mermaid Diagram"></p>
+<p>This architecture ensures that report generation never blocks strategy execution or impacts performance. The event-driven design allows reports to be generated incrementally as signals close, rather than requiring post-processing of execution results.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#reporting-and-analytics"><span>Reporting and <wbr/>Analytics</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#service-architecture"><span>Service <wbr/>Architecture</span></a></li><li><ul><li><a href="#backtestmarkdownservice"><span>Backtest<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#livemarkdownservice"><span>Live<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#walkermarkdownservice"><span>Walker<wbr/>Markdown<wbr/>Service</span></a></li><li><a href="#schedulemarkdownservice"><span>Schedule<wbr/>Markdown<wbr/>Service</span></a></li></ul></li><li><a href="#report-structure"><span>Report <wbr/>Structure</span></a></li><li><ul><li><a href="#column-configuration"><span>Column <wbr/>Configuration</span></a></li><li><a href="#backtest-report-columns"><span>Backtest <wbr/>Report <wbr/>Columns</span></a></li><li><a href="#live-report-columns"><span>Live <wbr/>Report <wbr/>Columns</span></a></li><li><a href="#schedule-report-columns"><span>Schedule <wbr/>Report <wbr/>Columns</span></a></li><li><a href="#walker-report-structure"><span>Walker <wbr/>Report <wbr/>Structure</span></a></li></ul></li><li><a href="#data-storage-and-event-processing"><span>Data <wbr/>Storage and <wbr/>Event <wbr/>Processing</span></a></li><li><ul><li><a href="#reportstorage-implementation"><span>Report<wbr/>Storage <wbr/>Implementation</span></a></li><li><a href="#backtest-event-processing"><span>Backtest <wbr/>Event <wbr/>Processing</span></a></li><li><a href="#live-event-processing"><span>Live <wbr/>Event <wbr/>Processing</span></a></li></ul></li><li><a href="#statistics-calculation"><span>Statistics <wbr/>Calculation</span></a></li><li><ul><li><a href="#common-metrics"><span>Common <wbr/>Metrics</span></a></li><li><a href="#statistical-metrics-table"><span>Statistical <wbr/>Metrics <wbr/>Table</span></a></li><li><a href="#backtest-statistics-interface"><span>Backtest <wbr/>Statistics <wbr/>Interface</span></a></li><li><a href="#live-statistics-interface"><span>Live <wbr/>Statistics <wbr/>Interface</span></a></li><li><a href="#schedule-statistics-interface"><span>Schedule <wbr/>Statistics <wbr/>Interface</span></a></li></ul></li><li><a href="#performance-profiling"><span>Performance <wbr/>Profiling</span></a></li><li><ul><li><a href="#performance-metrics-event"><span>Performance <wbr/>Metrics <wbr/>Event</span></a></li><li><a href="#metric-types"><span>Metric <wbr/>Types</span></a></li><li><a href="#listening-to-performance-events"><span>Listening to <wbr/>Performance <wbr/>Events</span></a></li></ul></li><li><a href="#public-api-methods"><span>Public API <wbr/>Methods</span></a></li><li><ul><li><a href="#getdata-methods"><span>get<wbr/>Data() <wbr/>Methods</span></a></li><li><a href="#getreport-methods"><span>get<wbr/>Report() <wbr/>Methods</span></a></li><li><a href="#dump-methods---saving-reports-to-disk"><span>dump() <wbr/>Methods -<wbr/> <wbr/>Saving <wbr/>Reports to <wbr/>Disk</span></a></li><li><a href="#clear-methods---clearing-accumulated-data"><span>clear() <wbr/>Methods -<wbr/> <wbr/>Clearing <wbr/>Accumulated <wbr/>Data</span></a></li></ul></li><li><a href="#initialization-and-event-subscription"><span>Initialization and <wbr/>Event <wbr/>Subscription</span></a></li><li><ul><li><a href="#automatic-initialization"><span>Automatic <wbr/>Initialization</span></a></li><li><a href="#event-emitter-binding"><span>Event <wbr/>Emitter <wbr/>Binding</span></a></li></ul></li><li><a href="#markdown-table-formatting"><span>Markdown <wbr/>Table <wbr/>Formatting</span></a></li><li><a href="#integration-with-execution-flow"><span>Integration with <wbr/>Execution <wbr/>Flow</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

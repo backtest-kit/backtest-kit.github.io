@@ -1,0 +1,323 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/87_custom_persistence_backends | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_87_custom_persistence_backends.html">design/87_custom_persistence_backends</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="custom-persistence-backends" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Custom Persistence Backends<a href="#custom-persistence-backends" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents how to implement custom persistence backends for backtest-kit's crash recovery system. It covers the <code>IPersistBase</code> interface, adapter registration, and integration with external storage systems like Redis, MongoDB, or cloud storage.</p>
+<p>For information about the persistence layer architecture and crash recovery mechanisms, see <a href="design_84_persistence_layer.html">Persistence Layer</a>. For details about the default file-based persistence implementation, see <a href="design_21_persistence_utilities.html">Persistence Utilities</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>backtest-kit provides a pluggable persistence system that allows custom storage backends to replace the default file-based implementation. The system uses four domain-specific adapters:</p>
+<table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>Purpose</th>
+<th>Data Type</th>
+<th>Default Path</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PersistSignalAdapter</code></td>
+<td>Active pending signals</td>
+<td><code>ISignalRow | null</code></td>
+<td><code>./dump/data/signal/</code></td>
+</tr>
+<tr>
+<td><code>PersistRiskAdapter</code></td>
+<td>Active risk positions</td>
+<td><code>Array&lt;[string, IRiskActivePosition]&gt;</code></td>
+<td><code>./dump/data/risk/</code></td>
+</tr>
+<tr>
+<td><code>PersistScheduleAdapter</code></td>
+<td>Scheduled signals</td>
+<td><code>IScheduledSignalRow | null</code></td>
+<td><code>./dump/data/schedule/</code></td>
+</tr>
+<tr>
+<td><code>PersistPartialAdapter</code></td>
+<td>Partial profit/loss levels</td>
+<td><code>Record&lt;string, IPartialData&gt;</code></td>
+<td><code>./dump/data/partial/</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each adapter accepts a custom constructor via <code>use*Adapter()</code> methods, enabling integration with any storage system that implements the <code>IPersistBase</code> interface.</p>
+<hr>
+<a id="persistence-system-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Persistence System Architecture<a href="#persistence-system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/87_Custom_Persistence_Backends_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Architecture:</strong> Each adapter uses a factory pattern with constructor type <code>TPersistBaseCtor</code>. Custom backends register by calling <code>use*Adapter(CustomConstructor)</code> which replaces the factory. Instances are memoized per entity name using <code>memoize()</code> from functools-kit.</p>
+<hr>
+<a id="ipersistbase-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IPersistBase Interface<a href="#ipersistbase-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Custom persistence backends must implement the <code>IPersistBase&lt;Entity&gt;</code> interface:</p>
+<pre><code class="typescript"><span class="hl-5">// From src/classes/Persist.ts</span><br/><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IPersistBase</span><span class="hl-1">&lt;</span><span class="hl-11">Entity</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IEntity</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1"> = </span><span class="hl-11">IEntity</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">initial</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">readValue</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">Entity</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">hasValue</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">boolean</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">writeValue</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">, </span><span class="hl-4">entity</span><span class="hl-1">: </span><span class="hl-11">Entity</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="interface-contract" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Interface Contract<a href="#interface-contract" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Return Type</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>waitForInit</code></td>
+<td><code>initial: boolean</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Initialize storage, validate existing data</td>
+</tr>
+<tr>
+<td><code>readValue</code></td>
+<td><code>entityId: EntityId</code></td>
+<td><code>Promise&lt;Entity&gt;</code></td>
+<td>Retrieve entity by ID</td>
+</tr>
+<tr>
+<td><code>hasValue</code></td>
+<td><code>entityId: EntityId</code></td>
+<td><code>Promise&lt;boolean&gt;</code></td>
+<td>Check entity existence</td>
+</tr>
+<tr>
+<td><code>writeValue</code></td>
+<td><code>entityId, entity</code></td>
+<td><code>Promise&lt;void&gt;</code></td>
+<td>Persist entity atomically</td>
+</tr>
+</tbody>
+</table>
+<a id="entity-types" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Entity Types<a href="#entity-types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Adapter</th>
+<th>Entity Type</th>
+<th>Key Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signal</td>
+<td><code>ISignalRow | null</code></td>
+<td><code>symbol</code> (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td><code>Array&lt;[string, IRiskActivePosition]&gt;</code></td>
+<td><code>&quot;positions&quot;</code> (constant)</td>
+</tr>
+<tr>
+<td>Schedule</td>
+<td><code>IScheduledSignalRow | null</code></td>
+<td><code>symbol</code> (e.g., &quot;BTCUSDT&quot;)</td>
+</tr>
+<tr>
+<td>Partial</td>
+<td><code>Record&lt;string, IPartialData&gt;</code></td>
+<td><code>&quot;levels&quot;</code> (constant)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important:</strong> <code>waitForInit()</code> receives <code>initial: boolean</code> flag indicating first-time initialization. Use this to optimize connection pooling or skip expensive validation.</p>
+<hr>
+<a id="persistbase-default-implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PersistBase Default Implementation<a href="#persistbase-default-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The default <code>PersistBase</code> class provides file-based storage with atomic writes:</p>
+<p><img src="../media/87_Custom_Persistence_Backends_1.svg" alt="Mermaid Diagram"></p>
+<a id="atomic-write-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Atomic Write Pattern<a href="#atomic-write-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/classes/Persist.ts:295-314</a> implements atomic writes via <code>writeFileAtomic</code>:</p>
+<ol>
+<li>Serialize entity to JSON string</li>
+<li>Write to temporary file: <code>{path}.tmp</code></li>
+<li>Call <code>fsync()</code> to ensure disk write</li>
+<li>Rename temp file to final path (atomic operation)</li>
+</ol>
+<p>This guarantees that files are never in a partially-written state, critical for crash recovery.</p>
+<a id="self-healing-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Self-Healing Validation<a href="#self-healing-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/classes/Persist.ts:132-153</a> implements validation during <code>waitForInit()</code>:</p>
+<ol>
+<li>Iterate all <code>.json</code> files in directory</li>
+<li>Attempt to read and parse each file</li>
+<li>If parsing fails, delete corrupted file</li>
+<li>Retry deletion up to 5 times with 1-second delays</li>
+</ol>
+<p>This prevents corrupted files from blocking initialization after crashes.</p>
+<hr>
+<a id="adapter-registration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Adapter Registration<a href="#adapter-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each domain-specific adapter exposes a <code>use*Adapter()</code> method accepting a custom constructor:</p>
+<a id="signal-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Persistence<a href="#signal-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// From src/classes/Persist.ts</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">PersistSignalUtils</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">PersistSignalFactory</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">StrategyName</span><span class="hl-1">, </span><span class="hl-11">SignalData</span><span class="hl-1">&gt; = </span><span class="hl-4">PersistBase</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">Ctor</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">StrategyName</span><span class="hl-1">, </span><span class="hl-11">SignalData</span><span class="hl-1">&gt;</span><br/><span class="hl-1">  ): </span><span class="hl-11">void</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">PersistSignalFactory</span><span class="hl-1"> = </span><span class="hl-4">Ctor</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">PersistSignalAdapter</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistSignalUtils</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Memoization Key:</strong> <a href="">src/classes/Persist.ts:518-519</a> uses <code>${symbol}:${strategyName}</code> as cache key. Each symbol-strategy combination gets isolated storage instance.</p>
+<p><strong>Entity Name Format:</strong> <a href="">src/classes/Persist.ts:522-524</a> constructs entity names as <code>${symbol}_${strategyName}</code> and base directory as <code>./dump/data/signal/</code>.</p>
+<a id="risk-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Persistence<a href="#risk-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// From src/classes/Persist.ts</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">PersistRiskUtils</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">PersistRiskFactory</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">RiskName</span><span class="hl-1">, </span><span class="hl-11">RiskData</span><span class="hl-1">&gt; = </span><span class="hl-4">PersistBase</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">Ctor</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">RiskName</span><span class="hl-1">, </span><span class="hl-11">RiskData</span><span class="hl-1">&gt;</span><br/><span class="hl-1">  ): </span><span class="hl-11">void</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">PersistRiskFactory</span><span class="hl-1"> = </span><span class="hl-4">Ctor</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">PersistRiskAdapter</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistRiskUtils</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Memoization Key:</strong> <a href="">src/classes/Persist.ts:651-652</a> uses <code>${riskName}</code> as cache key. One instance per risk profile.</p>
+<p><strong>Storage Key:</strong> <a href="">src/classes/Persist.ts:699</a> uses constant <code>&quot;positions&quot;</code> as entity ID for all risk data.</p>
+<a id="schedule-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Schedule Persistence<a href="#schedule-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// From src/classes/Persist.ts</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">PersistScheduleUtils</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">PersistScheduleFactory</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">StrategyName</span><span class="hl-1">, </span><span class="hl-11">ScheduleData</span><span class="hl-1">&gt; = </span><span class="hl-4">PersistBase</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">usePersistScheduleAdapter</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">Ctor</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">StrategyName</span><span class="hl-1">, </span><span class="hl-11">ScheduleData</span><span class="hl-1">&gt;</span><br/><span class="hl-1">  ): </span><span class="hl-11">void</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">PersistScheduleFactory</span><span class="hl-1"> = </span><span class="hl-4">Ctor</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">PersistScheduleAdapter</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistScheduleUtils</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Memoization Key:</strong> <a href="">src/classes/Persist.ts:773-774</a> uses <code>${symbol}:${strategyName}</code> as cache key.</p>
+<p><strong>Entity Name Format:</strong> <a href="">src/classes/Persist.ts:776-778</a> constructs names as <code>${symbol}_${strategyName}</code> with base directory <code>./dump/data/schedule/</code>.</p>
+<a id="partial-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Persistence<a href="#partial-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// From src/classes/Persist.ts</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">PersistPartialUtils</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">PersistPartialFactory</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-11">PartialData</span><span class="hl-1">&gt; = </span><span class="hl-4">PersistBase</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">public</span><span class="hl-1"> </span><span class="hl-0">usePersistPartialAdapter</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">Ctor</span><span class="hl-1">: </span><span class="hl-11">TPersistBaseCtor</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-11">PartialData</span><span class="hl-1">&gt;</span><br/><span class="hl-1">  ): </span><span class="hl-11">void</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">PersistPartialFactory</span><span class="hl-1"> = </span><span class="hl-4">Ctor</span><span class="hl-1">;</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">PersistPartialAdapter</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">PersistPartialUtils</span><span class="hl-1">();</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Memoization Key:</strong> <a href="">src/classes/Persist.ts:899-900</a> uses <code>${symbol}:${strategyName}</code> as cache key.</p>
+<p><strong>Storage Key:</strong> <a href="">src/classes/Persist.ts:949</a> uses constant <code>&quot;levels&quot;</code> as entity ID for all partial data.</p>
+<hr>
+<a id="implementation-guide" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Guide<a href="#implementation-guide" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="step-1-extend-persistbase" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Step 1: Extend PersistBase<a href="#step-1-extend-persistbase" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom backends must extend <code>PersistBase</code> and override core methods. Use <code>makeExtendable()</code> from functools-kit if needed for compatibility.</p>
+<p><strong>Example Structure (Redis):</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Conceptual example - do NOT copy verbatim</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">RedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-4">redis</span><span class="hl-1">: </span><span class="hl-11">RedisClient</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-5">// Initialize Redis client</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">initial</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-5">// Connect to Redis, handle initial flag</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">readValue</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt;(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-5">// const value = await redis.get(key);</span><br/><span class="hl-1">    </span><span class="hl-5">// return JSON.parse(value);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">writeValue</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt;(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">, </span><span class="hl-4">entity</span><span class="hl-1">: </span><span class="hl-11">T</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-5">// await redis.set(key, JSON.stringify(entity));</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">hasValue</span><span class="hl-1">(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-11">EntityId</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">boolean</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-5">// return await redis.exists(key);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="step-2-key-construction" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Step 2: Key Construction<a href="#step-2-key-construction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Construct Redis/MongoDB keys using <code>entityName</code> and <code>entityId</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Backend</th>
+<th>Key Format Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Redis</td>
+<td><code>backtest-kit:signal:BTCUSDT_my-strategy:{entityId}</code></td>
+</tr>
+<tr>
+<td>MongoDB</td>
+<td><code>{ collection: entityName, _id: entityId }</code></td>
+</tr>
+<tr>
+<td>S3</td>
+<td><code>s3://bucket/{entityName}/{entityId}.json</code></td>
+</tr>
+</tbody>
+</table>
+<a id="step-3-atomic-write-guarantee" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Step 3: Atomic Write Guarantee<a href="#step-3-atomic-write-guarantee" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Ensure atomic writes in distributed systems:</p>
+<p><strong>Redis:</strong> Use <code>SET</code> with <code>NX</code> flag or transactions
+<strong>MongoDB:</strong> Use <code>findOneAndUpdate</code> with upsert
+<strong>S3:</strong> Use object versioning or conditional writes</p>
+<a id="step-4-error-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Step 4: Error Handling<a href="#step-4-error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><a href="">src/classes/Persist.ts:258-271</a> shows error handling pattern:</p>
+<ul>
+<li>Catch <code>ENOENT</code> errors for missing entities</li>
+<li>Throw descriptive errors with <code>getErrorMessage(error)</code></li>
+<li>Log failures to <code>swarm.loggerService</code></li>
+</ul>
+<a id="step-5-register-adapter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Step 5: Register Adapter<a href="#step-5-register-adapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Call registration before any live trading execution:</p>
+<pre><code class="typescript"><span class="hl-5">// Register for all domains</span><br/><span class="hl-3">import</span><span class="hl-1"> { </span><br/><span class="hl-1">  </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">, </span><br/><span class="hl-1">  </span><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">PersistScheduleAdapter</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">PersistPartialAdapter</span><span class="hl-1"> </span><br/><span class="hl-1">} </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Before Live.run() or Live.background()</span><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistScheduleAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistScheduleAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistPartialAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistPartialAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="data-flow-and-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Flow and Lifecycle<a href="#data-flow-and-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/87_Custom_Persistence_Backends_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Lifecycle Guarantees:</strong></p>
+<ol>
+<li><strong>Initialization:</strong> <code>waitForInit()</code> called exactly once per storage instance via <code>singleshot()</code> pattern <a href="">src/classes/Persist.ts:228-230</a></li>
+<li><strong>Write Frequency:</strong> Signal persistence occurs on every state change <a href="">src/client/ClientStrategy.ts:500-700</a></li>
+<li><strong>Read Frequency:</strong> State loaded once during initialization, never re-read</li>
+<li><strong>Cleanup:</strong> No explicit cleanup - storage instances remain memoized</li>
+</ol>
+<hr>
+<a id="integration-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration Patterns<a href="#integration-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="pattern-1-single-backend-for-all-domains" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 1: Single Backend for All Domains<a href="#pattern-1-single-backend-for-all-domains" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Use same Redis instance for all adapters</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">RedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">private</span><span class="hl-1"> </span><span class="hl-7">static</span><span class="hl-1"> </span><span class="hl-4">client</span><span class="hl-1">: </span><span class="hl-11">RedisClient</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1"> = </span><span class="hl-7">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (!</span><span class="hl-4">RedisPersist</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-4">RedisPersist</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RedisClient</span><span class="hl-1">(</span><span class="hl-4">config</span><span class="hl-1">);</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-7">async</span><span class="hl-1"> </span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-4">initial</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">initial</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">RedisPersist</span><span class="hl-1">.</span><span class="hl-4">client</span><span class="hl-1">!.</span><span class="hl-0">connect</span><span class="hl-1">();</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-5">// Register for all domains</span><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistScheduleAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistScheduleAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistPartialAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistPartialAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefit:</strong> Connection pooling across all adapters reduces overhead.</p>
+<a id="pattern-2-namespace-isolation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 2: Namespace Isolation<a href="#pattern-2-namespace-isolation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Separate Redis databases per domain</span><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">SignalRedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RedisClient</span><span class="hl-1">({ </span><span class="hl-4">db:</span><span class="hl-1"> </span><span class="hl-6">0</span><span class="hl-1"> }); </span><span class="hl-5">// Signals</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">RiskRedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RedisClient</span><span class="hl-1">({ </span><span class="hl-4">db:</span><span class="hl-1"> </span><span class="hl-6">1</span><span class="hl-1"> }); </span><span class="hl-5">// Risk</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">SignalRedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">RiskRedisPersist</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefit:</strong> Domain isolation prevents key collisions and simplifies debugging.</p>
+<a id="pattern-3-hybrid-storage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pattern 3: Hybrid Storage<a href="#pattern-3-hybrid-storage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">// Critical data in Redis, analytics in S3</span><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistScheduleAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistScheduleAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistPartialAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistPartialAdapter</span><span class="hl-1">(</span><span class="hl-4">S3Persist</span><span class="hl-1">); </span><span class="hl-5">// Analytics</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefit:</strong> Optimize for read/write patterns - low-latency Redis for hot data, cost-effective S3 for cold analytics.</p>
+<hr>
+<a id="best-practices" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="performance-considerations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Consideration</th>
+<th>Recommendation</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Connection Pooling</td>
+<td>Share client instances across memoized storage</td>
+<td><a href="">src/classes/Persist.ts:518-525</a> creates multiple instances per symbol-strategy</td>
+</tr>
+<tr>
+<td>Serialization</td>
+<td>Pre-serialize JSON outside lock</td>
+<td>Write operations are synchronous in default impl</td>
+</tr>
+<tr>
+<td>Batch Writes</td>
+<td>Not applicable</td>
+<td>Each domain writes independently per state change</td>
+</tr>
+<tr>
+<td>Read Caching</td>
+<td>Unnecessary</td>
+<td>State loaded once during <code>waitForInit()</code></td>
+</tr>
+</tbody>
+</table>
+<a id="error-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Handling<a href="#error-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Transient Failures:</strong> <a href="">src/classes/Persist.ts:155-177</a> implements retry logic with exponential backoff for file deletion. Apply similar pattern for network operations.</p>
+<p><strong>Validation Failures:</strong> <a href="">src/classes/Persist.ts:138-152</a> auto-deletes corrupted files. Custom backends should either:</p>
+<ol>
+<li>Return <code>null</code> for corrupted data (graceful degradation)</li>
+<li>Delete corrupted keys (self-healing)</li>
+<li>Throw errors for manual intervention</li>
+</ol>
+<a id="testing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testing<a href="#testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Unit Test Pattern:</strong></p>
+<pre><code class="typescript"><span class="hl-0">describe</span><span class="hl-1">(</span><span class="hl-2">&quot;CustomPersist&quot;</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-0">it</span><span class="hl-1">(</span><span class="hl-2">&quot;should write and read entity atomically&quot;</span><span class="hl-1">, </span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">persist</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">CustomPersist</span><span class="hl-1">(</span><span class="hl-2">&quot;test-entity&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./test-data&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">persist</span><span class="hl-1">.</span><span class="hl-0">waitForInit</span><span class="hl-1">(</span><span class="hl-7">true</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">entity</span><span class="hl-1"> = { </span><span class="hl-4">id:</span><span class="hl-1"> </span><span class="hl-2">&quot;abc&quot;</span><span class="hl-1">, </span><span class="hl-4">data:</span><span class="hl-1"> </span><span class="hl-2">&quot;value&quot;</span><span class="hl-1"> };</span><br/><span class="hl-1">    </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">persist</span><span class="hl-1">.</span><span class="hl-0">writeValue</span><span class="hl-1">(</span><span class="hl-2">&quot;key1&quot;</span><span class="hl-1">, </span><span class="hl-4">entity</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">result</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">persist</span><span class="hl-1">.</span><span class="hl-0">readValue</span><span class="hl-1">(</span><span class="hl-2">&quot;key1&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-0">expect</span><span class="hl-1">(</span><span class="hl-4">result</span><span class="hl-1">).</span><span class="hl-0">toEqual</span><span class="hl-1">(</span><span class="hl-4">entity</span><span class="hl-1">);</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Integration Test Pattern:</strong></p>
+<pre><code class="typescript"><span class="hl-0">it</span><span class="hl-1">(</span><span class="hl-2">&quot;should survive process restart&quot;</span><span class="hl-1">, </span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">CustomPersist</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Write signal</span><br/><span class="hl-1">  </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">writeSignalData</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">, </span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">// Simulate restart - clear memoized instances</span><br/><span class="hl-1">  </span><span class="hl-5">// Re-initialize</span><br/><span class="hl-1">  </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">restored</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">readSignalData</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-0">expect</span><span class="hl-1">(</span><span class="hl-4">restored</span><span class="hl-1">).</span><span class="hl-0">toEqual</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="security" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Security<a href="#security" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Credential Management:</strong> Never hardcode credentials. Use environment variables or secret managers:</p>
+<pre><code class="typescript"><span class="hl-7">class</span><span class="hl-1"> </span><span class="hl-11">SecureRedisPersist</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">PersistBase</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">constructor</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">super</span><span class="hl-1">(</span><span class="hl-4">entityName</span><span class="hl-1">, </span><span class="hl-4">baseDir</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">redis</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RedisClient</span><span class="hl-1">({</span><br/><span class="hl-1">      </span><span class="hl-4">host:</span><span class="hl-1"> </span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-4">env</span><span class="hl-1">.</span><span class="hl-8">REDIS_HOST</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">password:</span><span class="hl-1"> </span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-4">env</span><span class="hl-1">.</span><span class="hl-8">REDIS_PASSWORD</span><span class="hl-1">,</span><br/><span class="hl-1">      </span><span class="hl-4">tls:</span><span class="hl-1"> </span><span class="hl-4">process</span><span class="hl-1">.</span><span class="hl-4">env</span><span class="hl-1">.</span><span class="hl-8">NODE_ENV</span><span class="hl-1"> === </span><span class="hl-2">&quot;production&quot;</span><br/><span class="hl-1">    });</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Data Encryption:</strong> Encrypt sensitive signal data before persistence:</p>
+<pre><code class="typescript"><span class="hl-4">async</span><span class="hl-1"> </span><span class="hl-0">writeValue</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt;(</span><span class="hl-4">entityId</span><span class="hl-1">: </span><span class="hl-4">EntityId</span><span class="hl-1">, </span><span class="hl-4">entity</span><span class="hl-1">: </span><span class="hl-8">T</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  const </span><span class="hl-4">serialized</span><span class="hl-1"> = </span><span class="hl-8">JSON</span><span class="hl-1">.</span><span class="hl-0">stringify</span><span class="hl-1">(</span><span class="hl-4">entity</span><span class="hl-1">);</span><br/><span class="hl-1">  const </span><span class="hl-4">encrypted</span><span class="hl-1"> = </span><span class="hl-0">encrypt</span><span class="hl-1">(</span><span class="hl-4">serialized</span><span class="hl-1">, </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">encryptionKey</span><span class="hl-1">);</span><br/><span class="hl-1">  await this.redis.set(this.getKey(entityId), encrypted);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="troubleshooting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Troubleshooting<a href="#troubleshooting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="common-issues" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Issues<a href="#common-issues" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Issue:</strong> Memoized instances not cleared after registration</p>
+<p><strong>Cause:</strong> <a href="">src/classes/Persist.ts:518-525</a> memoization persists across registrations</p>
+<p><strong>Solution:</strong> Clear memoized caches or restart process after <code>use*Adapter()</code> calls</p>
+<hr>
+<p><strong>Issue:</strong> <code>waitForInit()</code> called multiple times</p>
+<p><strong>Cause:</strong> <a href="">src/classes/Persist.ts:228-230</a> uses <code>singleshot()</code> but storage instance recreated</p>
+<p><strong>Solution:</strong> Ensure connection pooling in constructor, not in <code>waitForInit()</code></p>
+<hr>
+<p><strong>Issue:</strong> Data not persisted in live mode</p>
+<p><strong>Cause:</strong> <a href="">src/client/ClientPartial.ts:214-218</a> skips persistence in backtest mode</p>
+<p><strong>Solution:</strong> Verify <code>backtest</code> flag is <code>false</code> in live execution context</p>
+<hr>
+<p><strong>Issue:</strong> Key collisions across symbols</p>
+<p><strong>Cause:</strong> Incorrect memoization key format</p>
+<p><strong>Solution:</strong> Follow exact key format from <a href="">src/classes/Persist.ts:519</a>: <code>${symbol}:${strategyName}</code></p>
+<hr>
+<a id="related-interfaces" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Related Interfaces<a href="#related-interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>See <a href="design_84_persistence_layer.html">Persistence Layer</a> for crash recovery architecture and atomic write guarantees.</p>
+<p>See <a href="design_21_persistence_utilities.html">Persistence Utilities</a> for public API documentation of <code>PersistSignalAdapter</code>, <code>PersistRiskAdapter</code>, <code>PersistScheduleAdapter</code>, and <code>PersistPartialAdapter</code>.</p>
+<p>See <a href="design_19_live_trading_api.html">Live Trading API</a> for integration with <code>Live.background()</code> and crash recovery workflow.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#custom-persistence-backends"><span>Custom <wbr/>Persistence <wbr/>Backends</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#persistence-system-architecture"><span>Persistence <wbr/>System <wbr/>Architecture</span></a></li><li><a href="#ipersistbase-interface"><span>IPersist<wbr/>Base <wbr/>Interface</span></a></li><li><ul><li><a href="#interface-contract"><span>Interface <wbr/>Contract</span></a></li><li><a href="#entity-types"><span>Entity <wbr/>Types</span></a></li></ul></li><li><a href="#persistbase-default-implementation"><span>Persist<wbr/>Base <wbr/>Default <wbr/>Implementation</span></a></li><li><ul><li><a href="#atomic-write-pattern"><span>Atomic <wbr/>Write <wbr/>Pattern</span></a></li><li><a href="#self-healing-validation"><span>Self-<wbr/>Healing <wbr/>Validation</span></a></li></ul></li><li><a href="#adapter-registration"><span>Adapter <wbr/>Registration</span></a></li><li><ul><li><a href="#signal-persistence"><span>Signal <wbr/>Persistence</span></a></li><li><a href="#risk-persistence"><span>Risk <wbr/>Persistence</span></a></li><li><a href="#schedule-persistence"><span>Schedule <wbr/>Persistence</span></a></li><li><a href="#partial-persistence"><span>Partial <wbr/>Persistence</span></a></li></ul></li><li><a href="#implementation-guide"><span>Implementation <wbr/>Guide</span></a></li><li><ul><li><a href="#step-1-extend-persistbase"><span>Step 1: <wbr/>Extend <wbr/>Persist<wbr/>Base</span></a></li><li><a href="#step-2-key-construction"><span>Step 2: <wbr/>Key <wbr/>Construction</span></a></li><li><a href="#step-3-atomic-write-guarantee"><span>Step 3: <wbr/>Atomic <wbr/>Write <wbr/>Guarantee</span></a></li><li><a href="#step-4-error-handling"><span>Step 4: <wbr/>Error <wbr/>Handling</span></a></li><li><a href="#step-5-register-adapter"><span>Step 5: <wbr/>Register <wbr/>Adapter</span></a></li></ul></li><li><a href="#data-flow-and-lifecycle"><span>Data <wbr/>Flow and <wbr/>Lifecycle</span></a></li><li><a href="#integration-patterns"><span>Integration <wbr/>Patterns</span></a></li><li><ul><li><a href="#pattern-1-single-backend-for-all-domains"><span>Pattern 1: <wbr/>Single <wbr/>Backend for <wbr/>All <wbr/>Domains</span></a></li><li><a href="#pattern-2-namespace-isolation"><span>Pattern 2: <wbr/>Namespace <wbr/>Isolation</span></a></li><li><a href="#pattern-3-hybrid-storage"><span>Pattern 3: <wbr/>Hybrid <wbr/>Storage</span></a></li></ul></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li><li><a href="#error-handling"><span>Error <wbr/>Handling</span></a></li><li><a href="#testing"><span>Testing</span></a></li><li><a href="#security"><span>Security</span></a></li></ul></li><li><a href="#troubleshooting"><span>Troubleshooting</span></a></li><li><ul><li><a href="#common-issues"><span>Common <wbr/>Issues</span></a></li></ul></li><li><a href="#related-interfaces"><span>Related <wbr/>Interfaces</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

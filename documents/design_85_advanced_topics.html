@@ -1,0 +1,654 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/85_advanced_topics | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_85_advanced_topics.html">design/85_advanced_topics</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="advanced-topics" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Advanced Topics<a href="#advanced-topics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document covers advanced integration patterns and customization techniques for the backtest-kit framework. It explains how to implement custom exchange data sources, integrate alternative persistence backends, and design multi-symbol trading strategies with shared state management.</p>
+<p>For basic usage of the public API, see <a href="design_15_public_api_reference.html">Public API Reference</a>. For service architecture patterns, see <a href="design_40_service_layer.html">Service Layer</a>. For signal lifecycle fundamentals, see <a href="design_48_signal_lifecycle.html">Signal Lifecycle</a>.</p>
+<hr>
+<a id="custom-exchange-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Custom Exchange Integration<a href="#custom-exchange-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Custom exchange implementations allow integration with any data source including REST APIs, WebSocket streams, database queries, or CSV files. All custom exchanges must implement the <code>IExchangeSchema</code> interface and provide candle data, price formatting, and quantity formatting functions.</p>
+<a id="exchange-schema-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Schema Interface<a href="#exchange-schema-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>IExchangeSchema</code> interface defines the contract for custom exchange implementations:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>exchangeName</code></td>
+<td>Unique identifier for the exchange</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>getCandles(symbol, interval, since, limit)</code></td>
+<td>Fetch OHLCV candle data</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>formatPrice(symbol, price)</code></td>
+<td>Format price with exchange precision</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>formatQuantity(symbol, quantity)</code></td>
+<td>Format quantity with exchange precision</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>callbacks</code></td>
+<td>Optional lifecycle event callbacks</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<a id="integration-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Integration Architecture<a href="#integration-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/85_Advanced_Topics_0.svg" alt="Mermaid Diagram"></p>
+<a id="rest-api-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">REST API Integration Example<a href="#rest-api-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To integrate with a REST API exchange, implement the <code>IExchangeSchema</code> interface with HTTP client calls:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference pattern from README.md:32-52</span><br/><span class="hl-5">// User implements getCandles() to fetch from external API</span><br/><span class="hl-5">// User implements formatPrice() and formatQuantity() for precision rules</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Key considerations:</strong></p>
+<ul>
+<li><strong>Error Handling</strong>: Wrap API calls in try-catch blocks to handle network failures</li>
+<li><strong>Rate Limiting</strong>: Implement exponential backoff for API rate limits</li>
+<li><strong>Caching</strong>: Cache symbol precision rules to reduce API calls</li>
+<li><strong>Authentication</strong>: Store API keys in environment variables, not in schema</li>
+<li><strong>Data Transformation</strong>: Convert API response format to <code>ICandleData</code> structure</li>
+</ul>
+<p>The <code>ClientExchange</code> class will delegate all <code>getCandles()</code> calls to your implementation, as shown in <a href="">types.d.ts:1438-1477</a>.</p>
+<a id="database-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Database Integration Example<a href="#database-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Database-backed exchanges query historical candle data from local storage:</p>
+<p><strong>Architectural flow:</strong></p>
+<ol>
+<li>User implements <code>getCandles()</code> to query database with SQL/NoSQL</li>
+<li>Schema converts database rows to <code>ICandleData[]</code> format</li>
+<li><code>ClientExchange</code> receives standardized candle data</li>
+<li>VWAP calculation proceeds identically to API-based exchanges</li>
+</ol>
+<p><strong>Database schema requirements:</strong></p>
+<ul>
+<li>Table/collection must store: <code>timestamp</code>, <code>open</code>, <code>high</code>, <code>low</code>, <code>close</code>, <code>volume</code></li>
+<li>Timestamp must be Unix milliseconds or convertible to it</li>
+<li>Queries must support filtering by symbol, interval, date range, and limit</li>
+</ul>
+<p><strong>Precision formatting:</strong></p>
+<ul>
+<li>Store symbol precision rules in separate table (e.g., <code>symbol_info</code>)</li>
+<li>Cache precision rules in memory after first query</li>
+<li>Use database functions for rounding if available</li>
+</ul>
+<a id="csv-file-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CSV File Integration Example<a href="#csv-file-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>File-based exchanges read historical data from disk:</p>
+<p><strong>Implementation approach:</strong></p>
+<ol>
+<li>Parse CSV on first <code>getCandles()</code> call</li>
+<li>Cache parsed data in memory (Map&lt;symbol, ICandleData[]&gt;)</li>
+<li>Filter cached data by interval, since, and limit parameters</li>
+<li>Return matching candles</li>
+</ol>
+<p><strong>Performance optimizations:</strong></p>
+<ul>
+<li>Use streaming CSV parser for large files (&gt;100MB)</li>
+<li>Index by symbol and timestamp for O(log n) lookups</li>
+<li>Lazy load files only when symbol is first requested</li>
+<li>Consider binary formats (Parquet, Arrow) for faster parsing</li>
+</ul>
+<p><strong>Precision formatting:</strong></p>
+<ul>
+<li>Hardcode precision rules or read from separate config file</li>
+<li>No API calls needed for static historical data</li>
+</ul>
+<a id="candle-data-transformation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Candle Data Transformation<a href="#candle-data-transformation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All exchange implementations must return data in the <code>ICandleData</code> format:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:104-118</span><br/><span class="hl-5">// timestamp: Unix milliseconds (e.g., 1704067200000)</span><br/><span class="hl-5">// open, high, low, close, volume: positive numbers</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Common transformations:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Source Format</th>
+<th>Target Format</th>
+<th>Conversion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ISO 8601 string</td>
+<td>Unix milliseconds</td>
+<td><code>new Date(isoString).getTime()</code></td>
+</tr>
+<tr>
+<td>Unix seconds</td>
+<td>Unix milliseconds</td>
+<td><code>unixSeconds * 1000</code></td>
+</tr>
+<tr>
+<td>String numbers</td>
+<td>Number</td>
+<td><code>parseFloat(stringPrice)</code></td>
+</tr>
+<tr>
+<td>Scientific notation</td>
+<td>Decimal</td>
+<td>Native JavaScript handling</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Validation rules:</strong></p>
+<ul>
+<li><code>timestamp</code> must be positive integer</li>
+<li><code>high &gt;= open, low, close</code> (high is maximum)</li>
+<li><code>low &lt;= open, high, close</code> (low is minimum)</li>
+<li><code>volume &gt;= 0</code> (can be zero for illiquid pairs)</li>
+</ul>
+<a id="exchange-callbacks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Callbacks<a href="#exchange-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Optional callbacks provide observability into exchange operations:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:131-135</span><br/><span class="hl-5">// onCandleData(symbol, interval, since, limit, data)</span><br/><span class="hl-5">// Called after every successful getCandles() invocation</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Use cases:</strong></p>
+<ul>
+<li><strong>Logging</strong>: Track all data fetches with parameters and result counts</li>
+<li><strong>Metrics</strong>: Count API calls per symbol/interval for rate limit monitoring</li>
+<li><strong>Caching</strong>: Implement external cache layer (Redis) by intercepting data</li>
+<li><strong>Debugging</strong>: Dump raw candle data to file for troubleshooting</li>
+<li><strong>Testing</strong>: Verify that backtest requests expected date ranges</li>
+</ul>
+<p>The callback is invoked by <code>ClientExchange.getCandles()</code> after successful data fetch, as shown in <a href="">types.d.ts:1448-1449</a>.</p>
+<hr>
+<a id="custom-persistence-backends" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Custom Persistence Backends<a href="#custom-persistence-backends" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The default persistence implementation uses atomic file writes to local disk. Custom persistence backends enable integration with distributed databases, in-memory caches, or cloud storage systems for production deployments.</p>
+<a id="persistence-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Architecture<a href="#persistence-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/85_Advanced_Topics_1.svg" alt="Mermaid Diagram"></p>
+<a id="persistbase-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PersistBase Interface<a href="#persistbase-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom persistence adapters must implement the <code>IPersistBase</code> interface:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Atomicity Required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>waitForInit(initial)</code></td>
+<td>Initialize storage connection/schema</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>readValue(entityId)</code></td>
+<td>Read signal data for strategy+symbol</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>hasValue(entityId)</code></td>
+<td>Check if signal exists</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>writeValue(entityId, entity)</code></td>
+<td>Write signal data atomically</td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Critical requirement:</strong> The <code>writeValue()</code> method <strong>must be atomic</strong> to prevent signal duplication during crashes. If the write operation cannot complete atomically, implement two-phase commit or use database transactions.</p>
+<a id="redis-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Redis Integration Example<a href="#redis-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Redis provides in-memory persistence with optional disk durability:</p>
+<p><strong>Implementation pattern:</strong></p>
+<ol>
+<li>Extend <code>PersistBase</code> class</li>
+<li>Override <code>readValue()</code> to call <code>redis.get()</code></li>
+<li>Override <code>writeValue()</code> to call <code>redis.set()</code></li>
+<li>Override <code>hasValue()</code> to call <code>redis.exists()</code></li>
+<li>Use <code>redis.multi()</code> for atomic multi-key operations if needed</li>
+</ol>
+<p><strong>Entity ID format:</strong></p>
+<ul>
+<li>Default: <code>${strategyName}:${symbol}</code> (e.g., <code>&quot;my-strategy:BTCUSDT&quot;</code>)</li>
+<li>Customize by overriding <code>_getFilePath()</code> method</li>
+</ul>
+<p><strong>Atomicity considerations:</strong></p>
+<ul>
+<li>Single <code>SET</code> commands are atomic in Redis</li>
+<li>Use <code>SET</code> with <code>NX</code> flag to prevent race conditions</li>
+<li>Consider Redis transactions (<code>MULTI</code>/<code>EXEC</code>) for complex operations</li>
+<li>Enable AOF (Append-Only File) for durability</li>
+</ul>
+<p><strong>Connection management:</strong></p>
+<ul>
+<li>Initialize Redis client in constructor</li>
+<li>Store client as instance variable</li>
+<li>Handle connection errors in <code>waitForInit()</code></li>
+<li>Implement reconnection logic for production</li>
+</ul>
+<a id="postgresql-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">PostgreSQL Integration Example<a href="#postgresql-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>PostgreSQL provides ACID-compliant persistence with strong consistency:</p>
+<p><strong>Schema design:</strong></p>
+<pre><code class="sql">-- Reference implementation approach
+-- Table: signal_data
+-- Columns: strategy_name, symbol, signal_json, updated_at
+-- Primary Key: (strategy_name, symbol)
+-- Index: strategy_name for efficient lookups
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation details:</strong></p>
+<ol>
+<li>Use parameterized queries to prevent SQL injection</li>
+<li>Serialize <code>ISignalRow</code> to JSON before storage</li>
+<li>Deserialize JSON to object on read</li>
+<li>Use <code>INSERT ... ON CONFLICT UPDATE</code> for upserts</li>
+<li>Wrap writes in transactions for atomicity</li>
+</ol>
+<p><strong>Atomicity guarantees:</strong></p>
+<ul>
+<li>PostgreSQL transactions are ACID-compliant</li>
+<li>Single <code>INSERT</code>/<code>UPDATE</code> statements are atomic</li>
+<li>Use transaction isolation level <code>READ COMMITTED</code> or higher</li>
+</ul>
+<p><strong>Performance optimizations:</strong></p>
+<ul>
+<li>Use connection pooling (pg-pool)</li>
+<li>Create index on <code>(strategy_name, symbol)</code> for fast lookups</li>
+<li>Batch reads/writes when possible</li>
+<li>Consider partitioning by strategy_name for large deployments</li>
+</ul>
+<a id="mongodb-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MongoDB Integration Example<a href="#mongodb-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>MongoDB provides document-based persistence with flexible schema:</p>
+<p><strong>Collection design:</strong></p>
+<pre><code class="javascript"><span class="hl-5">// Reference schema structure</span><br/><span class="hl-5">// Collection: signal_data</span><br/><span class="hl-5">// Document: { _id: &quot;strategy:symbol&quot;, strategyName, symbol, signalRow, updatedAt }</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Implementation approach:</strong></p>
+<ol>
+<li>Use <code>findOne()</code> for reads</li>
+<li>Use <code>updateOne()</code> with <code>upsert: true</code> for writes</li>
+<li>Set <code>_id</code> field to <code>${strategyName}:${symbol}</code> for deterministic keys</li>
+<li>Store <code>signalRow</code> as nested document (not JSON string)</li>
+</ol>
+<p><strong>Atomicity guarantees:</strong></p>
+<ul>
+<li>Single document operations are atomic in MongoDB</li>
+<li>Use <code>findOneAndUpdate()</code> for atomic read-modify-write</li>
+<li>Consider MongoDB transactions for multi-document operations</li>
+</ul>
+<p><strong>Connection handling:</strong></p>
+<ul>
+<li>Use MongoDB connection pool</li>
+<li>Handle connection timeouts</li>
+<li>Implement retry logic for transient failures</li>
+</ul>
+<a id="aws-s3-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">AWS S3 Integration Example<a href="#aws-s3-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>S3 provides object storage with eventual consistency:</p>
+<p><strong>Implementation considerations:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Object key</td>
+<td><code>${strategyName}/${symbol}.json</code></td>
+</tr>
+<tr>
+<td>Content-Type</td>
+<td><code>application/json</code></td>
+</tr>
+<tr>
+<td>Atomicity</td>
+<td>Use S3 conditional writes (If-None-Match)</td>
+</tr>
+<tr>
+<td>Read consistency</td>
+<td>S3 is now strongly consistent for new objects</td>
+</tr>
+<tr>
+<td>Permissions</td>
+<td>Use IAM roles, not access keys</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Atomicity challenges:</strong></p>
+<ul>
+<li>S3 does not support traditional ACID transactions</li>
+<li>Use S3 object versioning to track changes</li>
+<li>Implement optimistic locking with ETag comparison</li>
+<li>Consider DynamoDB for critical metadata with stronger consistency</li>
+</ul>
+<p><strong>Performance characteristics:</strong></p>
+<ul>
+<li>High latency (50-200ms per operation)</li>
+<li>Not suitable for high-frequency trading</li>
+<li>Good for long-running strategies with minute-level signals</li>
+<li>Use S3 Transfer Acceleration for lower latency</li>
+</ul>
+<p><strong>Cost optimization:</strong></p>
+<ul>
+<li>Use S3 Standard-IA for infrequent access</li>
+<li>Implement lifecycle policies to archive old signals</li>
+<li>Batch operations when possible</li>
+</ul>
+<a id="registration-and-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration and Usage<a href="#registration-and-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom persistence adapters are registered globally before running strategies:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: README.md:676-690</span><br/><span class="hl-5">// PersistSignalAdaper.usePersistSignalAdapter(CustomPersistClass)</span><br/><span class="hl-5">// Must be called before first strategy execution</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Registration flow:</strong></p>
+<ol>
+<li>Implement custom <code>PersistBase</code> subclass</li>
+<li>Call <code>usePersistSignalAdapter()</code> with constructor</li>
+<li>Framework replaces default file-based persistence</li>
+<li>All strategies use new persistence backend automatically</li>
+</ol>
+<p><strong>Important notes:</strong></p>
+<ul>
+<li>Registration must happen <strong>before</strong> first <code>Backtest.run()</code> or <code>Live.run()</code> call</li>
+<li>All strategies share the same persistence backend (global singleton)</li>
+<li>Cannot mix persistence backends per strategy</li>
+<li>Re-registration is allowed but affects all future operations</li>
+</ul>
+<a id="persistence-data-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Data Format<a href="#persistence-data-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All persistence implementations must store and retrieve <code>ISignalData</code> objects:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:896-903</span><br/><span class="hl-5">// interface ISignalData {</span><br/><span class="hl-5">//   signalRow: ISignalRow | null</span><br/><span class="hl-5">// }</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Storage format:</strong></p>
+<ul>
+<li>When signal is active: <code>{ signalRow: { id, position, priceOpen, ... } }</code></li>
+<li>When signal is closed: <code>{ signalRow: null }</code></li>
+<li>Null value indicates no active signal for strategy+symbol</li>
+</ul>
+<p><strong>Entity ID structure:</strong></p>
+<ul>
+<li>Default implementation uses: <code>${strategyName}:${symbol}</code></li>
+<li>Example: <code>&quot;my-strategy:BTCUSDT&quot;</code> → <code>my-strategy/BTCUSDT.json</code></li>
+<li>Custom implementations can override key format</li>
+</ul>
+<p><strong>Crash recovery:</strong></p>
+<ul>
+<li>On startup, <code>ClientStrategy.waitForInit()</code> calls <code>readSignalData()</code></li>
+<li>If signal exists, resume monitoring from persisted state</li>
+<li>If signal is null, start fresh with no active signal</li>
+<li>This prevents duplicate signal generation after crashes</li>
+</ul>
+<hr>
+<a id="multi-symbol-strategies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Multi-Symbol Strategies<a href="#multi-symbol-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Multi-symbol strategies execute the same trading logic across multiple symbols simultaneously. The framework supports both isolated state (independent signals per symbol) and shared state (portfolio-level decisions) patterns.</p>
+<a id="execution-patterns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Patterns<a href="#execution-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/85_Advanced_Topics_2.svg" alt="Mermaid Diagram"></p>
+<a id="isolated-state-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Isolated State Pattern<a href="#isolated-state-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The isolated state pattern runs independent strategy instances per symbol with separate persistence:</p>
+<p><strong>Characteristics:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Signal generation</td>
+<td>Independent per symbol</td>
+</tr>
+<tr>
+<td>Persistence</td>
+<td>Separate files/keys per symbol</td>
+</tr>
+<tr>
+<td>Crash recovery</td>
+<td>Per-symbol state restoration</td>
+</tr>
+<tr>
+<td>Position sizing</td>
+<td>Fixed per symbol</td>
+</tr>
+<tr>
+<td>Risk management</td>
+<td>Symbol-level only</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Implementation approach:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Reference: README.md:693-715</span><br/><span class="hl-5">// Promise.all() with multiple Live.run() calls</span><br/><span class="hl-5">// Each symbol gets isolated execution context</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Parallel execution:</strong></p>
+<ul>
+<li>Use <code>Promise.all()</code> to run symbols concurrently</li>
+<li>Each symbol has independent generator loop</li>
+<li>No shared memory between symbols</li>
+<li>No global position limits</li>
+</ul>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Testing strategy across multiple pairs independently</li>
+<li>Running different parameter sets per symbol</li>
+<li>Simple portfolio diversification without correlation</li>
+</ul>
+<a id="shared-state-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Shared State Pattern<a href="#shared-state-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The shared state pattern maintains global state across all symbols for portfolio-level decisions:</p>
+<p><strong>Implementation requirements:</strong></p>
+<ol>
+<li><strong>Global State Container:</strong></li>
+</ol>
+<pre><code class="typescript"><span class="hl-5">// User implements custom state management</span><br/><span class="hl-5">// Example: Map&lt;symbol, ISignalRow&gt; for tracking all active signals</span><br/><span class="hl-5">// Store in closure or external state management library</span>
+</code><button type="button">Copy</button></pre>
+
+<ol start="2">
+<li><strong>Portfolio Persistence:</strong></li>
+</ol>
+<pre><code class="typescript"><span class="hl-5">// User implements custom persistence for shared state</span><br/><span class="hl-5">// Single persistence key for entire portfolio</span><br/><span class="hl-5">// Atomic updates to prevent partial state writes</span>
+</code><button type="button">Copy</button></pre>
+
+<ol start="3">
+<li><strong>Position Sizing:</strong></li>
+</ol>
+<pre><code class="typescript"><span class="hl-5">// User implements portfolio-level position sizing</span><br/><span class="hl-5">// Calculate available capital across all symbols</span><br/><span class="hl-5">// Enforce maximum open positions limit</span><br/><span class="hl-5">// Balance capital allocation dynamically</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Synchronization concerns:</strong></p>
+<ul>
+<li>Use mutex/lock for shared state modifications</li>
+<li>Atomic read-modify-write operations</li>
+<li>Race condition prevention between symbols</li>
+<li>Consider message queue for distributed systems</li>
+</ul>
+<a id="position-limit-enforcement" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Limit Enforcement<a href="#position-limit-enforcement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Portfolio-level position limits prevent over-exposure:</p>
+<p><strong>Implementation pattern:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Inside getSignal() implementation:</span><br/><span class="hl-5">// 1. Check global position counter</span><br/><span class="hl-5">// 2. If at max limit, return null (no new signal)</span><br/><span class="hl-5">// 3. If below limit, generate signal and increment counter</span><br/><span class="hl-5">// 4. On signal close, decrement counter</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>State tracking:</strong></p>
+<ul>
+<li>Store active position count in shared memory</li>
+<li>Persist count to disk for crash recovery</li>
+<li>Use atomic operations for increment/decrement</li>
+<li>Handle race conditions with locks</li>
+</ul>
+<p><strong>Example limits:</strong></p>
+<ul>
+<li>Maximum 5 open positions across all symbols</li>
+<li>Maximum 2 long positions in same sector</li>
+<li>Maximum 50% capital allocated to any single position</li>
+<li>Maximum 3 signals per 15-minute window globally</li>
+</ul>
+<a id="risk-management-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Management Strategies<a href="#risk-management-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Multi-symbol strategies require portfolio-level risk management:</p>
+<p><strong>Correlation analysis:</strong></p>
+<ul>
+<li>Track correlation between active positions</li>
+<li>Reduce position sizes for highly correlated pairs</li>
+<li>Example: BTC and ETH often move together</li>
+</ul>
+<p><strong>Capital allocation:</strong></p>
+<ul>
+<li>Dynamic position sizing based on available capital</li>
+<li>Reserve capital for new opportunities</li>
+<li>Rebalance on position closes</li>
+</ul>
+<p><strong>Stop-loss coordination:</strong></p>
+<ul>
+<li>Portfolio-level stop-loss (e.g., -10% total drawdown)</li>
+<li>Correlate individual stops with portfolio impact</li>
+<li>Close all positions if portfolio stop triggered</li>
+</ul>
+<p><strong>Exposure limits:</strong></p>
+<ul>
+<li>Maximum percentage per symbol (e.g., 20%)</li>
+<li>Maximum percentage per asset class (e.g., 50% altcoins)</li>
+<li>Geographic/regulatory exposure limits</li>
+</ul>
+<a id="event-listeners-for-multi-symbol" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listeners for Multi-Symbol<a href="#event-listeners-for-multi-symbol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Event listeners aggregate signals across all symbols:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: README.md:336-461</span><br/><span class="hl-5">// listenSignal() receives events from all symbols</span><br/><span class="hl-5">// Filter by symbol, strategyName, or other criteria</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Global monitoring:</strong></p>
+<ul>
+<li>Single listener receives events from all parallel executions</li>
+<li>Filter events by <code>result.signal.symbol</code> for per-symbol logic</li>
+<li>Aggregate statistics across portfolio</li>
+<li>Implement circuit breakers on excessive losses</li>
+</ul>
+<p><strong>Per-symbol monitoring:</strong></p>
+<ul>
+<li>Register separate listeners for each symbol</li>
+<li>Use <code>listenSignalOnce()</code> for one-time alerts</li>
+<li>Example: Alert when any symbol hits stop-loss</li>
+</ul>
+<a id="background-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Background Execution<a href="#background-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Background execution runs strategies silently with event-driven reactions:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: README.md:341-362</span><br/><span class="hl-5">// Backtest.background() returns cancellation function</span><br/><span class="hl-5">// Live.background() returns cancellation function</span><br/><span class="hl-5">// Use event listeners to react to signals</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Lower memory usage (no yielded results accumulation)</li>
+<li>Event-driven architecture</li>
+<li>Clean separation of execution and monitoring</li>
+<li>Multiple strategies can run in parallel</li>
+</ul>
+<p><strong>Cancellation handling:</strong></p>
+<pre><code class="typescript"><span class="hl-5">// Store cancellation functions in array</span><br/><span class="hl-5">// Call all cancellation functions to stop portfolio</span><br/><span class="hl-5">// Example: stops[] = [stopBTC, stopETH, stopSOL]</span><br/><span class="hl-5">// stops.forEach(stop =&gt; stop())</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="performance-considerations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Multi-symbol execution impacts system resources:</p>
+<p><strong>Memory usage:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Memory Per Symbol</th>
+<th>Total for 10 Symbols</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Isolated (streaming)</td>
+<td>~1-2 MB</td>
+<td>~10-20 MB</td>
+</tr>
+<tr>
+<td>Isolated (accumulated)</td>
+<td>~10-50 MB</td>
+<td>~100-500 MB</td>
+</tr>
+<tr>
+<td>Shared state</td>
+<td>~1-2 MB + shared</td>
+<td>~10-20 MB + shared</td>
+</tr>
+</tbody>
+</table>
+<p><strong>CPU usage:</strong></p>
+<ul>
+<li>Each symbol requires periodic tick evaluations</li>
+<li>Exchange API calls can be parallelized</li>
+<li>VWAP calculations are O(n) per symbol</li>
+<li>Backtest simulations are CPU-bound</li>
+</ul>
+<p><strong>Network usage:</strong></p>
+<ul>
+<li>API calls scale linearly with symbol count</li>
+<li>Consider rate limits per API key</li>
+<li>Use batched requests if exchange supports</li>
+<li>Cache symbol precision rules</li>
+</ul>
+<p><strong>Recommendations:</strong></p>
+<ul>
+<li>Use streaming patterns (async generators) for backtests</li>
+<li>Limit concurrent symbols to stay within rate limits</li>
+<li>Implement connection pooling for API clients</li>
+<li>Monitor memory usage in production</li>
+</ul>
+<hr>
+<a id="advanced-customization-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Advanced Customization Patterns<a href="#advanced-customization-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="custom-logger-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Logger Integration<a href="#custom-logger-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom loggers integrate with framework internals:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:32-49</span><br/><span class="hl-5">// setLogger({ log, debug, info, warn })</span><br/><span class="hl-5">// All internal services will use custom logger</span><br/><span class="hl-5">// Automatic context injection (strategyName, exchangeName, symbol, when, backtest)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Context injection:</strong></p>
+<ul>
+<li><code>MethodContextService</code> provides strategyName, exchangeName, frameName</li>
+<li><code>ExecutionContextService</code> provides symbol, when, backtest flag</li>
+<li><code>LoggerService</code> automatically appends context to all log calls</li>
+<li>Example log: <code>&quot;tick my-strategy binance BTCUSDT 2024-01-01T12:00:00Z backtest&quot;</code></li>
+</ul>
+<p><strong>Use cases:</strong></p>
+<ul>
+<li>Integrate with structured logging (winston, bunyan)</li>
+<li>Send logs to centralized logging service (CloudWatch, Datadog)</li>
+<li>Filter logs by strategy or symbol</li>
+<li>Debug production issues with rich context</li>
+</ul>
+<a id="context-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Services<a href="#context-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Context services enable implicit parameter passing through the call stack:</p>
+<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:84-95 (ExecutionContextService)</span><br/><span class="hl-5">// Reference: types.d.ts:344-350 (MethodContextService)</span><br/><span class="hl-5">// Uses di-scoped for async-local-storage-like behavior</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>ExecutionContextService:</strong></p>
+<ul>
+<li>Propagates <code>{ symbol, when, backtest }</code> through execution</li>
+<li>Set by Logic services before each tick/backtest call</li>
+<li>Accessed by Exchange/Strategy services without explicit parameters</li>
+</ul>
+<p><strong>MethodContextService:</strong></p>
+<ul>
+<li>Propagates <code>{ strategyName, exchangeName, frameName }</code> through execution</li>
+<li>Set by Public services (Backtest/Live) before generator execution</li>
+<li>Accessed by Connection services for instance routing</li>
+</ul>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Eliminates parameter threading through 5+ layers</li>
+<li>Type-safe context access</li>
+<li>Automatic cleanup after async operations</li>
+<li>Testable with mock contexts</li>
+</ul>
+<a id="service-extension" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Extension<a href="#service-extension" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Extend framework services to add custom functionality:</p>
+<p><strong>Extension points:</strong></p>
+<ul>
+<li>Override <code>ClientStrategy.getSignal()</code> for complex signal logic</li>
+<li>Override <code>ClientExchange.getCandles()</code> for custom data sources</li>
+<li>Override <code>ClientFrame.getTimeframe()</code> for dynamic timeframes</li>
+<li>Extend <code>PersistBase</code> for custom persistence backends</li>
+</ul>
+<p><strong>Dependency injection:</strong></p>
+<ul>
+<li>All services are registered in <a href="">src/lib/core/provide.ts</a></li>
+<li>Services are resolved through DI container</li>
+<li>Custom services can be injected by replacing registrations</li>
+</ul>
+<p><strong>Architecture constraints:</strong></p>
+<ul>
+<li>Client classes (ClientStrategy, ClientExchange, ClientFrame) have no DI</li>
+<li>Connection services route to appropriate client instances</li>
+<li>Global services wrap connection services with context injection</li>
+<li>Logic services orchestrate async generator execution</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#advanced-topics"><span>Advanced <wbr/>Topics</span></a><ul><li><a href="#custom-exchange-integration"><span>Custom <wbr/>Exchange <wbr/>Integration</span></a></li><li><ul><li><a href="#exchange-schema-interface"><span>Exchange <wbr/>Schema <wbr/>Interface</span></a></li><li><a href="#integration-architecture"><span>Integration <wbr/>Architecture</span></a></li><li><a href="#rest-api-integration-example"><span>REST API <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#database-integration-example"><span>Database <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#csv-file-integration-example"><span>CSV <wbr/>File <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#candle-data-transformation"><span>Candle <wbr/>Data <wbr/>Transformation</span></a></li><li><a href="#exchange-callbacks"><span>Exchange <wbr/>Callbacks</span></a></li></ul></li><li><a href="#custom-persistence-backends"><span>Custom <wbr/>Persistence <wbr/>Backends</span></a></li><li><ul><li><a href="#persistence-architecture"><span>Persistence <wbr/>Architecture</span></a></li><li><a href="#persistbase-interface"><span>Persist<wbr/>Base <wbr/>Interface</span></a></li><li><a href="#redis-integration-example"><span>Redis <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#postgresql-integration-example"><span>PostgreSQL <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#mongodb-integration-example"><span>MongoDB <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#aws-s3-integration-example"><span>AWS <wbr/>S3 <wbr/>Integration <wbr/>Example</span></a></li><li><a href="#registration-and-usage"><span>Registration and <wbr/>Usage</span></a></li><li><a href="#persistence-data-format"><span>Persistence <wbr/>Data <wbr/>Format</span></a></li></ul></li><li><a href="#multi-symbol-strategies"><span>Multi-<wbr/>Symbol <wbr/>Strategies</span></a></li><li><ul><li><a href="#execution-patterns"><span>Execution <wbr/>Patterns</span></a></li><li><a href="#isolated-state-pattern"><span>Isolated <wbr/>State <wbr/>Pattern</span></a></li><li><a href="#shared-state-pattern"><span>Shared <wbr/>State <wbr/>Pattern</span></a></li><li><a href="#position-limit-enforcement"><span>Position <wbr/>Limit <wbr/>Enforcement</span></a></li><li><a href="#risk-management-strategies"><span>Risk <wbr/>Management <wbr/>Strategies</span></a></li><li><a href="#event-listeners-for-multi-symbol"><span>Event <wbr/>Listeners for <wbr/>Multi-<wbr/>Symbol</span></a></li><li><a href="#background-execution"><span>Background <wbr/>Execution</span></a></li><li><a href="#performance-considerations"><span>Performance <wbr/>Considerations</span></a></li></ul></li><li><a href="#advanced-customization-patterns"><span>Advanced <wbr/>Customization <wbr/>Patterns</span></a></li><li><ul><li><a href="#custom-logger-integration"><span>Custom <wbr/>Logger <wbr/>Integration</span></a></li><li><a href="#context-services"><span>Context <wbr/>Services</span></a></li><li><a href="#service-extension"><span>Service <wbr/>Extension</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

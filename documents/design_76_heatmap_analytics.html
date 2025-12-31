@@ -1,0 +1,273 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/76_heatmap_analytics | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_76_heatmap_analytics.html">design/76_heatmap_analytics</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="heatmap-analytics" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Heatmap Analytics<a href="#heatmap-analytics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the heatmap analytics system, which aggregates trading performance across multiple symbols for portfolio-wide analysis. The system tracks per-symbol and portfolio-level metrics for a single strategy executing across multiple trading pairs.</p>
+<p>For individual symbol-strategy pair statistics in backtest mode, see <a href="design_73_performance_metrics.html">Backtest Reports</a>. For live trading reports, see <a href="design_73_performance_metrics.html">Live Trading Reports</a>. For multi-strategy comparison, see <a href="design_66_walker_reports.html">Walker Mode Reports</a>.</p>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The heatmap analytics system provides portfolio-level performance visualization by aggregating closed signal data across all symbols that a single strategy trades. It calculates per-symbol statistics (PNL, Sharpe ratio, max drawdown, win rate) and portfolio-wide aggregated metrics. The system generates markdown reports with tabular breakdowns showing which symbols perform best and which are underperforming.</p>
+<p>Key characteristics:</p>
+<ul>
+<li><strong>Strategy-scoped aggregation</strong>: One heatmap per strategy name, aggregating all symbols</li>
+<li><strong>Real-time accumulation</strong>: Subscribes to <code>signalEmitter</code> to track closed signals as they occur</li>
+<li><strong>Bounded storage</strong>: Maximum 250 closed signals per symbol per strategy</li>
+<li><strong>Safe math</strong>: Handles NaN/Infinity gracefully by converting to null</li>
+</ul>
+<a id="system-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">System Architecture<a href="#system-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/76_Heatmap_Analytics_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Service Integration</strong>: <code>HeatMarkdownService</code> is instantiated via the dependency injection system and subscribes to <code>signalEmitter</code> on first use. Unlike <code>BacktestMarkdownService</code> and <code>LiveMarkdownService</code> which use <code>symbol:strategyName</code> as storage keys, <code>HeatMarkdownService</code> uses only <code>strategyName</code> as the key because it aggregates across all symbols.</p>
+<p><strong>Storage Strategy</strong>: Each strategy gets exactly one <code>HeatmapStorage</code> instance via memoization <a href="">src/lib/services/markdown/HeatMarkdownService.ts:442-445</a>. Within each storage, a <code>Map&lt;string, IStrategyTickResultClosed[]&gt;</code> maintains per-symbol closed signal arrays <a href="">src/lib/services/markdown/HeatMarkdownService.ts:84</a>.</p>
+<a id="data-model" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Model<a href="#data-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="heatmap-row-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Heatmap Row Interface<a href="#heatmap-row-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Each symbol tracked by a strategy has statistics calculated into an <code>IHeatmapRow</code> structure:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair identifier</td>
+</tr>
+<tr>
+<td><code>totalPnl</code></td>
+<td><code>number | null</code></td>
+<td>Sum of all PNL percentages</td>
+</tr>
+<tr>
+<td><code>sharpeRatio</code></td>
+<td><code>number | null</code></td>
+<td>Risk-adjusted return metric</td>
+</tr>
+<tr>
+<td><code>maxDrawdown</code></td>
+<td><code>number | null</code></td>
+<td>Maximum cumulative loss from peak</td>
+</tr>
+<tr>
+<td><code>totalTrades</code></td>
+<td><code>number</code></td>
+<td>Count of closed signals</td>
+</tr>
+<tr>
+<td><code>winCount</code></td>
+<td><code>number</code></td>
+<td>Count of profitable trades</td>
+</tr>
+<tr>
+<td><code>lossCount</code></td>
+<td><code>number</code></td>
+<td>Count of losing trades</td>
+</tr>
+<tr>
+<td><code>winRate</code></td>
+<td><code>number | null</code></td>
+<td>Percentage of winning trades</td>
+</tr>
+<tr>
+<td><code>avgPnl</code></td>
+<td><code>number | null</code></td>
+<td>Mean PNL per trade</td>
+</tr>
+<tr>
+<td><code>stdDev</code></td>
+<td><code>number | null</code></td>
+<td>Standard deviation of returns</td>
+</tr>
+<tr>
+<td><code>profitFactor</code></td>
+<td><code>number | null</code></td>
+<td>Total wins / total losses ratio</td>
+</tr>
+<tr>
+<td><code>avgWin</code></td>
+<td><code>number | null</code></td>
+<td>Average winning trade PNL</td>
+</tr>
+<tr>
+<td><code>avgLoss</code></td>
+<td><code>number | null</code></td>
+<td>Average losing trade PNL</td>
+</tr>
+<tr>
+<td><code>maxWinStreak</code></td>
+<td><code>number</code></td>
+<td>Longest consecutive wins</td>
+</tr>
+<tr>
+<td><code>maxLossStreak</code></td>
+<td><code>number</code></td>
+<td>Longest consecutive losses</td>
+</tr>
+<tr>
+<td><code>expectancy</code></td>
+<td><code>number | null</code></td>
+<td>Expected PNL per trade</td>
+</tr>
+</tbody>
+</table>
+<a id="portfolio-statistics-model" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Portfolio Statistics Model<a href="#portfolio-statistics-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>HeatmapStatisticsModel</code> contains aggregated portfolio-wide data:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-10">symbols</span><span class="hl-1">: </span><span class="hl-4">IHeatmapRow</span><span class="hl-1">[],           </span><span class="hl-5">// Sorted by Sharpe ratio desc</span><br/><span class="hl-1">  </span><span class="hl-10">totalSymbols</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">,              </span><span class="hl-5">// Count of tracked symbols</span><br/><span class="hl-1">  </span><span class="hl-10">portfolioTotalPnl</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1">,  </span><span class="hl-5">// Sum across all symbols</span><br/><span class="hl-1">  </span><span class="hl-10">portfolioSharpeRatio</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1"> | </span><span class="hl-7">null</span><span class="hl-1">, </span><span class="hl-5">// Trade-weighted average</span><br/><span class="hl-1">  </span><span class="hl-10">portfolioTotalTrades</span><span class="hl-1">: </span><span class="hl-4">number</span><span class="hl-1">       </span><span class="hl-5">// Total across all symbols</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Sharpe Ratio Weighting</strong>: The portfolio Sharpe ratio is calculated as a trade-weighted average rather than a simple mean <a href="">src/lib/services/markdown/HeatMarkdownService.ts:309-317</a>:</p>
+<pre><code><span class="hl-4">portfolioSharpeRatio</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">sharpeRatio_i</span><span class="hl-1"> × </span><span class="hl-4">totalTrades_i</span><span class="hl-1">) / </span><span class="hl-4">portfolioTotalTrades</span>
+</code><button>Copy</button></pre>
+
+<a id="signal-accumulation-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Accumulation Flow<a href="#signal-accumulation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/76_Heatmap_Analytics_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Event Filtering</strong>: The <code>tick</code> method only processes signals where <code>action === &quot;closed&quot;</code> <a href="">src/lib/services/markdown/HeatMarkdownService.ts:460-462</a>. Idle, opened, active, and scheduled signals are ignored.</p>
+<p><strong>Deque Behavior</strong>: New signals are added to the front with <code>unshift</code>, and old signals are removed from the back with <code>pop</code> when exceeding <code>MAX_EVENTS=250</code> <a href="">src/lib/services/markdown/HeatMarkdownService.ts:99-104</a>. This maintains a rolling window of the most recent 250 closed signals per symbol.</p>
+<a id="per-symbol-statistics-calculation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Per-Symbol Statistics Calculation<a href="#per-symbol-statistics-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>calculateSymbolStats</code> method <a href="">src/lib/services/markdown/HeatMarkdownService.ts:115-271</a> computes all metrics for a single symbol. Key calculations:</p>
+<a id="basic-metrics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Basic Metrics<a href="#basic-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">totalTrades</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1">.</span><span class="hl-4">length</span><br/><span class="hl-4">winCount</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1"> </span><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">pnl</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><br/><span class="hl-4">lossCount</span><span class="hl-1"> = </span><span class="hl-4">signals</span><span class="hl-1"> </span><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">pnl</span><span class="hl-1"> &lt; </span><span class="hl-6">0</span><br/><span class="hl-4">winRate</span><span class="hl-1"> = (</span><span class="hl-4">winCount</span><span class="hl-1"> / </span><span class="hl-4">totalTrades</span><span class="hl-1">) × </span><span class="hl-6">100</span><br/><span class="hl-4">totalPnl</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">)</span><br/><span class="hl-4">avgPnl</span><span class="hl-1"> = </span><span class="hl-4">totalPnl</span><span class="hl-1"> / </span><span class="hl-4">totalTrades</span>
+</code><button>Copy</button></pre>
+
+<a id="sharpe-ratio" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Sharpe Ratio<a href="#sharpe-ratio" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">variance</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">((</span><span class="hl-4">pnl_i</span><span class="hl-1"> - </span><span class="hl-4">avgPnl</span><span class="hl-1">)²) / </span><span class="hl-4">totalTrades</span><br/><span class="hl-4">stdDev</span><span class="hl-1"> = √</span><span class="hl-4">variance</span><br/><span class="hl-4">sharpeRatio</span><span class="hl-1"> = </span><span class="hl-4">avgPnl</span><span class="hl-1"> / </span><span class="hl-0">stdDev</span><span class="hl-1">  (</span><span class="hl-4">if</span><span class="hl-1"> </span><span class="hl-4">stdDev</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<a id="maximum-drawdown" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Maximum Drawdown<a href="#maximum-drawdown" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Calculated iteratively by tracking cumulative PNL and measuring distance from peak <a href="">src/lib/services/markdown/HeatMarkdownService.ts:159-178</a>:</p>
+<pre><code><span class="hl-4">for</span><span class="hl-1"> </span><span class="hl-4">each</span><span class="hl-1"> </span><span class="hl-10">signal</span><span class="hl-1">:</span><br/><span class="hl-1">  </span><span class="hl-4">peak</span><span class="hl-1"> += </span><span class="hl-4">signal</span><span class="hl-1">.</span><span class="hl-4">pnl</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> </span><span class="hl-4">peak</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">:</span><br/><span class="hl-1">    </span><span class="hl-4">currentDrawdown</span><span class="hl-1"> = </span><span class="hl-6">0</span><br/><span class="hl-1">  </span><span class="hl-3">else</span><span class="hl-1">:</span><br/><span class="hl-1">    </span><span class="hl-4">currentDrawdown</span><span class="hl-1"> = |</span><span class="hl-4">peak</span><span class="hl-1">|</span><br/><span class="hl-1">    </span><span class="hl-4">maxDrawdown</span><span class="hl-1"> = </span><span class="hl-0">max</span><span class="hl-1">(</span><span class="hl-4">maxDrawdown</span><span class="hl-1">, </span><span class="hl-4">currentDrawdown</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<a id="profit-factor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Profit Factor<a href="#profit-factor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">sumWins</span><span class="hl-1"> = </span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">pnl</span><span class="hl-1"> </span><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">pnl</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">)</span><br/><span class="hl-4">sumLosses</span><span class="hl-1"> = |</span><span class="hl-0">Σ</span><span class="hl-1">(</span><span class="hl-4">pnl</span><span class="hl-1"> </span><span class="hl-4">where</span><span class="hl-1"> </span><span class="hl-4">pnl</span><span class="hl-1"> &lt; </span><span class="hl-6">0</span><span class="hl-1">)|</span><br/><span class="hl-4">profitFactor</span><span class="hl-1"> = </span><span class="hl-4">sumWins</span><span class="hl-1"> / </span><span class="hl-0">sumLosses</span><span class="hl-1">  (</span><span class="hl-4">if</span><span class="hl-1"> </span><span class="hl-4">sumLosses</span><span class="hl-1"> &gt; </span><span class="hl-6">0</span><span class="hl-1">)</span>
+</code><button>Copy</button></pre>
+
+<a id="expectancy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Expectancy<a href="#expectancy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-4">expectancy</span><span class="hl-1"> = (</span><span class="hl-4">winRate</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1">) × </span><span class="hl-4">avgWin</span><span class="hl-1"> + ((</span><span class="hl-6">100</span><span class="hl-1">-</span><span class="hl-4">winRate</span><span class="hl-1">)/</span><span class="hl-6">100</span><span class="hl-1">) × </span><span class="hl-4">avgLoss</span>
+</code><button>Copy</button></pre>
+
+<p><strong>Safe Math</strong>: All calculated values are checked with <code>isUnsafe()</code> before returning. If a value is <code>NaN</code>, <code>Infinity</code>, or not a number, it's set to <code>null</code> <a href="">src/lib/services/markdown/HeatMarkdownService.ts:242-251</a>.</p>
+<a id="portfolio-aggregation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Portfolio Aggregation<a href="#portfolio-aggregation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/76_Heatmap_Analytics_2.svg" alt="Mermaid Diagram"></p>
+<p>The <code>getData</code> method <a href="">src/lib/services/markdown/HeatMarkdownService.ts:278-330</a> performs three operations:</p>
+<ol>
+<li><strong>Per-symbol statistics</strong>: Calls <code>calculateSymbolStats</code> for each symbol in <code>symbolData</code> Map</li>
+<li><strong>Sorting</strong>: Sorts symbols by Sharpe ratio descending, with nulls last <a href="">src/lib/services/markdown/HeatMarkdownService.ts:288-293</a></li>
+<li><strong>Portfolio aggregation</strong>: Sums PNL and trades, calculates trade-weighted Sharpe ratio</li>
+</ol>
+<a id="public-api-methods" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Public API Methods<a href="#public-api-methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="getdatastrategyname" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getData(strategyName)<a href="#getdatastrategyname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Returns <code>HeatmapStatisticsModel</code> with all computed statistics.</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">getData</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><br/><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">HeatmapStatisticsModel</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Usage</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">service</span><span class="hl-1"> = </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">HeatMarkdownService</span><span class="hl-1">();</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">stats</span><span class="hl-1"> = </span><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">service</span><span class="hl-1">.</span><span class="hl-0">getData</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Total symbols: </span><span class="hl-7">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">totalSymbols</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Portfolio PNL: </span><span class="hl-7">${</span><span class="hl-4">stats</span><span class="hl-9">.</span><span class="hl-4">portfolioTotalPnl</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><br/><span class="hl-4">stats</span><span class="hl-1">.</span><span class="hl-4">symbols</span><span class="hl-1">.</span><span class="hl-0">forEach</span><span class="hl-1">(</span><span class="hl-4">row</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">symbol</span><span class="hl-7">}</span><span class="hl-2">: </span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">totalPnl</span><span class="hl-7">}</span><span class="hl-2">% (</span><span class="hl-7">${</span><span class="hl-4">row</span><span class="hl-9">.</span><span class="hl-4">totalTrades</span><span class="hl-7">}</span><span class="hl-2"> trades)`</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="getreportstrategyname-columns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getReport(strategyName, columns?)<a href="#getreportstrategyname-columns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Generates markdown-formatted report with portfolio metrics table.</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">getReport</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">: </span><span class="hl-11">Columns</span><span class="hl-1">[] = </span><span class="hl-8">COLUMN_CONFIG</span><span class="hl-1">.</span><span class="hl-4">heat_columns</span><br/><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">string</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Report Structure</strong>:</p>
+<ol>
+<li>Title: <code># Portfolio Heatmap: {strategyName}</code></li>
+<li>Summary line: Total symbols, portfolio PNL, portfolio Sharpe, total trades</li>
+<li>Markdown table with per-symbol rows (sorted by Sharpe ratio)</li>
+</ol>
+<p>Example output <a href="">src/lib/services/markdown/HeatMarkdownService.ts:370-376</a>:</p>
+<pre><code class="markdown"># Portfolio Heatmap: my-strategy
+
+**Total Symbols:** 5 | **Portfolio PNL:** +45.3% | **Portfolio Sharpe:** 1.85 | **Total Trades:** 120
+
+| Symbol | Total PNL | Sharpe | Max DD | Trades | Win Rate | ... |
+|--------|-----------|--------|--------|--------|----------|-----|
+| BTCUSDT | +15.5% | 2.10 | -2.5% | 45 | 68.9% | ... |
+| ETHUSDT | +12.3% | 1.85 | -3.1% | 38 | 63.2% | ... |
+</code><button type="button">Copy</button></pre>
+
+<a id="dumpstrategyname-path-columns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dump(strategyName, path?, columns?)<a href="#dumpstrategyname-path-columns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Writes markdown report to disk.</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-0">dump</span><span class="hl-1"> = </span><span class="hl-7">async</span><span class="hl-1"> (</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">path</span><span class="hl-1"> = </span><span class="hl-2">&quot;./dump/heatmap&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">columns</span><span class="hl-1">: </span><span class="hl-11">Columns</span><span class="hl-1">[] = </span><span class="hl-8">COLUMN_CONFIG</span><span class="hl-1">.</span><span class="hl-4">heat_columns</span><br/><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>File naming</strong>: <code>{strategyName}.md</code> in the specified directory.</p>
+<p><strong>Example</strong>:</p>
+<pre><code class="typescript"><span class="hl-5">// Saves to ./dump/heatmap/my-strategy.md</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">service</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// Custom path: ./reports/my-strategy.md</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">service</span><span class="hl-1">.</span><span class="hl-0">dump</span><span class="hl-1">(</span><span class="hl-2">&quot;my-strategy&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;./reports&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="clearstrategyname" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear(strategyName?)<a href="#clearstrategyname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Clears accumulated data from storage.</p>
+<pre><code class="typescript"><span class="hl-4">public</span><span class="hl-1"> </span><span class="hl-4">clear</span><span class="hl-1"> = </span><span class="hl-0">async</span><span class="hl-1"> (</span><span class="hl-4">strategyName</span><span class="hl-1">?: </span><span class="hl-4">StrategyName</span><span class="hl-1">): </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-7">void</span><span class="hl-1">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<ul>
+<li><strong>With strategyName</strong>: Clears data for that strategy only</li>
+<li><strong>Without strategyName</strong>: Clears all strategies' data</li>
+</ul>
+<a id="column-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Column Configuration<a href="#column-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Display columns are defined via <code>ColumnModel&lt;IHeatmapRow&gt;</code> interface <a href="">src/model/Column.model.ts:26-38</a>. Default columns are provided in <code>COLUMN_CONFIG.heat_columns</code>.</p>
+<p><strong>Column Interface</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">ColumnModel</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt; {</span><br/><span class="hl-1">  </span><span class="hl-4">key</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;                </span><span class="hl-5">// Unique identifier</span><br/><span class="hl-1">  </span><span class="hl-4">label</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;              </span><span class="hl-5">// Header display text</span><br/><span class="hl-1">  </span><span class="hl-0">format</span><span class="hl-1">: (</span><span class="hl-4">data</span><span class="hl-1">: </span><span class="hl-11">T</span><span class="hl-1">, </span><span class="hl-4">index</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">string</span><span class="hl-1"> | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">string</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">  </span><span class="hl-0">isVisible</span><span class="hl-1">: () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">boolean</span><span class="hl-1"> | </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-11">boolean</span><span class="hl-1">&gt;;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example column definitions</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">symbolColumn</span><span class="hl-1">: </span><span class="hl-11">Columns</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;symbol&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Symbol&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">row</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">row</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">};</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pnlColumn</span><span class="hl-1">: </span><span class="hl-11">Columns</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">key:</span><span class="hl-1"> </span><span class="hl-2">&quot;totalPnl&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">label:</span><span class="hl-1"> </span><span class="hl-2">&quot;Total PNL %&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">format</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">row</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">row</span><span class="hl-1">.</span><span class="hl-4">totalPnl</span><span class="hl-1"> !== </span><span class="hl-7">null</span><span class="hl-1"> </span><br/><span class="hl-1">    ? </span><span class="hl-4">row</span><span class="hl-1">.</span><span class="hl-4">totalPnl</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">2</span><span class="hl-1">) + </span><span class="hl-2">&#39;%&#39;</span><span class="hl-1"> </span><br/><span class="hl-1">    : </span><span class="hl-2">&#39;N/A&#39;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-0">isVisible</span><span class="hl-4">:</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">true</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Custom columns</strong>: Users can pass custom <code>Columns[]</code> arrays to <code>getReport</code> and <code>dump</code> methods to override default display configuration.</p>
+<a id="integration-with-other-services" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Services<a href="#integration-with-other-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/76_Heatmap_Analytics_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Differences</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Storage Key</th>
+<th>Scope</th>
+<th>Event Source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BacktestMarkdownService</code></td>
+<td><code>symbol:strategyName</code></td>
+<td>Per symbol-strategy pair</td>
+<td><code>signalBacktestEmitter</code></td>
+</tr>
+<tr>
+<td><code>LiveMarkdownService</code></td>
+<td><code>symbol:strategyName</code></td>
+<td>Per symbol-strategy pair</td>
+<td><code>signalLiveEmitter</code></td>
+</tr>
+<tr>
+<td><code>HeatMarkdownService</code></td>
+<td><code>strategyName</code></td>
+<td>All symbols for strategy</td>
+<td><code>signalEmitter</code> (both)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use Cases</strong>:</p>
+<ul>
+<li><strong>BacktestMarkdownService</strong>: Detailed signal-level analysis for one backtest run</li>
+<li><strong>LiveMarkdownService</strong>: Real-time monitoring of one live trading pair</li>
+<li><strong>HeatMarkdownService</strong>: Portfolio-wide performance comparison across multiple symbols</li>
+</ul>
+<a id="initialization-and-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Initialization and Lifecycle<a href="#initialization-and-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The service uses lazy initialization with <code>singleshot</code> pattern <a href="">src/lib/services/markdown/HeatMarkdownService.ts:602-605</a>:</p>
+<pre><code class="typescript"><span class="hl-4">protected</span><span class="hl-1"> </span><span class="hl-4">init</span><span class="hl-1"> = </span><span class="hl-0">singleshot</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;heatMarkdownService init&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-4">tick</span><span class="hl-1">);</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Lifecycle</strong>:</p>
+<ol>
+<li>Service instantiated via DI on first access</li>
+<li>First call to any public method triggers <code>init()</code></li>
+<li><code>init()</code> subscribes to <code>signalEmitter</code> exactly once</li>
+<li><code>tick()</code> method processes all subsequent closed signals</li>
+<li><code>clear()</code> can reset storage without unsubscribing</li>
+</ol>
+<p><strong>Automatic initialization</strong>: Users do not need to manually call <code>init()</code>. The service begins accumulating data automatically when first accessed.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#heatmap-analytics"><span>Heatmap <wbr/>Analytics</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#system-architecture"><span>System <wbr/>Architecture</span></a></li><li><a href="#data-model"><span>Data <wbr/>Model</span></a></li><li><ul><li><a href="#heatmap-row-interface"><span>Heatmap <wbr/>Row <wbr/>Interface</span></a></li><li><a href="#portfolio-statistics-model"><span>Portfolio <wbr/>Statistics <wbr/>Model</span></a></li></ul></li><li><a href="#signal-accumulation-flow"><span>Signal <wbr/>Accumulation <wbr/>Flow</span></a></li><li><a href="#per-symbol-statistics-calculation"><span>Per-<wbr/>Symbol <wbr/>Statistics <wbr/>Calculation</span></a></li><li><ul><li><a href="#basic-metrics"><span>Basic <wbr/>Metrics</span></a></li><li><a href="#sharpe-ratio"><span>Sharpe <wbr/>Ratio</span></a></li><li><a href="#maximum-drawdown"><span>Maximum <wbr/>Drawdown</span></a></li><li><a href="#profit-factor"><span>Profit <wbr/>Factor</span></a></li><li><a href="#expectancy"><span>Expectancy</span></a></li></ul></li><li><a href="#portfolio-aggregation"><span>Portfolio <wbr/>Aggregation</span></a></li><li><a href="#public-api-methods"><span>Public API <wbr/>Methods</span></a></li><li><ul><li><a href="#getdatastrategyname"><span>get<wbr/>Data(strategy<wbr/>Name)</span></a></li><li><a href="#getreportstrategyname-columns"><span>get<wbr/>Report(strategy<wbr/>Name, columns?)</span></a></li><li><a href="#dumpstrategyname-path-columns"><span>dump(strategy<wbr/>Name, path?, columns?)</span></a></li><li><a href="#clearstrategyname"><span>clear(strategy<wbr/>Name?)</span></a></li></ul></li><li><a href="#column-configuration"><span>Column <wbr/>Configuration</span></a></li><li><a href="#integration-with-other-services"><span>Integration with <wbr/>Other <wbr/>Services</span></a></li><li><a href="#initialization-and-lifecycle"><span>Initialization and <wbr/>Lifecycle</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

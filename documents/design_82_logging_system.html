@@ -1,0 +1,263 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/82_logging_system | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_82_logging_system.html">design/82_logging_system</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="logging-system" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Logging System<a href="#logging-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><a id="purpose-and-scope" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Logging System provides a unified interface for recording diagnostic information throughout the backtest-kit framework. It enables debugging, monitoring, and auditing of framework operations across all execution modes (Backtest, Live, Walker, Optimizer).</p>
+<p>This document covers the logging interface contract, custom logger configuration, default implementation, and usage patterns throughout the framework. For event-driven monitoring and observability, see <a href="design_14_event_system.html">Event System</a>. For performance metrics and bottleneck detection, see <a href="design_73_performance_metrics.html">Performance Metrics</a>.</p>
+<hr>
+<a id="architecture-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Architecture Overview<a href="#architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/82_Logging_System_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram 1: Logging System Architecture</strong></p>
+<p>The logging system follows a dependency injection pattern where <code>LoggerService</code> is registered globally and injected into all framework services. Custom logger implementations can replace the default via <code>setLogger()</code>.</p>
+<hr>
+<a id="ilogger-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">ILogger Interface<a href="#ilogger-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>ILogger</code> interface defines the contract that all logger implementations must satisfy. It provides four log levels with consistent signatures.</p>
+<a id="interface-definition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Interface Definition<a href="#interface-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Parameters</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>log</code></td>
+<td><code>topic: string, ...args: any[]</code></td>
+<td>General-purpose messages for significant events or state changes</td>
+</tr>
+<tr>
+<td><code>debug</code></td>
+<td><code>topic: string, ...args: any[]</code></td>
+<td>Detailed diagnostic information for development/troubleshooting</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td><code>topic: string, ...args: any[]</code></td>
+<td>Informational updates providing high-level system activity overview</td>
+</tr>
+<tr>
+<td><code>warn</code></td>
+<td><code>topic: string, ...args: any[]</code></td>
+<td>Potentially problematic situations that don't prevent execution</td>
+</tr>
+</tbody>
+</table>
+<a id="usage-context" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage Context<a href="#usage-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The interface documentation specifies that these methods are used throughout the framework for:</p>
+<ul>
+<li><strong>Lifecycle events</strong>: Initialization, disposal, connection establishment</li>
+<li><strong>Operational details</strong>: Tool calls, message emissions, data fetching</li>
+<li><strong>Validation outcomes</strong>: Policy checks, risk validation results</li>
+<li><strong>Errors</strong>: Persistence failures, API errors, validation failures</li>
+</ul>
+<hr>
+<a id="setting-a-custom-logger" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Setting a Custom Logger<a href="#setting-a-custom-logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>setLogger()</code> function allows replacing the default logger with a custom implementation. All internal framework services will route their log messages through the provided logger.</p>
+<a id="function-signature" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Function Signature<a href="#function-signature" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">setLogger</span><span class="hl-1">(</span><span class="hl-4">logger</span><span class="hl-1">: </span><span class="hl-4">ILogger</span><span class="hl-1">): </span><span class="hl-7">void</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="implementation-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Example<a href="#implementation-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setLogger</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Custom logger using Winston</span><br/><span class="hl-3">import</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1"> </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;winston&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">winstonLogger</span><span class="hl-1"> = </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-0">createLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">level:</span><span class="hl-1"> </span><span class="hl-2">&quot;info&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">format:</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">format</span><span class="hl-1">.</span><span class="hl-0">json</span><span class="hl-1">(),</span><br/><span class="hl-1">  </span><span class="hl-4">transports:</span><span class="hl-1"> [</span><br/><span class="hl-1">    </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">transports</span><span class="hl-1">.</span><span class="hl-0">File</span><span class="hl-1">({ </span><span class="hl-4">filename:</span><span class="hl-1"> </span><span class="hl-2">&quot;error.log&quot;</span><span class="hl-1">, </span><span class="hl-4">level:</span><span class="hl-1"> </span><span class="hl-2">&quot;error&quot;</span><span class="hl-1"> }),</span><br/><span class="hl-1">    </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-4">winston</span><span class="hl-1">.</span><span class="hl-4">transports</span><span class="hl-1">.</span><span class="hl-0">File</span><span class="hl-1">({ </span><span class="hl-4">filename:</span><span class="hl-1"> </span><span class="hl-2">&quot;combined.log&quot;</span><span class="hl-1"> }),</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-0">setLogger</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-0">log</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">topic</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">winstonLogger</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-4">topic</span><span class="hl-1">, { </span><span class="hl-4">args</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-0">debug</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">topic</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">winstonLogger</span><span class="hl-1">.</span><span class="hl-0">debug</span><span class="hl-1">(</span><span class="hl-4">topic</span><span class="hl-1">, { </span><span class="hl-4">args</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-0">info</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">topic</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">winstonLogger</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-4">topic</span><span class="hl-1">, { </span><span class="hl-4">args</span><span class="hl-1"> }),</span><br/><span class="hl-1">  </span><span class="hl-0">warn</span><span class="hl-4">:</span><span class="hl-1"> (</span><span class="hl-4">topic</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">winstonLogger</span><span class="hl-1">.</span><span class="hl-0">warn</span><span class="hl-1">(</span><span class="hl-4">topic</span><span class="hl-1">, { </span><span class="hl-4">args</span><span class="hl-1"> }),</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="context-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Injection<a href="#context-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The documentation indicates that custom loggers receive &quot;automatic context injection (strategyName, exchangeName, symbol, etc.)&quot;, though the actual context propagation appears to be handled manually by calling code passing context as additional arguments.</p>
+<hr>
+<a id="default-logger-implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Default Logger Implementation<a href="#default-logger-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework includes a default <code>LoggerService</code> implementation that is registered via dependency injection at initialization time.</p>
+<a id="service-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Registration<a href="#service-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/82_Logging_System_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram 2: LoggerService Registration Flow</strong></p>
+<p>The <code>LoggerService</code> is instantiated once during framework initialization and made available to all services through the dependency injection container.</p>
+<hr>
+<a id="dependency-injection-integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Dependency Injection Integration<a href="#dependency-injection-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The logging system integrates with the framework's dependency injection system using symbol-based registration and memoized instances.</p>
+<a id="di-symbol-definition" class="tsd-anchor"></a><h3 class="tsd-anchor-link">DI Symbol Definition<a href="#di-symbol-definition" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The logger service is registered with the symbol <code>TYPES.loggerService</code>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">    </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">Symbol</span><span class="hl-1">(</span><span class="hl-2">&#39;loggerService&#39;</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-provision" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Provision<a href="#service-provision" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>LoggerService is provided at module initialization:</p>
+<pre><code class="typescript"><span class="hl-1">{</span><br/><span class="hl-1">    </span><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">LoggerService</span><span class="hl-1">());</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-injection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Injection<a href="#service-injection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All framework services inject the logger via the <code>inject()</code> function:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">baseServices</span><span class="hl-1"> = {</span><br/><span class="hl-1">  </span><span class="hl-4">loggerService:</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">LoggerService</span><span class="hl-1">&gt;(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">),</span><br/><span class="hl-1">};</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-access-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Access Pattern<a href="#service-access-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/82_Logging_System_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram 3: Logger Injection Pattern</strong></p>
+<p>Services access the logger through dependency injection, ensuring a single shared logger instance across the entire framework.</p>
+<hr>
+<a id="log-levels" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Log Levels<a href="#log-levels" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework uses four log levels with distinct purposes:</p>
+<a id="level-hierarchy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Level Hierarchy<a href="#level-hierarchy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Purpose</th>
+<th>Typical Use Cases</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>debug</strong></td>
+<td>Detailed diagnostic information</td>
+<td>Intermediate states, candle data inspection, signal validation steps</td>
+</tr>
+<tr>
+<td><strong>info</strong></td>
+<td>Informational updates</td>
+<td>Strategy registration, frame generation, successful completions</td>
+</tr>
+<tr>
+<td><strong>log</strong></td>
+<td>General-purpose messages</td>
+<td>API method entry points, significant state changes, operation tracking</td>
+</tr>
+<tr>
+<td><strong>warn</strong></td>
+<td>Potentially problematic situations</td>
+<td>Missing optional data, unexpected conditions, deprecated usage</td>
+</tr>
+</tbody>
+</table>
+<a id="no-error-level" class="tsd-anchor"></a><h3 class="tsd-anchor-link">No Error Level<a href="#no-error-level" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>ILogger</code> interface does not include an <code>error()</code> method. Error handling is performed through the event system's <code>errorEmitter</code> and <code>exitEmitter</code> subjects (see <a href="design_83_error_handling.html">Error Handling</a>).</p>
+<hr>
+<a id="usage-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Usage Patterns<a href="#usage-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Logging is used consistently throughout the framework at key operational points.</p>
+<a id="public-api-method-entry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Public API Method Entry<a href="#public-api-method-entry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All public API functions log their invocation:</p>
+<pre><code class="typescript"><span class="hl-5">// Method name constant</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;add.addStrategy&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">strategySchema</span><span class="hl-1">: </span><span class="hl-11">IStrategySchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-5">// ... implementation</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="event-listener-registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listener Registration<a href="#event-listener-registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Event subscription functions log their calls:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">LISTEN_SIGNAL_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;event.listenSignal&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">listenSignal</span><span class="hl-1">(</span><span class="hl-0">fn</span><span class="hl-1">: (</span><span class="hl-4">event</span><span class="hl-1">: </span><span class="hl-11">IStrategyTickResult</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">void</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-8">LISTEN_SIGNAL_METHOD_NAME</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">signalEmitter</span><span class="hl-1">.</span><span class="hl-0">subscribe</span><span class="hl-1">(</span><span class="hl-0">queued</span><span class="hl-1">(</span><span class="hl-7">async</span><span class="hl-1"> (</span><span class="hl-4">event</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">fn</span><span class="hl-1">(</span><span class="hl-4">event</span><span class="hl-1">)));</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="common-logging-points" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Common Logging Points<a href="#common-logging-points" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/82_Logging_System_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Diagram 4: Logging Points Across Framework Layers</strong></p>
+<hr>
+<a id="context-enrichment-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Context Enrichment Patterns<a href="#context-enrichment-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>While the <code>setLogger()</code> documentation mentions &quot;automatic context injection&quot;, the actual implementation requires calling code to manually include context information as additional arguments.</p>
+<a id="method-name-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Method Name Pattern<a href="#method-name-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework uses constant strings to identify log topics:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;add.addStrategy&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">LISTEN_SIGNAL_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;event.listenSignal&quot;</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">LISTEN_ERROR_METHOD_NAME</span><span class="hl-1"> = </span><span class="hl-2">&quot;event.listenError&quot;</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>These constant names provide consistent, searchable identifiers for log filtering and analysis.</p>
+<a id="context-arguments-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Arguments Pattern<a href="#context-arguments-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Context information is passed as additional arguments to log methods:</p>
+<pre><code class="typescript"><span class="hl-5">// Simple invocation logging</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-8">LISTEN_SIGNAL_METHOD_NAME</span><span class="hl-1">);</span><br/><br/><span class="hl-5">// With context object</span><br/><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">  </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="client-level-context" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Client-Level Context<a href="#client-level-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Client implementations (ClientStrategy, ClientExchange, ClientRisk) receive logger instances through their constructor parameters along with execution context:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IExchangeParams</span><span class="hl-1"> </span><span class="hl-7">extends</span><span class="hl-1"> </span><span class="hl-11">IExchangeSchema</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-4">logger</span><span class="hl-1">: </span><span class="hl-11">ILogger</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">execution</span><span class="hl-1">: </span><span class="hl-11">TExecutionContextService</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This allows client implementations to include execution context (symbol, timestamp, backtest flag) in their log messages.</p>
+<hr>
+<a id="logger-service-distribution" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Logger Service Distribution<a href="#logger-service-distribution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following table shows which services and clients receive logger instances:</p>
+<table>
+<thead>
+<tr>
+<th>Service/Client</th>
+<th>Logger Access</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ConnectionServices</strong></td>
+<td>Via DI injection</td>
+<td>Route to correct client instances</td>
+</tr>
+<tr>
+<td><strong>CoreServices</strong></td>
+<td>Via DI injection</td>
+<td>Coordinate core operations</td>
+</tr>
+<tr>
+<td><strong>LogicServices</strong></td>
+<td>Via DI injection</td>
+<td>Execute backtest/live/walker logic</td>
+</tr>
+<tr>
+<td><strong>MarkdownServices</strong></td>
+<td>Via DI injection</td>
+<td>Generate reports and aggregate statistics</td>
+</tr>
+<tr>
+<td><strong>CommandServices</strong></td>
+<td>Via DI injection</td>
+<td>Orchestrate high-level operations</td>
+</tr>
+<tr>
+<td><strong>ValidationServices</strong></td>
+<td>Via DI injection</td>
+<td>Validate component registration</td>
+</tr>
+<tr>
+<td><strong>ClientStrategy</strong></td>
+<td>Via constructor params</td>
+<td>Log signal lifecycle events</td>
+</tr>
+<tr>
+<td><strong>ClientExchange</strong></td>
+<td>Via constructor params</td>
+<td>Log candle fetching operations</td>
+</tr>
+<tr>
+<td><strong>ClientRisk</strong></td>
+<td>Via constructor params</td>
+<td>Log risk validation results</td>
+</tr>
+<tr>
+<td><strong>ClientFrame</strong></td>
+<td>Via constructor params</td>
+<td>Log timeframe generation</td>
+</tr>
+<tr>
+<td><strong>ClientOptimizer</strong></td>
+<td>Via constructor params</td>
+<td>Log strategy generation progress</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="integration-with-other-systems" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Other Systems<a href="#integration-with-other-systems" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="event-system-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event System Integration<a href="#event-system-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The logging system operates independently from the event system but serves complementary purposes:</p>
+<ul>
+<li><strong>Logging</strong>: Synchronous diagnostic information for debugging and monitoring</li>
+<li><strong>Events</strong>: Asynchronous notifications for application logic and data flow</li>
+</ul>
+<p>See <a href="design_14_event_system.html">Event System</a> for event-driven monitoring.</p>
+<a id="performance-tracking-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Tracking Integration<a href="#performance-tracking-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Performance metrics are emitted through the event system (<code>performanceEmitter</code>) rather than logged. This allows for structured performance data collection without cluttering logs.</p>
+<p>See <a href="design_73_performance_metrics.html">Performance Metrics</a> for performance monitoring.</p>
+<a id="error-handling-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Error Handling Integration<a href="#error-handling-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Errors are propagated through dedicated event emitters (<code>errorEmitter</code>, <code>exitEmitter</code>) in addition to any logging that may occur. This separation allows for both diagnostic logging and programmatic error handling.</p>
+<p>See <a href="design_83_error_handling.html">Error Handling</a> for error management.</p>
+<hr>
+<a id="best-practices" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Best Practices<a href="#best-practices" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="for-framework-users" class="tsd-anchor"></a><h3 class="tsd-anchor-link">For Framework Users<a href="#for-framework-users" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Set custom logger early</strong>: Call <code>setLogger()</code> before any other framework operations</li>
+<li><strong>Implement all methods</strong>: Ensure your custom logger implements all four ILogger methods</li>
+<li><strong>Handle variadic arguments</strong>: Accept and process variable arguments (<code>...args: any[]</code>)</li>
+<li><strong>Consider log levels</strong>: Use appropriate filtering based on environment (production vs development)</li>
+</ol>
+<a id="for-framework-contributors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">For Framework Contributors<a href="#for-framework-contributors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Use constant method names</strong>: Define string constants for log topics</li>
+<li><strong>Include context objects</strong>: Pass relevant context as additional arguments</li>
+<li><strong>Choose appropriate levels</strong>:
+<ul>
+<li><code>info</code> for public API entry points</li>
+<li><code>log</code> for internal operation tracking</li>
+<li><code>debug</code> for detailed diagnostic information</li>
+<li><code>warn</code> for non-critical issues</li>
+</ul>
+</li>
+<li><strong>Avoid excessive logging</strong>: Focus on significant operations and state changes</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#logging-system"><span>Logging <wbr/>System</span></a><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li><li><a href="#architecture-overview"><span>Architecture <wbr/>Overview</span></a></li><li><a href="#ilogger-interface"><span>ILogger <wbr/>Interface</span></a></li><li><ul><li><a href="#interface-definition"><span>Interface <wbr/>Definition</span></a></li><li><a href="#usage-context"><span>Usage <wbr/>Context</span></a></li></ul></li><li><a href="#setting-a-custom-logger"><span>Setting a <wbr/>Custom <wbr/>Logger</span></a></li><li><ul><li><a href="#function-signature"><span>Function <wbr/>Signature</span></a></li><li><a href="#implementation-example"><span>Implementation <wbr/>Example</span></a></li><li><a href="#context-injection"><span>Context <wbr/>Injection</span></a></li></ul></li><li><a href="#default-logger-implementation"><span>Default <wbr/>Logger <wbr/>Implementation</span></a></li><li><ul><li><a href="#service-registration"><span>Service <wbr/>Registration</span></a></li></ul></li><li><a href="#dependency-injection-integration"><span>Dependency <wbr/>Injection <wbr/>Integration</span></a></li><li><ul><li><a href="#di-symbol-definition"><span>DI <wbr/>Symbol <wbr/>Definition</span></a></li><li><a href="#service-provision"><span>Service <wbr/>Provision</span></a></li><li><a href="#service-injection"><span>Service <wbr/>Injection</span></a></li><li><a href="#service-access-pattern"><span>Service <wbr/>Access <wbr/>Pattern</span></a></li></ul></li><li><a href="#log-levels"><span>Log <wbr/>Levels</span></a></li><li><ul><li><a href="#level-hierarchy"><span>Level <wbr/>Hierarchy</span></a></li><li><a href="#no-error-level"><span>No <wbr/>Error <wbr/>Level</span></a></li></ul></li><li><a href="#usage-patterns"><span>Usage <wbr/>Patterns</span></a></li><li><ul><li><a href="#public-api-method-entry"><span>Public API <wbr/>Method <wbr/>Entry</span></a></li><li><a href="#event-listener-registration"><span>Event <wbr/>Listener <wbr/>Registration</span></a></li><li><a href="#common-logging-points"><span>Common <wbr/>Logging <wbr/>Points</span></a></li></ul></li><li><a href="#context-enrichment-patterns"><span>Context <wbr/>Enrichment <wbr/>Patterns</span></a></li><li><ul><li><a href="#method-name-pattern"><span>Method <wbr/>Name <wbr/>Pattern</span></a></li><li><a href="#context-arguments-pattern"><span>Context <wbr/>Arguments <wbr/>Pattern</span></a></li><li><a href="#client-level-context"><span>Client-<wbr/>Level <wbr/>Context</span></a></li></ul></li><li><a href="#logger-service-distribution"><span>Logger <wbr/>Service <wbr/>Distribution</span></a></li><li><a href="#integration-with-other-systems"><span>Integration with <wbr/>Other <wbr/>Systems</span></a></li><li><ul><li><a href="#event-system-integration"><span>Event <wbr/>System <wbr/>Integration</span></a></li><li><a href="#performance-tracking-integration"><span>Performance <wbr/>Tracking <wbr/>Integration</span></a></li><li><a href="#error-handling-integration"><span>Error <wbr/>Handling <wbr/>Integration</span></a></li></ul></li><li><a href="#best-practices"><span>Best <wbr/>Practices</span></a></li><li><ul><li><a href="#for-framework-users"><span>For <wbr/>Framework <wbr/>Users</span></a></li><li><a href="#for-framework-contributors"><span>For <wbr/>Framework <wbr/>Contributors</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

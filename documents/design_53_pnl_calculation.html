@@ -1,0 +1,305 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/53_pnl_calculation | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_53_pnl_calculation.html">design/53_pnl_calculation</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="pnl-calculation" class="tsd-anchor"></a><h1 class="tsd-anchor-link">PnL Calculation<a href="#pnl-calculation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page explains how profit and loss (PnL) are calculated when signals close in the backtest-kit framework. It covers fee application, slippage simulation, price adjustments, and the final percentage calculation returned in closed signal events.</p>
+<p>For information about signal lifecycle states and when signals close, see <a href="design_49_signal_states.html">Signal States</a>. For validation rules that prevent unprofitable signals, see <a href="design_50_signal_generation_and_validation.html">Signal Generation and Validation</a>.</p>
+<hr>
+<a id="overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Overview<a href="#overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>PnL calculation occurs when a signal transitions to the <code>closed</code> state (action: <code>&quot;closed&quot;</code>). The framework applies realistic trading costs to both entry and exit prices before computing the profit or loss percentage. This ensures backtests and live trading reflect real-world execution conditions.</p>
+<p><strong>Key Features:</strong></p>
+<ul>
+<li><strong>Dual fee application</strong>: Fees charged on both entry (open) and exit (close)</li>
+<li><strong>Dual slippage application</strong>: Slippage simulated on both entry and exit</li>
+<li><strong>Realistic cost modeling</strong>: Total ~0.4% transaction cost (configurable)</li>
+<li><strong>Position-aware logic</strong>: Different calculations for long vs short positions</li>
+<li><strong>Type-safe results</strong>: Returns <code>IStrategyPnL</code> with adjusted prices</li>
+</ul>
+<hr>
+<a id="fee-and-slippage-model" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Fee and Slippage Model<a href="#fee-and-slippage-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework applies two types of transaction costs to simulate real market conditions:</p>
+<a id="fee-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Fee Structure<a href="#fee-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Configuration</strong>: <code>CC_PERCENT_FEE</code> (default: 0.1%)</p>
+<p>Fees are charged <strong>twice</strong>:</p>
+<ol>
+<li><strong>Entry fee</strong>: Applied when position opens at <code>priceOpen</code></li>
+<li><strong>Exit fee</strong>: Applied when position closes at <code>priceClose</code></li>
+</ol>
+<p><strong>Total fee impact</strong>: 0.2% (0.1% × 2 transactions)</p>
+<a id="slippage-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Slippage Structure<a href="#slippage-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Configuration</strong>: <code>CC_PERCENT_SLIPPAGE</code> (default: 0.1%)</p>
+<p>Slippage simulates market impact and order book depth. Applied <strong>twice</strong>:</p>
+<ol>
+<li><strong>Entry slippage</strong>: Price moves against position when opening</li>
+<li><strong>Exit slippage</strong>: Price moves against position when closing</li>
+</ol>
+<p><strong>Total slippage impact</strong>: ~0.2% (0.1% × 2 transactions)</p>
+<a id="combined-transaction-cost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Combined Transaction Cost<a href="#combined-transaction-cost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Total cost per round-trip trade</strong>: ~0.4% (0.2% fees + 0.2% slippage)</p>
+<p>This cost structure explains why <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> defaults to 0.5% - positions must move at least 0.5% favorably to cover costs and generate minimum profit.</p>
+<hr>
+<a id="price-adjustment-formula" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Price Adjustment Formula<a href="#price-adjustment-formula" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Price adjustments differ for long and short positions to reflect directional cost impact:</p>
+<a id="long-position-adjustments" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Long Position Adjustments<a href="#long-position-adjustments" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For long positions (buy low, sell high):</p>
+<pre><code class="typescript"><span class="hl-5">// Entry: Buy at higher price (unfavorable)</span><br/><span class="hl-4">adjustedPriceOpen</span><span class="hl-1"> = </span><span class="hl-4">priceOpen</span><span class="hl-1"> × (</span><span class="hl-6">1</span><span class="hl-1"> + </span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1"> + </span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1">)</span><br/><br/><span class="hl-5">// Exit: Sell at lower price (unfavorable)</span><br/><span class="hl-4">adjustedPriceClose</span><span class="hl-1"> = </span><span class="hl-4">priceClose</span><span class="hl-1"> × (</span><span class="hl-6">1</span><span class="hl-1"> - </span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1"> - </span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example</strong> (default 0.1% fees, 0.1% slippage):</p>
+<ul>
+<li>Original priceOpen: $50,000</li>
+<li>Adjusted priceOpen: $50,000 × 1.002 = $50,100</li>
+<li>Original priceClose: $51,000</li>
+<li>Adjusted priceClose: $51,000 × 0.998 = $50,898</li>
+</ul>
+<a id="short-position-adjustments" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Short Position Adjustments<a href="#short-position-adjustments" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For short positions (sell high, buy low):</p>
+<pre><code class="typescript"><span class="hl-5">// Entry: Sell at lower price (unfavorable)</span><br/><span class="hl-4">adjustedPriceOpen</span><span class="hl-1"> = </span><span class="hl-4">priceOpen</span><span class="hl-1"> × (</span><span class="hl-6">1</span><span class="hl-1"> - </span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1"> - </span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1">)</span><br/><br/><span class="hl-5">// Exit: Buy at higher price (unfavorable)</span><br/><span class="hl-4">adjustedPriceClose</span><span class="hl-1"> = </span><span class="hl-4">priceClose</span><span class="hl-1"> × (</span><span class="hl-6">1</span><span class="hl-1"> + </span><span class="hl-8">CC_PERCENT_SLIPPAGE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1"> + </span><span class="hl-8">CC_PERCENT_FEE</span><span class="hl-1">/</span><span class="hl-6">100</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example</strong> (default 0.1% fees, 0.1% slippage):</p>
+<ul>
+<li>Original priceOpen: $50,000</li>
+<li>Adjusted priceOpen: $50,000 × 0.998 = $49,900</li>
+<li>Original priceClose: $49,000</li>
+<li>Adjusted priceClose: $49,000 × 1.002 = $49,098</li>
+</ul>
+<hr>
+<a id="pnl-calculation-process" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PnL Calculation Process<a href="#pnl-calculation-process" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/53_PnL_Calculation_0.svg" alt="Mermaid Diagram"></p>
+<a id="long-position-pnl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Long Position PnL<a href="#long-position-pnl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">pnlPercentage</span><span class="hl-1"> = ((</span><span class="hl-4">adjustedPriceClose</span><span class="hl-1"> - </span><span class="hl-4">adjustedPriceOpen</span><span class="hl-1">) / </span><span class="hl-4">adjustedPriceOpen</span><span class="hl-1">) × </span><span class="hl-6">100</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Example</strong> (continuing from earlier):</p>
+<ul>
+<li>Adjusted priceOpen: $50,100</li>
+<li>Adjusted priceClose: $50,898</li>
+<li>PnL: ((50,898 - 50,100) / 50,100) × 100 = 1.59%</li>
+</ul>
+<p><strong>Raw profit before fees/slippage</strong>: ((51,000 - 50,000) / 50,000) × 100 = 2.0%<br>
+<strong>Net profit after fees/slippage</strong>: 1.59%<br>
+<strong>Cost impact</strong>: 0.41% (roughly 0.4% as expected)</p>
+<a id="short-position-pnl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Short Position PnL<a href="#short-position-pnl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-4">pnlPercentage</span><span class="hl-1"> = ((</span><span class="hl-4">adjustedPriceOpen</span><span class="hl-1"> - </span><span class="hl-4">adjustedPriceClose</span><span class="hl-1">) / </span><span class="hl-4">adjustedPriceOpen</span><span class="hl-1">) × </span><span class="hl-6">100</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Note the reversed order: short positions profit when price falls (priceOpen &gt; priceClose).</p>
+<p><strong>Example</strong> (continuing from earlier):</p>
+<ul>
+<li>Adjusted priceOpen: $49,900</li>
+<li>Adjusted priceClose: $49,098</li>
+<li>PnL: ((49,900 - 49,098) / 49,900) × 100 = 1.61%</li>
+</ul>
+<p><strong>Raw profit before fees/slippage</strong>: ((50,000 - 49,000) / 50,000) × 100 = 2.0%<br>
+<strong>Net profit after fees/slippage</strong>: 1.61%<br>
+<strong>Cost impact</strong>: 0.39% (roughly 0.4% as expected)</p>
+<hr>
+<a id="istrategypnl-interface" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IStrategyPnL Interface<a href="#istrategypnl-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The calculated PnL is returned as part of <code>IStrategyTickResultClosed</code> in the <code>pnl</code> field:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyPnL</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-5">/** Profit/loss as percentage (e.g., 1.5 for +1.5%, -2.3 for -2.3%) */</span><br/><span class="hl-1">  </span><span class="hl-4">pnlPercentage</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">/** Entry price adjusted with slippage and fees */</span><br/><span class="hl-1">  </span><span class="hl-4">priceOpen</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><br/><span class="hl-1">  </span><span class="hl-5">/** Exit price adjusted with slippage and fees */</span><br/><span class="hl-1">  </span><span class="hl-4">priceClose</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="usage-in-closed-result" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage in Closed Result<a href="#usage-in-closed-result" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResultClosed</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">action</span><span class="hl-1">: </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">signal</span><span class="hl-1">: </span><span class="hl-11">ISignalRow</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">currentPrice</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">closeReason</span><span class="hl-1">: </span><span class="hl-2">&quot;time_expired&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;take_profit&quot;</span><span class="hl-1"> | </span><span class="hl-2">&quot;stop_loss&quot;</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">closeTimestamp</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">pnl</span><span class="hl-1">: </span><span class="hl-11">IStrategyPnL</span><span class="hl-1">;  </span><span class="hl-5">// ← PnL calculation result</span><br/><span class="hl-1">  </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">StrategyName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">exchangeName</span><span class="hl-1">: </span><span class="hl-11">ExchangeName</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Access Pattern</strong>:</p>
+<pre><code class="typescript"><span class="hl-0">listenSignal</span><span class="hl-1">((</span><span class="hl-4">result</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;PnL:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">pnlPercentage</span><span class="hl-1">.</span><span class="hl-0">toFixed</span><span class="hl-1">(</span><span class="hl-6">2</span><span class="hl-1">) + </span><span class="hl-2">&quot;%&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Adjusted entry:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">priceOpen</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">&quot;Adjusted exit:&quot;</span><span class="hl-1">, </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">.</span><span class="hl-4">priceClose</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="configuration-parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Parameters<a href="#configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cc_percent_fee" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_PERCENT_FEE<a href="#cc_percent_fee" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>0.1</code> (0.1%)</p>
+<p>Fee percentage charged per transaction. Applied twice (entry and exit) for total 0.2% fee cost.</p>
+<p><strong>Configuration</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.075</span><span class="hl-1">  </span><span class="hl-5">// 0.075% per transaction (0.15% total)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="cc_percent_slippage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_PERCENT_SLIPPAGE<a href="#cc_percent_slippage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>0.1</code> (0.1%)</p>
+<p>Slippage percentage simulating market impact and order book depth. Applied twice (entry and exit) for total ~0.2% slippage cost.</p>
+<p><strong>Configuration</strong>:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.05</span><span class="hl-1">  </span><span class="hl-5">// 0.05% per transaction (0.1% total)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="combined-configuration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Combined Configuration Example<a href="#combined-configuration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_FEE:</span><span class="hl-1"> </span><span class="hl-6">0.05</span><span class="hl-1">,      </span><span class="hl-5">// 0.05% per transaction</span><br/><span class="hl-1">  </span><span class="hl-4">CC_PERCENT_SLIPPAGE:</span><span class="hl-1"> </span><span class="hl-6">0.05</span><span class="hl-1">, </span><span class="hl-5">// 0.05% per transaction</span><br/><span class="hl-1">  </span><span class="hl-5">// Total cost: ~0.2% (0.1% fees + 0.1% slippage)</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Impact on minimum profit requirements</strong>: When reducing fees/slippage, you can also reduce <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> proportionally.</p>
+<hr>
+<a id="minimum-profit-requirements" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Minimum Profit Requirements<a href="#minimum-profit-requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="cc_min_takeprofit_distance_percent" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT<a href="#cc_min_takeprofit_distance_percent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Default</strong>: <code>0.5</code> (0.5%)</p>
+<p>Minimum distance between <code>priceTakeProfit</code> and <code>priceOpen</code> to ensure profitable trades after fees and slippage.</p>
+<p><strong>Rationale</strong> (from configuration comments):</p>
+<pre><code><span class="hl-10">Calculation</span><span class="hl-1">:</span><br/><span class="hl-1">- </span><span class="hl-4">Slippage</span><span class="hl-1"> </span><span class="hl-10">effect</span><span class="hl-1">: ~</span><span class="hl-6">0.2</span><span class="hl-1">% (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1"> </span><span class="hl-4">transactions</span><span class="hl-1">)</span><br/><span class="hl-1">- </span><span class="hl-10">Fees</span><span class="hl-1">: </span><span class="hl-6">0.2</span><span class="hl-1">% (</span><span class="hl-6">0.1</span><span class="hl-1">% × </span><span class="hl-6">2</span><span class="hl-1"> </span><span class="hl-4">transactions</span><span class="hl-1">)</span><br/><span class="hl-1">- </span><span class="hl-4">Minimum</span><span class="hl-1"> </span><span class="hl-4">profit</span><span class="hl-1"> </span><span class="hl-10">buffer</span><span class="hl-1">: </span><span class="hl-6">0.1</span><span class="hl-1">%</span><br/><span class="hl-1">- </span><span class="hl-10">Total</span><span class="hl-1">: </span><span class="hl-6">0.5</span><span class="hl-1">%</span>
+</code><button>Copy</button></pre>
+
+<a id="validation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Logic<a href="#validation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework validates take profit distance during signal creation:</p>
+<p><strong>Long Position</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tpDistancePercent</span><span class="hl-1"> = ((</span><span class="hl-4">priceTakeProfit</span><span class="hl-1"> - </span><span class="hl-4">priceOpen</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) × </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">tpDistancePercent</span><span class="hl-1"> &lt; </span><span class="hl-8">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;TakeProfit too close to priceOpen&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Short Position</strong>:</p>
+<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">tpDistancePercent</span><span class="hl-1"> = ((</span><span class="hl-4">priceOpen</span><span class="hl-1"> - </span><span class="hl-4">priceTakeProfit</span><span class="hl-1">) / </span><span class="hl-4">priceOpen</span><span class="hl-1">) × </span><span class="hl-6">100</span><span class="hl-1">;</span><br/><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">tpDistancePercent</span><span class="hl-1"> &lt; </span><span class="hl-8">CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;TakeProfit too close to priceOpen&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This validation prevents strategies from generating signals that would be unprofitable even if take profit is hit.</p>
+<hr>
+<a id="pnl-calculation-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PnL Calculation Flow<a href="#pnl-calculation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><img src="../media/53_PnL_Calculation_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="integration-with-signal-lifecycle" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Integration with Signal Lifecycle<a href="#integration-with-signal-lifecycle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>PnL calculation occurs at the final stage of the signal lifecycle:</p>
+<p><img src="../media/53_PnL_Calculation_2.svg" alt="Mermaid Diagram"></p>
+<p><strong>Close Reasons and PnL</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Close Reason</th>
+<th><code>priceClose</code> Value</th>
+<th>PnL Sign (typical)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>take_profit</code></td>
+<td><code>signal.priceTakeProfit</code></td>
+<td>Positive</td>
+</tr>
+<tr>
+<td><code>stop_loss</code></td>
+<td><code>signal.priceStopLoss</code></td>
+<td>Negative</td>
+</tr>
+<tr>
+<td><code>time_expired</code></td>
+<td>Current VWAP price</td>
+<td>Variable</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Note</strong>: Even take profit hits can result in negative PnL if the distance to TP was too small to cover fees/slippage. This is why <code>CC_MIN_TAKEPROFIT_DISTANCE_PERCENT</code> validation exists.</p>
+<hr>
+<a id="pnl-reporting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PnL Reporting<a href="#pnl-reporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Reports<a href="#backtest-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>PnL data is aggregated in backtest markdown reports:</p>
+<pre><code class="markdown">| Signal ID | Position | PnL % | Entry Price | Exit Price | Close Reason |
+|-----------|----------|-------|-------------|------------|--------------|
+| abc123    | long     | +1.59 | $50,100     | $50,898    | take_profit  |
+| def456    | short    | -2.15 | $49,900     | $51,000    | stop_loss    |
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Statistics calculated</strong>:</p>
+<ul>
+<li>Total PnL: Sum of all closed signals</li>
+<li>Win rate: % of positive PnL signals</li>
+<li>Average win: Average PnL of winning trades</li>
+<li>Average loss: Average PnL of losing trades</li>
+<li>Sharpe ratio: Risk-adjusted return metric</li>
+</ul>
+<a id="live-trading-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading Reports<a href="#live-trading-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live reports include both closed and active signals:</p>
+<pre><code class="markdown">| Signal ID | State  | PnL %   | Entry Price | Current Price |
+|-----------|--------|---------|-------------|---------------|
+| ghi789    | active | +0.85   | $50,100     | $50,525       |
+| jkl012    | closed | +1.59   | $50,100     | $50,898       |
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Real-time monitoring</strong>: Active signals show unrealized PnL based on current price and estimated costs.</p>
+<hr>
+<a id="event-emission" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Emission<a href="#event-emission" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Closed signals with PnL data are emitted through multiple event channels:</p>
+<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">listenSignal</span><span class="hl-1">, </span><span class="hl-4">listenSignalBacktest</span><span class="hl-1">, </span><span class="hl-4">listenSignalLive</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-5">// Listen to all closed signals (backtest + live)</span><br/><span class="hl-0">listenSignal</span><span class="hl-1">((</span><span class="hl-4">result</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">pnl</span><span class="hl-1"> = </span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">pnl</span><span class="hl-1">;</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`PnL: </span><span class="hl-7">${</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">pnlPercentage</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">%`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Close reason: </span><span class="hl-7">${</span><span class="hl-4">result</span><span class="hl-9">.</span><span class="hl-4">closeReason</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Adjusted entry: $</span><span class="hl-7">${</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">priceOpen</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">    </span><span class="hl-4">console</span><span class="hl-1">.</span><span class="hl-0">log</span><span class="hl-1">(</span><span class="hl-2">`Adjusted exit: $</span><span class="hl-7">${</span><span class="hl-4">pnl</span><span class="hl-9">.</span><span class="hl-4">priceClose</span><span class="hl-9">.</span><span class="hl-0">toFixed</span><span class="hl-9">(</span><span class="hl-6">2</span><span class="hl-9">)</span><span class="hl-7">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Listen only to backtest closed signals</span><br/><span class="hl-0">listenSignalBacktest</span><span class="hl-1">((</span><span class="hl-4">result</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Process backtest PnL data</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span><br/><br/><span class="hl-5">// Listen only to live trading closed signals</span><br/><span class="hl-0">listenSignalLive</span><span class="hl-1">((</span><span class="hl-4">result</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">result</span><span class="hl-1">.</span><span class="hl-4">action</span><span class="hl-1"> === </span><span class="hl-2">&quot;closed&quot;</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-5">// Process live trading PnL data</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Event Channels</strong>:</p>
+<ul>
+<li><code>signalEmitter</code>: All signals (backtest + live)</li>
+<li><code>signalBacktestEmitter</code>: Backtest-only signals</li>
+<li><code>signalLiveEmitter</code>: Live-only signals</li>
+</ul>
+<hr>
+<a id="cost-calculation-tables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Cost Calculation Tables<a href="#cost-calculation-tables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="long-position-cost-breakdown" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Long Position Cost Breakdown<a href="#long-position-cost-breakdown" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Price Point</th>
+<th>Original</th>
+<th>Fee Impact</th>
+<th>Slippage Impact</th>
+<th>Adjusted</th>
+<th>Net Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entry (Open)</td>
+<td>$50,000</td>
+<td>+$50 (0.1%)</td>
+<td>+$50 (0.1%)</td>
+<td>$50,100</td>
+<td>+$100 (+0.2%)</td>
+</tr>
+<tr>
+<td>Exit (Close)</td>
+<td>$51,000</td>
+<td>-$51 (0.1%)</td>
+<td>-$51 (0.1%)</td>
+<td>$50,898</td>
+<td>-$102 (-0.2%)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gross profit</strong>: $1,000 (2.0%)<br>
+<strong>Transaction costs</strong>: ~$202 (0.4%)<br>
+<strong>Net profit</strong>: $798 (1.59%)</p>
+<a id="short-position-cost-breakdown" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Short Position Cost Breakdown<a href="#short-position-cost-breakdown" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Price Point</th>
+<th>Original</th>
+<th>Fee Impact</th>
+<th>Slippage Impact</th>
+<th>Adjusted</th>
+<th>Net Change</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Entry (Open)</td>
+<td>$50,000</td>
+<td>-$50 (0.1%)</td>
+<td>-$50 (0.1%)</td>
+<td>$49,900</td>
+<td>-$100 (-0.2%)</td>
+</tr>
+<tr>
+<td>Exit (Close)</td>
+<td>$49,000</td>
+<td>+$49 (0.1%)</td>
+<td>+$49 (0.1%)</td>
+<td>$49,098</td>
+<td>+$98 (+0.2%)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Gross profit</strong>: $1,000 (2.0%)<br>
+<strong>Transaction costs</strong>: ~$198 (0.4%)<br>
+<strong>Net profit</strong>: $802 (1.61%)</p>
+<hr>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The PnL calculation system in backtest-kit provides realistic profit/loss simulation by:</p>
+<ol>
+<li><strong>Applying fees twice</strong>: Entry and exit (default 0.2% total)</li>
+<li><strong>Applying slippage twice</strong>: Entry and exit (default ~0.2% total)</li>
+<li><strong>Position-aware adjustments</strong>: Different formulas for long vs short</li>
+<li><strong>Validation enforcement</strong>: Minimum profit distance requirements</li>
+<li><strong>Type-safe results</strong>: Structured <code>IStrategyPnL</code> interface</li>
+<li><strong>Comprehensive reporting</strong>: Aggregated statistics and real-time monitoring</li>
+</ol>
+<p><strong>Key formulas</strong>:</p>
+<ul>
+<li>Long PnL: <code>((adjustedClose - adjustedOpen) / adjustedOpen) × 100</code></li>
+<li>Short PnL: <code>((adjustedOpen - adjustedClose) / adjustedOpen) × 100</code></li>
+<li>Default cost: ~0.4% per round-trip trade</li>
+<li>Minimum profit buffer: 0.5% (configurable)</li>
+</ul>
+<p>This realistic cost modeling ensures backtest results closely match live trading performance, accounting for exchange fees, market impact, and order execution slippage.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#pnl-calculation"><span>Pn<wbr/>L <wbr/>Calculation</span></a><ul><li><a href="#overview"><span>Overview</span></a></li><li><a href="#fee-and-slippage-model"><span>Fee and <wbr/>Slippage <wbr/>Model</span></a></li><li><ul><li><a href="#fee-structure"><span>Fee <wbr/>Structure</span></a></li><li><a href="#slippage-structure"><span>Slippage <wbr/>Structure</span></a></li><li><a href="#combined-transaction-cost"><span>Combined <wbr/>Transaction <wbr/>Cost</span></a></li></ul></li><li><a href="#price-adjustment-formula"><span>Price <wbr/>Adjustment <wbr/>Formula</span></a></li><li><ul><li><a href="#long-position-adjustments"><span>Long <wbr/>Position <wbr/>Adjustments</span></a></li><li><a href="#short-position-adjustments"><span>Short <wbr/>Position <wbr/>Adjustments</span></a></li></ul></li><li><a href="#pnl-calculation-process"><span>Pn<wbr/>L <wbr/>Calculation <wbr/>Process</span></a></li><li><ul><li><a href="#long-position-pnl"><span>Long <wbr/>Position <wbr/>PnL</span></a></li><li><a href="#short-position-pnl"><span>Short <wbr/>Position <wbr/>PnL</span></a></li></ul></li><li><a href="#istrategypnl-interface"><span>IStrategy<wbr/>Pn<wbr/>L <wbr/>Interface</span></a></li><li><ul><li><a href="#usage-in-closed-result"><span>Usage in <wbr/>Closed <wbr/>Result</span></a></li></ul></li><li><a href="#configuration-parameters"><span>Configuration <wbr/>Parameters</span></a></li><li><ul><li><a href="#cc_percent_fee"><span>CC_<wbr/>PERCENT_<wbr/>FEE</span></a></li><li><a href="#cc_percent_slippage"><span>CC_<wbr/>PERCENT_<wbr/>SLIPPAGE</span></a></li><li><a href="#combined-configuration-example"><span>Combined <wbr/>Configuration <wbr/>Example</span></a></li></ul></li><li><a href="#minimum-profit-requirements"><span>Minimum <wbr/>Profit <wbr/>Requirements</span></a></li><li><ul><li><a href="#cc_min_takeprofit_distance_percent"><span>CC_<wbr/>MIN_<wbr/>TAKEPROFIT_<wbr/>DISTANCE_<wbr/>PERCENT</span></a></li><li><a href="#validation-logic"><span>Validation <wbr/>Logic</span></a></li></ul></li><li><a href="#pnl-calculation-flow"><span>Pn<wbr/>L <wbr/>Calculation <wbr/>Flow</span></a></li><li><a href="#integration-with-signal-lifecycle"><span>Integration with <wbr/>Signal <wbr/>Lifecycle</span></a></li><li><a href="#pnl-reporting"><span>Pn<wbr/>L <wbr/>Reporting</span></a></li><li><ul><li><a href="#backtest-reports"><span>Backtest <wbr/>Reports</span></a></li><li><a href="#live-trading-reports"><span>Live <wbr/>Trading <wbr/>Reports</span></a></li></ul></li><li><a href="#event-emission"><span>Event <wbr/>Emission</span></a></li><li><a href="#cost-calculation-tables"><span>Cost <wbr/>Calculation <wbr/>Tables</span></a></li><li><ul><li><a href="#long-position-cost-breakdown"><span>Long <wbr/>Position <wbr/>Cost <wbr/>Breakdown</span></a></li><li><a href="#short-position-cost-breakdown"><span>Short <wbr/>Position <wbr/>Cost <wbr/>Breakdown</span></a></li></ul></li><li><a href="#summary"><span>Summary</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

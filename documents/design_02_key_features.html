@@ -1,0 +1,796 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/02_key_features | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_02_key_features.html">design/02_key_features</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="key-features" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Key Features<a href="#key-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page provides a comprehensive technical reference of backtest-kit's core capabilities. These features enable production-grade backtesting and live trading with enterprise-level reliability, performance, and extensibility.</p>
+<p>For installation and setup instructions, see <a href="design_03_installation_and_setup.html">Installation and Setup</a>. For hands-on examples, see <a href="design_04_quick_start_guide.html">Quick Start Guide</a>. For detailed architecture documentation, see <a href="design_10_architecture.html">Architecture</a>.</p>
+<hr>
+<a id="execution-system-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution System Features<a href="#execution-system-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="multi-mode-execution-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Mode Execution Architecture<a href="#multi-mode-execution-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework supports three distinct execution modes that share identical strategy code through context propagation:</p>
+<p><img src="../media/02_Key_Features_0.svg" alt="Mermaid Diagram"></p>
+<p><strong>Backtest Mode</strong> processes historical data deterministically using async generators. It fast-forwards through active signals for performance optimization, yielding only closed/cancelled results.</p>
+<p><strong>Live Mode</strong> operates in real-time with crash recovery, polling at 1-minute intervals (<code>TICK_TTL</code>). It persists state atomically to disk after every signal change.</p>
+<p><strong>Walker Mode</strong> orchestrates sequential backtests for multiple strategies, enabling A/B testing and metric-based ranking.</p>
+<p>Implementation:</p>
+<ul>
+<li><a href="">src/services/logic/BacktestLogicPrivateService.ts</a></li>
+<li><a href="">src/services/logic/LiveLogicPrivateService.ts</a></li>
+<li><a href="">src/services/logic/WalkerLogicPrivateService.ts</a></li>
+</ul>
+<a id="async-generator-streaming" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Async Generator Streaming<a href="#async-generator-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All execution modes use async generators (<code>async function*</code>) to stream results without memory accumulation:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Generator Type</th>
+<th>Memory Profile</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest</td>
+<td><code>AsyncGenerator&lt;IStrategyBacktestResult&gt;</code></td>
+<td>O(1) per timeframe</td>
+</tr>
+<tr>
+<td>Live</td>
+<td><code>AsyncGenerator&lt;IStrategyTickResult&gt;</code></td>
+<td>O(1) per tick</td>
+</tr>
+<tr>
+<td>Walker</td>
+<td><code>AsyncGenerator&lt;WalkerContract&gt;</code></td>
+<td>O(n) where n = strategies</td>
+</tr>
+</tbody>
+</table>
+<p>This architecture enables processing years of historical data without loading everything into memory, and allows early termination via <code>break</code> statements in consumer code.</p>
+<a id="graceful-shutdown" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Graceful Shutdown<a href="#graceful-shutdown" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All execution modes support programmatic stopping with graceful cleanup:</p>
+<pre><code class="typescript"><span class="hl-5">// Stop methods wait for active signals to complete</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Backtest</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-name&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Live</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;strategy-name&quot;</span><span class="hl-1">);</span><br/><span class="hl-3">await</span><span class="hl-1"> </span><span class="hl-4">Walker</span><span class="hl-1">.</span><span class="hl-0">stop</span><span class="hl-1">(</span><span class="hl-2">&quot;BTCUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;walker-name&quot;</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Shutdown behavior:</strong></p>
+<ul>
+<li>Current signal completes execution (callbacks fire normally)</li>
+<li>No new signals generated after stop</li>
+<li>Completion events (<code>listenDoneBacktest</code>, <code>listenDoneLive</code>) fire when complete</li>
+<li>Persisted state remains intact for resume on restart</li>
+</ul>
+<hr>
+<a id="data-integrity--persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Integrity &amp; Persistence<a href="#data-integrity--persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="crash-safe-state-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Crash-Safe State Persistence<a href="#crash-safe-state-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live trading mode uses atomic file writes with automatic recovery to ensure no duplicate signals or lost state after process crashes:</p>
+<p><img src="../media/02_Key_Features_1.svg" alt="Mermaid Diagram"></p>
+<p>The persistence layer uses a base class (<code>PersistBase</code>) that can be extended for custom backends:</p>
+<table>
+<thead>
+<tr>
+<th>Default</th>
+<th>Custom Options</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File-based atomic writes</td>
+<td>Redis (high-performance distributed)</td>
+</tr>
+<tr>
+<td>JSON serialization</td>
+<td>MongoDB (complex queries, analytics)</td>
+</tr>
+<tr>
+<td><code>./logs/data/</code> directory</td>
+<td>PostgreSQL (relational, ACID)</td>
+</tr>
+<tr>
+<td>No external dependencies</td>
+<td>Any storage implementing <code>PersistBase</code> interface</td>
+</tr>
+</tbody>
+</table>
+<p>Implementation details:</p>
+<ul>
+<li><a href="">src/base/Persist.base.ts</a> - Base class for persistence operations</li>
+<li><a href="">src/adapters/PersistSignalAdapter.ts</a> - Signal state persistence</li>
+<li><a href="">src/adapters/PersistRiskAdapter.ts</a> - Risk management persistence</li>
+<li><a href="">src/adapters/PersistScheduleAdapter.ts</a> - Scheduled signal persistence</li>
+</ul>
+<a id="pluggable-persistence-adapters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pluggable Persistence Adapters<a href="#pluggable-persistence-adapters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework allows replacing default file-based persistence with custom backends:</p>
+<pre><code class="typescript"><span class="hl-5">// Register custom adapter BEFORE running strategies</span><br/><span class="hl-4">PersistSignalAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistSignalAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span><br/><span class="hl-4">PersistRiskAdapter</span><span class="hl-1">.</span><span class="hl-0">usePersistRiskAdapter</span><span class="hl-1">(</span><span class="hl-4">RedisPersist</span><span class="hl-1">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Custom adapters must implement the <code>PersistBase</code> interface:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>waitForInit(initial: boolean)</code></td>
+<td>Initialize connection/storage</td>
+</tr>
+<tr>
+<td><code>readValue&lt;T&gt;(entityId)</code></td>
+<td>Read entity by ID</td>
+</tr>
+<tr>
+<td><code>hasValue(entityId)</code></td>
+<td>Check entity existence</td>
+</tr>
+<tr>
+<td><code>writeValue&lt;T&gt;(entityId, entity)</code></td>
+<td>Write/update entity</td>
+</tr>
+<tr>
+<td><code>removeValue(entityId)</code></td>
+<td>Delete entity</td>
+</tr>
+<tr>
+<td><code>removeAll()</code></td>
+<td>Clear all entities</td>
+</tr>
+<tr>
+<td><code>values&lt;T&gt;()</code></td>
+<td>Async iterator over all values</td>
+</tr>
+<tr>
+<td><code>keys()</code></td>
+<td>Async iterator over all IDs</td>
+</tr>
+</tbody>
+</table>
+<a id="comprehensive-signal-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comprehensive Signal Validation<a href="#comprehensive-signal-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Signals are validated before execution to prevent invalid trades:</p>
+<p><img src="../media/02_Key_Features_2.svg" alt="Mermaid Diagram"></p>
+<p>Validation implementation in <a href="">src/client/Strategy.client.ts</a> uses the <code>VALIDATE_SIGNAL_FN</code> constant with configurable parameters from <code>GLOBAL_CONFIG</code>.</p>
+<hr>
+<a id="signal-lifecycle-management" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle Management<a href="#signal-lifecycle-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="type-safe-state-machine" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Type-Safe State Machine<a href="#type-safe-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The signal lifecycle is implemented as a discriminated union with compile-time type safety:</p>
+<p><img src="../media/02_Key_Features_3.svg" alt="Mermaid Diagram"></p>
+<p>TypeScript discriminated union types ensure type safety at compile time:</p>
+<pre><code class="typescript"><span class="hl-7">type</span><span class="hl-1"> </span><span class="hl-11">IStrategyTickResult</span><span class="hl-1"> = </span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultIdle</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultScheduled</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultOpened</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultActive</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultClosed</span><br/><span class="hl-1">  | </span><span class="hl-11">IStrategyTickResultCancelled</span><span class="hl-1">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Each variant has a unique <code>action</code> field used for type narrowing in consumer code.</p>
+<p>Implementation: <a href="">src/interfaces/StrategyTickResult.interface.ts</a></p>
+<a id="interval-throttling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Interval Throttling<a href="#interval-throttling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Strategies define a minimum interval between <code>getSignal()</code> calls to prevent signal spam:</p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th>Minutes</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>&quot;1m&quot;</code></td>
+<td>1</td>
+<td>High-frequency scalping</td>
+</tr>
+<tr>
+<td><code>&quot;3m&quot;</code></td>
+<td>3</td>
+<td>Short-term signals</td>
+</tr>
+<tr>
+<td><code>&quot;5m&quot;</code></td>
+<td>5</td>
+<td>Standard intraday</td>
+</tr>
+<tr>
+<td><code>&quot;15m&quot;</code></td>
+<td>15</td>
+<td>Medium-term swing</td>
+</tr>
+<tr>
+<td><code>&quot;30m&quot;</code></td>
+<td>30</td>
+<td>Position trading</td>
+</tr>
+<tr>
+<td><code>&quot;1h&quot;</code></td>
+<td>60</td>
+<td>Long-term strategies</td>
+</tr>
+</tbody>
+</table>
+<p>The throttling is enforced by comparing the last signal timestamp with the configured interval. Implementation in <a href="">src/client/Strategy.client.ts</a>.</p>
+<a id="scheduled-signal-activation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Scheduled Signal Activation<a href="#scheduled-signal-activation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Signals with <code>priceOpen</code> defined become scheduled (limit orders) waiting for price activation:</p>
+<p><strong>Scheduled signal behavior:</strong></p>
+<ul>
+<li>Monitors market price every tick/candle</li>
+<li>Activates when price reaches <code>priceOpen</code></li>
+<li>Cancels if <code>priceStopLoss</code> hit before activation</li>
+<li>Cancels after timeout (<code>CC_SCHEDULE_AWAIT_MINUTES</code>, default 120 minutes)</li>
+</ul>
+<p><strong>Edge case handling:</strong></p>
+<ul>
+<li>If price passes through both <code>priceOpen</code> and <code>priceStopLoss</code> on same candle, activation takes priority (signal opens then immediately closes by SL)</li>
+<li>Backtest mode checks candle high/low for intra-candle price movements</li>
+<li>Live mode uses VWAP at configured intervals</li>
+</ul>
+<hr>
+<a id="performance--memory-optimization" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Performance &amp; Memory Optimization<a href="#performance--memory-optimization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="vwap-pricing-model" class="tsd-anchor"></a><h3 class="tsd-anchor-link">VWAP Pricing Model<a href="#vwap-pricing-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All entry/exit decisions use Volume-Weighted Average Price from the last 5 one-minute candles for realistic simulation:</p>
+<p><img src="../media/02_Key_Features_4.svg" alt="Mermaid Diagram"></p>
+<p>The VWAP calculation ensures backtest results match live execution behavior. Configured via:</p>
+<ul>
+<li><code>CC_AVERAGE_PRICE_CANDLE_COUNT</code> - Number of candles (default: 5)</li>
+<li><code>CC_AVERAGE_PRICE_CANDLE_INTERVAL</code> - Candle interval (default: &quot;1m&quot;)</li>
+</ul>
+<p>Implementation: <a href="">src/helpers/getAveragePrice.ts</a></p>
+<a id="memory-efficient-streaming" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memory-Efficient Streaming<a href="#memory-efficient-streaming" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The async generator architecture processes data without accumulation:</p>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Memory Usage</th>
+<th>Scaling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Backtest 1 year of 1m data</td>
+<td>O(1)</td>
+<td>Constant per timeframe</td>
+</tr>
+<tr>
+<td>Live trading 24/7</td>
+<td>O(1)</td>
+<td>Constant per tick</td>
+</tr>
+<tr>
+<td>Walker with 100 strategies</td>
+<td>O(n)</td>
+<td>Linear in strategy count</td>
+</tr>
+<tr>
+<td>Heatmap across 50 symbols</td>
+<td>O(n)</td>
+<td>Linear in symbol count</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Backtest fast-forward optimization:</strong>
+When a signal opens, the backtest skips ahead to the estimated close time rather than processing every timeframe. This reduces execution time by ~10-100x for strategies with long signal durations.</p>
+<a id="memoized-service-instances" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Memoized Service Instances<a href="#memoized-service-instances" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The dependency injection system memoizes service instances by configuration key:</p>
+<p><img src="../media/02_Key_Features_5.svg" alt="Mermaid Diagram"></p>
+<p>This ensures one instance per unique combination of:</p>
+<ul>
+<li>Symbol + Strategy name</li>
+<li>Symbol + Exchange name</li>
+<li>Symbol + Frame name</li>
+</ul>
+<p>Implementation: <a href="">src/services/connection/</a></p>
+<a id="bounded-event-queue" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Bounded Event Queue<a href="#bounded-event-queue" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>LiveMarkdownService</code> uses a bounded queue (<code>MAX_EVENTS = 25</code>) to prevent memory leaks during long-running live sessions:</p>
+<p><strong>Queue behavior:</strong></p>
+<ul>
+<li>Stores last 25 events maximum</li>
+<li>Drops oldest events when full</li>
+<li>Preserves recent history for reporting</li>
+<li>Prevents unbounded growth</li>
+</ul>
+<hr>
+<a id="analytics--reporting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Analytics &amp; Reporting<a href="#analytics--reporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="comprehensive-statistics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comprehensive Statistics<a href="#comprehensive-statistics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework calculates extensive performance metrics for backtests and live trading:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Formula</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Win Rate</strong></td>
+<td><code>(wins / total) × 100</code></td>
+<td>Percentage of profitable trades</td>
+</tr>
+<tr>
+<td><strong>Average PNL</strong></td>
+<td><code>Σ(pnl) / count</code></td>
+<td>Expected return per trade</td>
+</tr>
+<tr>
+<td><strong>Total PNL</strong></td>
+<td><code>Σ(pnl)</code></td>
+<td>Cumulative return</td>
+</tr>
+<tr>
+<td><strong>Standard Deviation</strong></td>
+<td><code>√(Σ(pnl - avg)² / (n-1))</code></td>
+<td>Volatility measure</td>
+</tr>
+<tr>
+<td><strong>Sharpe Ratio</strong></td>
+<td><code>avgPnl / stdDev</code></td>
+<td>Risk-adjusted return</td>
+</tr>
+<tr>
+<td><strong>Annualized Sharpe</strong></td>
+<td><code>sharpe × √365</code></td>
+<td>Yearly risk-adjusted return</td>
+</tr>
+<tr>
+<td><strong>Certainty Ratio</strong></td>
+<td>`avgWin /</td>
+<td>avgLoss</td>
+</tr>
+<tr>
+<td><strong>Expected Yearly Returns</strong></td>
+<td>Based on avg duration &amp; PNL</td>
+<td>Projected annual performance</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Safe math:</strong> All calculations return <code>null</code> for invalid results (NaN, Infinity) rather than propagating unsafe values.</p>
+<p>Implementation: <a href="">src/services/markdown/</a></p>
+<a id="auto-generated-markdown-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Auto-Generated Markdown Reports<a href="#auto-generated-markdown-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Nine types of markdown reports are automatically generated:</p>
+<p><img src="../media/02_Key_Features_6.svg" alt="Mermaid Diagram"></p>
+<p>Reports include:</p>
+<ul>
+<li>Summary statistics tables</li>
+<li>Detailed signal logs</li>
+<li>Trade-by-trade breakdown</li>
+<li>Performance metrics</li>
+<li>Configuration snapshots</li>
+</ul>
+<p>Access via:</p>
+<ul>
+<li><code>Backtest.dump(strategyName)</code> - <a href="">README.md:188</a></li>
+<li><code>Live.dump(strategyName)</code> - <a href="">README.md:413</a></li>
+<li><code>Walker.dump(symbol, walkerName)</code> - <a href="">README.md:467</a></li>
+<li><code>Heat.dump(strategyName)</code> - <a href="">README.md:559</a></li>
+</ul>
+<a id="portfolio-heatmap-analytics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Portfolio Heatmap Analytics<a href="#portfolio-heatmap-analytics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Multi-symbol performance analysis with extended metrics:</p>
+<pre><code class="typescript"><span class="hl-7">interface</span><span class="hl-1"> </span><span class="hl-11">IHeatmapRow</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">totalPnl</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">sharpeRatio</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">profitFactor</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;    </span><span class="hl-5">// wins / losses ratio</span><br/><span class="hl-1">  </span><span class="hl-4">expectancy</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;       </span><span class="hl-5">// (winRate × avgWin) - (lossRate × avgLoss)</span><br/><span class="hl-1">  </span><span class="hl-4">winRate</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">avgWin</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">avgLoss</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">maxDrawdown</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1"> | </span><span class="hl-11">null</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-4">maxWinStreak</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;           </span><span class="hl-5">// consecutive wins</span><br/><span class="hl-1">  </span><span class="hl-4">maxLossStreak</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;          </span><span class="hl-5">// consecutive losses</span><br/><span class="hl-1">  </span><span class="hl-4">totalTrades</span><span class="hl-1">: </span><span class="hl-11">number</span><span class="hl-1">;</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Sorting:</strong> Symbols sorted by Sharpe Ratio descending (best performers first)</p>
+<p><strong>Portfolio metrics:</strong> Aggregated statistics across all symbols</p>
+<a id="partial-profitloss-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Partial Profit/Loss Tracking<a href="#partial-profitloss-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework tracks milestone events as price moves toward TP or SL:</p>
+<table>
+<thead>
+<tr>
+<th>Milestone Type</th>
+<th>Thresholds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Partial Profit</strong></td>
+<td>10%, 20%, 30%, 40%, 50%, 60%, 70%, 80%, 90% toward TP</td>
+</tr>
+<tr>
+<td><strong>Partial Loss</strong></td>
+<td>-40%, -80% toward SL</td>
+</tr>
+</tbody>
+</table>
+<p>These events fire callbacks and emit to listeners, enabling:</p>
+<ul>
+<li>Risk management alerts</li>
+<li>Position adjustment</li>
+<li>Performance analysis</li>
+<li>Real-time monitoring</li>
+</ul>
+<a id="performance-profiling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Profiling<a href="#performance-profiling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Built-in execution time tracking with aggregated statistics:</p>
+<table>
+<thead>
+<tr>
+<th>Statistic</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Average</strong></td>
+<td>Mean execution time</td>
+</tr>
+<tr>
+<td><strong>Minimum</strong></td>
+<td>Fastest execution</td>
+</tr>
+<tr>
+<td><strong>Maximum</strong></td>
+<td>Slowest execution</td>
+</tr>
+<tr>
+<td><strong>StdDev</strong></td>
+<td>Execution time variance</td>
+</tr>
+<tr>
+<td><strong>P95</strong></td>
+<td>95th percentile</td>
+</tr>
+<tr>
+<td><strong>P99</strong></td>
+<td>99th percentile</td>
+</tr>
+</tbody>
+</table>
+<p>Helps identify bottlenecks in:</p>
+<ul>
+<li>Exchange API calls</li>
+<li>Signal generation logic</li>
+<li>Validation functions</li>
+<li>Persistence operations</li>
+</ul>
+<hr>
+<a id="risk--position-management" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk &amp; Position Management<a href="#risk--position-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="portfolio-level-risk-controls" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Portfolio-Level Risk Controls<a href="#portfolio-level-risk-controls" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The risk management system coordinates across strategies and symbols:</p>
+<p><img src="../media/02_Key_Features_7.svg" alt="Mermaid Diagram"></p>
+<p><strong>Validation context provided to each function:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>symbol</code></td>
+<td>string</td>
+<td>Trading pair</td>
+</tr>
+<tr>
+<td><code>strategyName</code></td>
+<td>string</td>
+<td>Strategy identifier</td>
+</tr>
+<tr>
+<td><code>exchangeName</code></td>
+<td>string</td>
+<td>Exchange identifier</td>
+</tr>
+<tr>
+<td><code>currentPrice</code></td>
+<td>number</td>
+<td>Current market price</td>
+</tr>
+<tr>
+<td><code>timestamp</code></td>
+<td>number</td>
+<td>Current timestamp</td>
+</tr>
+<tr>
+<td><code>activePositionCount</code></td>
+<td>number</td>
+<td>Total open positions</td>
+</tr>
+<tr>
+<td><code>activePositions</code></td>
+<td>IActivePosition[]</td>
+<td>Array of all active positions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fail-fast pattern:</strong> Validations execute sequentially; first failure stops execution and rejects signal.</p>
+<p>Implementation: <a href="">src/client/Risk.client.ts</a></p>
+<a id="position-sizing-calculator" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Sizing Calculator<a href="#position-sizing-calculator" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Three position sizing methods with configurable constraints:</p>
+<p><img src="../media/02_Key_Features_8.svg" alt="Mermaid Diagram"></p>
+<p><strong>When to use each method:</strong></p>
+<ol>
+<li>
+<p><strong>Fixed Percentage</strong> - Simple, consistent risk per trade. Best for beginners and conservative strategies.</p>
+</li>
+<li>
+<p><strong>Kelly Criterion</strong> - Optimal sizing based on edge (win rate × win/loss ratio). Best for strategies with proven statistical advantage. Use fractional Kelly (0.25-0.5) to reduce volatility.</p>
+</li>
+<li>
+<p><strong>ATR-Based</strong> - Volatility-adjusted sizing. Position size scales inversely with market volatility. Best for swing trading and volatile markets.</p>
+</li>
+</ol>
+<p>Implementation: <a href="">src/utils/PositionSize.utils.ts</a></p>
+<a id="active-position-tracking" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Active Position Tracking<a href="#active-position-tracking" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Risk profiles can inspect all active positions for cross-strategy coordination:</p>
+<pre><code class="typescript"><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;coordinator&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">  </span><span class="hl-4">validations:</span><span class="hl-1"> [</span><br/><span class="hl-1">    ({ </span><span class="hl-4">activePositions</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">symbol</span><span class="hl-1"> }) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">      </span><span class="hl-5">// Count positions for specific strategy</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">strategyPositions</span><span class="hl-1"> = </span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">filter</span><span class="hl-1">(</span><br/><span class="hl-1">        </span><span class="hl-4">pos</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">pos</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1"> === </span><span class="hl-4">strategyName</span><br/><span class="hl-1">      );</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Check for symbol conflicts</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">symbolPositions</span><span class="hl-1"> = </span><span class="hl-4">activePositions</span><span class="hl-1">.</span><span class="hl-0">filter</span><span class="hl-1">(</span><br/><span class="hl-1">        </span><span class="hl-4">pos</span><span class="hl-1"> </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-4">pos</span><span class="hl-1">.</span><span class="hl-4">symbol</span><span class="hl-1"> === </span><span class="hl-4">symbol</span><br/><span class="hl-1">      );</span><br/><span class="hl-1">      </span><br/><span class="hl-1">      </span><span class="hl-5">// Custom validation logic</span><br/><span class="hl-1">      </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">strategyPositions</span><span class="hl-1">.</span><span class="hl-4">length</span><span class="hl-1"> &gt;= </span><span class="hl-6">2</span><span class="hl-1">) {</span><br/><span class="hl-1">        </span><span class="hl-3">throw</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Max 2 positions per strategy&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  ]</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<hr>
+<a id="extensibility--integration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Extensibility &amp; Integration<a href="#extensibility--integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="pluggable-exchange-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Pluggable Exchange Integration<a href="#pluggable-exchange-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Exchange adapters provide market data without requiring pre-downloaded datasets:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Purpose</th>
+<th>Return Type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getCandles()</code></td>
+<td>Fetch OHLCV data</td>
+<td><code>Promise&lt;ICandle[]&gt;</code></td>
+</tr>
+<tr>
+<td><code>formatPrice()</code></td>
+<td>Format price for exchange</td>
+<td><code>Promise&lt;string&gt;</code></td>
+</tr>
+<tr>
+<td><code>formatQuantity()</code></td>
+<td>Format quantity for exchange</td>
+<td><code>Promise&lt;string&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Zero data download:</strong> Unlike Freqtrade and similar frameworks, backtest-kit doesn't require downloading gigabytes of historical data. You can plug any data source: CCXT for live data, databases for fast backtesting, or custom APIs.</p>
+<p>Example integrations:</p>
+<ul>
+<li>CCXT for real-time exchange data</li>
+<li>PostgreSQL for pre-loaded historical data</li>
+<li>Custom REST APIs</li>
+<li>CSV file readers</li>
+<li>Mock data generators for testing</li>
+</ul>
+<p>Implementation: <a href="">src/client/Exchange.client.ts</a></p>
+<a id="dependency-inversion--lazy-loading" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Dependency Inversion &amp; Lazy Loading<a href="#dependency-inversion--lazy-loading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Components are registered by name and lazily instantiated at runtime:</p>
+<p><img src="../media/02_Key_Features_9.svg" alt="Mermaid Diagram"></p>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Modular design: Components in separate modules</li>
+<li>String-based coupling: Type-safe enums for names</li>
+<li>Runtime flexibility: Register/unregister dynamically</li>
+<li>Testability: Mock components easily</li>
+<li>Memory efficiency: Only instantiate what's used</li>
+</ul>
+<p><strong>Schema reflection:</strong> Use <code>listExchanges()</code>, <code>listStrategies()</code>, <code>listFrames()</code> for runtime introspection.</p>
+<a id="context-propagation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Propagation<a href="#context-propagation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Async context propagation eliminates need for explicit parameter passing:</p>
+<p><img src="../media/02_Key_Features_10.svg" alt="Mermaid Diagram"></p>
+<p>This &quot;time-travel context&quot; enables the same strategy code to:</p>
+<ul>
+<li>Run in backtest with historical <code>when</code> timestamp</li>
+<li>Run in live with <code>new Date()</code> timestamp</li>
+<li>Access correct exchange/frame without explicit passing</li>
+</ul>
+<p>Implementation:</p>
+<ul>
+<li><a href="">src/services/context/ExecutionContextService.ts</a></li>
+<li><a href="">src/services/context/MethodContextService.ts</a></li>
+</ul>
+<p>Based on <code>di-scoped</code> package with async_hooks-style scoping.</p>
+<hr>
+<a id="testing--reliability" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Testing &amp; Reliability<a href="#testing--reliability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="comprehensive-test-suite" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Comprehensive Test Suite<a href="#comprehensive-test-suite" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework includes extensive test coverage across multiple dimensions:</p>
+<table>
+<thead>
+<tr>
+<th>Test Category</th>
+<th>File</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exchange Functions</strong></td>
+<td><a href="">test/spec/exchange.test.mjs</a></td>
+<td>VWAP calculation, candle fetching, price formatting</td>
+</tr>
+<tr>
+<td><strong>Event System</strong></td>
+<td><a href="">test/spec/event.test.mjs</a></td>
+<td>Listener coordination, async event handling</td>
+</tr>
+<tr>
+<td><strong>Signal Validation</strong></td>
+<td><a href="">test/spec/validation.test.mjs</a></td>
+<td>Price logic, timestamp validation, position validation</td>
+</tr>
+<tr>
+<td><strong>PNL Calculation</strong></td>
+<td><a href="">test/spec/pnl.test.mjs</a></td>
+<td>Fees, slippage, realistic simulations</td>
+</tr>
+<tr>
+<td><strong>Backtest Mode</strong></td>
+<td><a href="">test/spec/backtest.test.mjs</a></td>
+<td>Lifecycle, early termination, close reasons</td>
+</tr>
+<tr>
+<td><strong>Callbacks</strong></td>
+<td><a href="">test/spec/callbacks.test.mjs</a></td>
+<td>Parameter passing, backtest flag verification</td>
+</tr>
+<tr>
+<td><strong>Reports</strong></td>
+<td><a href="">test/spec/report.test.mjs</a></td>
+<td>Statistics, markdown formatting</td>
+</tr>
+<tr>
+<td><strong>Live Mode</strong></td>
+<td><a href="">test/spec/live.test.mjs</a></td>
+<td>Real-time execution, crash recovery</td>
+</tr>
+<tr>
+<td><strong>Scheduled Signals</strong></td>
+<td><a href="">test/spec/scheduled.test.mjs</a></td>
+<td>Activation, cancellation, timeout</td>
+</tr>
+<tr>
+<td><strong>Risk Management</strong></td>
+<td><a href="">test/spec/risk.test.mjs</a></td>
+<td>Validation chain, position tracking</td>
+</tr>
+<tr>
+<td><strong>Position Sizing</strong></td>
+<td><a href="">test/spec/sizing.test.mjs</a></td>
+<td>Fixed %, Kelly, ATR methods</td>
+</tr>
+<tr>
+<td><strong>Walker Mode</strong></td>
+<td><a href="">test/spec/walker.test.mjs</a></td>
+<td>Strategy comparison, ranking</td>
+</tr>
+<tr>
+<td><strong>Heatmap</strong></td>
+<td><a href="">test/spec/heat.test.mjs</a></td>
+<td>Portfolio metrics, cross-symbol analysis</td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td><a href="">test/spec/performance.test.mjs</a></td>
+<td>Execution timing, bottleneck detection</td>
+</tr>
+<tr>
+<td><strong>Optimizer</strong></td>
+<td><a href="">test/spec/optimizer.test.mjs</a></td>
+<td>AI strategy generation, LLM integration</td>
+</tr>
+</tbody>
+</table>
+<a id="edge-case-defense-tests" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Edge Case Defense Tests<a href="#edge-case-defense-tests" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Critical defensive tests ensure correct behavior in complex scenarios:</p>
+<p><img src="../media/02_Key_Features_11.svg" alt="Mermaid Diagram"></p>
+<p>These tests prove that the framework handles edge cases correctly and prevents financial loss from logic bugs.</p>
+<a id="safe-math--robustness" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Safe Math &amp; Robustness<a href="#safe-math--robustness" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All statistical calculations are protected against unsafe numeric values:</p>
+<p><strong>Unsafe value detection:</strong></p>
+<ul>
+<li><code>NaN</code> (invalid calculations)</li>
+<li><code>Infinity</code> / <code>-Infinity</code> (division by zero)</li>
+<li>Invalid inputs (negative counts, empty arrays)</li>
+</ul>
+<p><strong>Handling:</strong> Return <code>null</code> instead of propagating unsafe values through calculations.</p>
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>Reports show &quot;N/A&quot; for invalid metrics instead of crashing</li>
+<li>Partial data still useful (e.g., total PNL valid even if Sharpe ratio invalid)</li>
+<li>No silent errors from mathematical edge cases</li>
+</ul>
+<p>Implementation in statistics calculation functions: <a href="">src/services/markdown/</a></p>
+<hr>
+<a id="ai-powered-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">AI-Powered Features<a href="#ai-powered-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="strategy-optimizer" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Strategy Optimizer<a href="#strategy-optimizer" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>LLM-powered strategy generation from historical data:</p>
+<p><img src="../media/02_Key_Features_12.svg" alt="Mermaid Diagram"></p>
+<p><strong>Optimizer workflow:</strong></p>
+<ol>
+<li>Configure training date ranges and data sources</li>
+<li>Iterate through ranges, fetching multi-timeframe data</li>
+<li>Format data as conversation history for LLM</li>
+<li>Generate strategy logic using JSON schema constraints</li>
+<li>Assemble complete executable code from templates</li>
+<li>Test via Walker for automatic comparison</li>
+</ol>
+<p><strong>Output structure:</strong></p>
+<ul>
+<li>Imports and helper functions</li>
+<li>Exchange configuration</li>
+<li>Frame definitions</li>
+<li>Generated strategy logic</li>
+<li>Walker configuration for testing</li>
+</ul>
+<p><strong>Debug artifacts:</strong> JSON conversation history saved to <code>./dump/strategy/</code> for analysis.</p>
+<p>Implementation: <a href="">src/client/Optimizer.client.ts</a>, <a href="">src/services/template/OptimizerTemplateService.ts</a></p>
+<hr>
+<a id="summary-table" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary Table<a href="#summary-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Key Component</th>
+<th>Wiki Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Multi-mode execution</td>
+<td>BacktestLogicPrivateService, LiveLogicPrivateService, WalkerLogicPrivateService</td>
+<td><a href="design_06_execution_modes.html">Execution Modes</a></td>
+</tr>
+<tr>
+<td>Crash-safe persistence</td>
+<td>PersistSignalAdapter, PersistBase</td>
+<td><a href="design_52_signal_persistence.html">Signal Persistence</a></td>
+</tr>
+<tr>
+<td>Signal validation</td>
+<td>VALIDATE_SIGNAL_FN, Risk validation chain</td>
+<td><a href="design_50_signal_generation_and_validation.html">Signal Generation and Validation</a></td>
+</tr>
+<tr>
+<td>State machine</td>
+<td>IStrategyTickResult discriminated union</td>
+<td><a href="design_49_signal_states.html">Signal States</a></td>
+</tr>
+<tr>
+<td>VWAP pricing</td>
+<td>getAveragePrice(), CC_AVERAGE_PRICE_* config</td>
+<td><a href="design_54_backtesting.html">Backtesting</a></td>
+</tr>
+<tr>
+<td>Interval throttling</td>
+<td>Strategy.interval, last signal timestamp check</td>
+<td><a href="design_07_signal_lifecycle_overview.html">Signal Lifecycle Overview</a></td>
+</tr>
+<tr>
+<td>PNL calculation</td>
+<td>calculatePnl(), CC_TRADE_FEE, CC_SLIPPAGE</td>
+<td><a href="design_53_pnl_calculation.html">PnL Calculation</a></td>
+</tr>
+<tr>
+<td>Context propagation</td>
+<td>ExecutionContextService, MethodContextService</td>
+<td><a href="design_13_context_propagation.html">Context Propagation</a></td>
+</tr>
+<tr>
+<td>Markdown reports</td>
+<td>BacktestMarkdownService, LiveMarkdownService, etc.</td>
+<td><a href="design_72_markdown_report_generation.html">Markdown Report Generation</a></td>
+</tr>
+<tr>
+<td>Performance profiling</td>
+<td>PerformanceMarkdownService, PerformanceEmitter</td>
+<td><a href="design_73_performance_metrics.html">Performance Metrics</a></td>
+</tr>
+<tr>
+<td>Strategy comparison</td>
+<td>WalkerLogicPrivateService</td>
+<td><a href="design_63_walker_mode.html">Walker Mode</a></td>
+</tr>
+<tr>
+<td>Portfolio heatmap</td>
+<td>HeatMarkdownService</td>
+<td><a href="design_76_heatmap_analytics.html">Heatmap Analytics</a></td>
+</tr>
+<tr>
+<td>Position sizing</td>
+<td>PositionSize utils (fixed/kelly/atr)</td>
+<td><a href="design_24_component_schemas.html">Component Types</a></td>
+</tr>
+<tr>
+<td>Risk management</td>
+<td>ClientRisk, IRiskSchema validations</td>
+<td><a href="design_67_risk_management.html">Risk Management</a></td>
+</tr>
+<tr>
+<td>Pluggable exchanges</td>
+<td>ClientExchange, IExchangeSchema</td>
+<td><a href="design_26_exchange_schemas.html">Exchange Schemas</a></td>
+</tr>
+<tr>
+<td>Pluggable persistence</td>
+<td>PersistBase, custom adapters</td>
+<td><a href="design_87_custom_persistence_backends.html">Custom Persistence Backends</a></td>
+</tr>
+<tr>
+<td>AI optimizer</td>
+<td>ClientOptimizer, Ollama integration</td>
+<td><a href="design_90_ai-powered_strategy_optimization.html">AI-Powered Strategy Optimization</a></td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#key-features"><span>Key <wbr/>Features</span></a><ul><li><a href="#execution-system-features"><span>Execution <wbr/>System <wbr/>Features</span></a></li><li><ul><li><a href="#multi-mode-execution-architecture"><span>Multi-<wbr/>Mode <wbr/>Execution <wbr/>Architecture</span></a></li><li><a href="#async-generator-streaming"><span>Async <wbr/>Generator <wbr/>Streaming</span></a></li><li><a href="#graceful-shutdown"><span>Graceful <wbr/>Shutdown</span></a></li></ul></li><li><a href="#data-integrity--persistence"><span>Data <wbr/>Integrity &amp; <wbr/>Persistence</span></a></li><li><ul><li><a href="#crash-safe-state-persistence"><span>Crash-<wbr/>Safe <wbr/>State <wbr/>Persistence</span></a></li><li><a href="#pluggable-persistence-adapters"><span>Pluggable <wbr/>Persistence <wbr/>Adapters</span></a></li><li><a href="#comprehensive-signal-validation"><span>Comprehensive <wbr/>Signal <wbr/>Validation</span></a></li></ul></li><li><a href="#signal-lifecycle-management"><span>Signal <wbr/>Lifecycle <wbr/>Management</span></a></li><li><ul><li><a href="#type-safe-state-machine"><span>Type-<wbr/>Safe <wbr/>State <wbr/>Machine</span></a></li><li><a href="#interval-throttling"><span>Interval <wbr/>Throttling</span></a></li><li><a href="#scheduled-signal-activation"><span>Scheduled <wbr/>Signal <wbr/>Activation</span></a></li></ul></li><li><a href="#performance--memory-optimization"><span>Performance &amp; <wbr/>Memory <wbr/>Optimization</span></a></li><li><ul><li><a href="#vwap-pricing-model"><span>VWAP <wbr/>Pricing <wbr/>Model</span></a></li><li><a href="#memory-efficient-streaming"><span>Memory-<wbr/>Efficient <wbr/>Streaming</span></a></li><li><a href="#memoized-service-instances"><span>Memoized <wbr/>Service <wbr/>Instances</span></a></li><li><a href="#bounded-event-queue"><span>Bounded <wbr/>Event <wbr/>Queue</span></a></li></ul></li><li><a href="#analytics--reporting"><span>Analytics &amp; <wbr/>Reporting</span></a></li><li><ul><li><a href="#comprehensive-statistics"><span>Comprehensive <wbr/>Statistics</span></a></li><li><a href="#auto-generated-markdown-reports"><span>Auto-<wbr/>Generated <wbr/>Markdown <wbr/>Reports</span></a></li><li><a href="#portfolio-heatmap-analytics"><span>Portfolio <wbr/>Heatmap <wbr/>Analytics</span></a></li><li><a href="#partial-profitloss-tracking"><span>Partial <wbr/>Profit/<wbr/>Loss <wbr/>Tracking</span></a></li><li><a href="#performance-profiling"><span>Performance <wbr/>Profiling</span></a></li></ul></li><li><a href="#risk--position-management"><span>Risk &amp; <wbr/>Position <wbr/>Management</span></a></li><li><ul><li><a href="#portfolio-level-risk-controls"><span>Portfolio-<wbr/>Level <wbr/>Risk <wbr/>Controls</span></a></li><li><a href="#position-sizing-calculator"><span>Position <wbr/>Sizing <wbr/>Calculator</span></a></li><li><a href="#active-position-tracking"><span>Active <wbr/>Position <wbr/>Tracking</span></a></li></ul></li><li><a href="#extensibility--integration"><span>Extensibility &amp; <wbr/>Integration</span></a></li><li><ul><li><a href="#pluggable-exchange-integration"><span>Pluggable <wbr/>Exchange <wbr/>Integration</span></a></li><li><a href="#dependency-inversion--lazy-loading"><span>Dependency <wbr/>Inversion &amp; <wbr/>Lazy <wbr/>Loading</span></a></li><li><a href="#context-propagation"><span>Context <wbr/>Propagation</span></a></li></ul></li><li><a href="#testing--reliability"><span>Testing &amp; <wbr/>Reliability</span></a></li><li><ul><li><a href="#comprehensive-test-suite"><span>Comprehensive <wbr/>Test <wbr/>Suite</span></a></li><li><a href="#edge-case-defense-tests"><span>Edge <wbr/>Case <wbr/>Defense <wbr/>Tests</span></a></li><li><a href="#safe-math--robustness"><span>Safe <wbr/>Math &amp; <wbr/>Robustness</span></a></li></ul></li><li><a href="#ai-powered-features"><span>AI-<wbr/>Powered <wbr/>Features</span></a></li><li><ul><li><a href="#strategy-optimizer"><span>Strategy <wbr/>Optimizer</span></a></li></ul></li><li><a href="#summary-table"><span>Summary <wbr/>Table</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

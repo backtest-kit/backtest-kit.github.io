@@ -1,0 +1,334 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>design/12_dependency_injection_system | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="design_12_dependency_injection_system.html">design/12_dependency_injection_system</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="dependency-injection-system" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Dependency Injection System<a href="#dependency-injection-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This document describes the dependency injection (DI) system used throughout backtest-kit to manage service instantiation and dependencies. The DI system provides a centralized mechanism for service registration, lazy initialization, and singleton management across 50+ services organized into distinct categories.</p>
+<p>For information about how services use context propagation, see <a href="design_13_context_propagation.html">Context Propagation</a>. For details on the service layer architecture and responsibilities, see <a href="design_11_layer_responsibilities.html">Layer Responsibilities</a>.</p>
+<hr>
+<a id="purpose-and-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose and Architecture<a href="#purpose-and-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The DI system in backtest-kit uses a Symbol-based registry pattern with factory functions to manage service lifecycle. The core mechanism consists of three components:</p>
+<ol>
+<li><strong>TYPES symbols</strong> - Unique identifiers for each service type</li>
+<li><strong>provide()</strong> - Registers factory functions for service instantiation</li>
+<li><strong>inject()</strong> - Resolves and memoizes service instances</li>
+</ol>
+<p>This approach enables loose coupling between services, simplifies testing through mockability, and ensures singleton behavior for stateful services like schema registries and connection managers.</p>
+<a id="di-flow-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">DI Flow Architecture<a href="#di-flow-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/12_Dependency_Injection_System_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="types-symbol-registry" class="tsd-anchor"></a><h2 class="tsd-anchor-link">TYPES Symbol Registry<a href="#types-symbol-registry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>TYPES</code> object contains Symbol-based identifiers for all services in the system. Symbols provide globally unique, collision-free identifiers that cannot be accidentally overridden.</p>
+<a id="types-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TYPES Structure<a href="#types-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/12_Dependency_Injection_System_1.svg" alt="Mermaid Diagram"></p>
+<p>The TYPES registry is divided into logical categories matching the service layer architecture. Each symbol is created using JavaScript's <code>Symbol()</code> constructor with a descriptive string identifier for debugging purposes.</p>
+<hr>
+<a id="service-registration-with-provide" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Registration with provide()<a href="#service-registration-with-provide" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Service registration occurs in <a href="">src/lib/core/provide.ts:1-143</a> during module initialization. Each service class is registered with a factory function that instantiates it.</p>
+<a id="registration-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration Pattern<a href="#registration-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The registration follows a consistent pattern across all service categories:</p>
+<pre><code class="typescript"><span class="hl-5">// Schema Services Registration (lines 75-83)</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ExchangeSchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">StrategySchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">frameSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">FrameSchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">walkerSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">WalkerSchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">sizingSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">SizingSchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">riskSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">RiskSchemaService</span><span class="hl-1">());</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">optimizerSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">OptimizerSchemaService</span><span class="hl-1">());</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="service-registration-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Registration Table<a href="#service-registration-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Service Category</th>
+<th>Registration Lines</th>
+<th>Number of Services</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base Services</td>
+<td><a href="">56-58</a></td>
+<td>1</td>
+<td>Logging infrastructure</td>
+</tr>
+<tr>
+<td>Context Services</td>
+<td><a href="">60-63</a></td>
+<td>2</td>
+<td>Execution and method context propagation</td>
+</tr>
+<tr>
+<td>Connection Services</td>
+<td><a href="">65-73</a></td>
+<td>7</td>
+<td>Client instance factory and caching</td>
+</tr>
+<tr>
+<td>Schema Services</td>
+<td><a href="">75-83</a></td>
+<td>7</td>
+<td>Configuration storage and retrieval</td>
+</tr>
+<tr>
+<td>Core Services</td>
+<td><a href="">85-89</a></td>
+<td>3</td>
+<td>Domain logic for strategies, exchanges, frames</td>
+</tr>
+<tr>
+<td>Global Services</td>
+<td><a href="">91-96</a></td>
+<td>4</td>
+<td>Entry point facades for subsystems</td>
+</tr>
+<tr>
+<td>Command Services</td>
+<td><a href="">98-102</a></td>
+<td>3</td>
+<td>Workflow orchestration for execution modes</td>
+</tr>
+<tr>
+<td>Logic Private Services</td>
+<td><a href="">104-108</a></td>
+<td>3</td>
+<td>Internal algorithms for backtest, live, walker</td>
+</tr>
+<tr>
+<td>Logic Public Services</td>
+<td><a href="">110-114</a></td>
+<td>3</td>
+<td>Public API wrappers for logic services</td>
+</tr>
+<tr>
+<td>Markdown Services</td>
+<td><a href="">116-126</a></td>
+<td>9</td>
+<td>Report generation for various aspects</td>
+</tr>
+<tr>
+<td>Validation Services</td>
+<td><a href="">128-138</a></td>
+<td>9</td>
+<td>Registration-time validation</td>
+</tr>
+<tr>
+<td>Template Services</td>
+<td><a href="">140-142</a></td>
+<td>1</td>
+<td>Code generation for optimizer</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="service-resolution-with-inject" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Resolution with inject()<a href="#service-resolution-with-inject" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Service resolution uses the <code>inject&lt;T&gt;()</code> function to create lazy, memoized accessors for service instances. The accessor pattern ensures services are instantiated only when first accessed and reused thereafter.</p>
+<a id="injection-and-export-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Injection and Export Pattern<a href="#injection-and-export-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/12_Dependency_Injection_System_2.svg" alt="Mermaid Diagram"></p>
+<a id="service-access-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Service Access Example<a href="#service-access-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following demonstrates how a public API function accesses services through the DI container:</p>
+<pre><code class="typescript"><span class="hl-5">// From src/function/add.ts:52-64</span><br/><span class="hl-3">export</span><span class="hl-1"> </span><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><span class="hl-4">strategySchema</span><span class="hl-1">: </span><span class="hl-11">IStrategySchema</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">loggerService</span><span class="hl-1">.</span><span class="hl-0">info</span><span class="hl-1">(</span><span class="hl-8">ADD_STRATEGY_METHOD_NAME</span><span class="hl-1">, {</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">,</span><br/><span class="hl-1">  });</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategyValidationService</span><span class="hl-1">.</span><span class="hl-0">addStrategy</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">  </span><span class="hl-4">backtest</span><span class="hl-1">.</span><span class="hl-4">strategySchemaService</span><span class="hl-1">.</span><span class="hl-0">register</span><span class="hl-1">(</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><span class="hl-1">.</span><span class="hl-4">strategyName</span><span class="hl-1">,</span><br/><span class="hl-1">    </span><span class="hl-4">strategySchema</span><br/><span class="hl-1">  );</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>In this example:</p>
+<ol>
+<li><code>backtest.loggerService</code> - First access triggers <code>LoggerService</code> instantiation</li>
+<li><code>backtest.strategyValidationService</code> - Lazy instantiation of validation service</li>
+<li><code>backtest.strategySchemaService</code> - Lazy instantiation of schema service</li>
+<li>All subsequent accesses return the same singleton instances</li>
+</ol>
+<hr>
+<a id="service-categories-and-organization" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Categories and Organization<a href="#service-categories-and-organization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Services are organized into 12 distinct categories, each serving a specific architectural layer. The following table provides a comprehensive mapping of all 50+ services:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Services</th>
+<th>Files</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Base</strong></td>
+<td><code>LoggerService</code></td>
+<td><a href="">src/lib/services/base/LoggerService.ts</a></td>
+<td>Centralized logging with configurable logger injection</td>
+</tr>
+<tr>
+<td><strong>Context</strong></td>
+<td><code>ExecutionContextService</code><br/><code>MethodContextService</code></td>
+<td><a href="">src/lib/services/context/</a></td>
+<td>AsyncLocalStorage-based context propagation for temporal isolation</td>
+</tr>
+<tr>
+<td><strong>Schema</strong></td>
+<td><code>ExchangeSchemaService</code><br/><code>StrategySchemaService</code><br/><code>FrameSchemaService</code><br/><code>WalkerSchemaService</code><br/><code>SizingSchemaService</code><br/><code>RiskSchemaService</code><br/><code>OptimizerSchemaService</code></td>
+<td><a href="">src/lib/services/schema/</a></td>
+<td>ToolRegistry-based storage for registered configurations</td>
+</tr>
+<tr>
+<td><strong>Validation</strong></td>
+<td><code>ExchangeValidationService</code><br/><code>StrategyValidationService</code><br/><code>FrameValidationService</code><br/><code>WalkerValidationService</code><br/><code>SizingValidationService</code><br/><code>RiskValidationService</code><br/><code>OptimizerValidationService</code><br/><code>ConfigValidationService</code><br/><code>ColumnValidationService</code></td>
+<td><a href="">src/lib/services/validation/</a></td>
+<td>Registration-time validation with memoized results</td>
+</tr>
+<tr>
+<td><strong>Connection</strong></td>
+<td><code>ExchangeConnectionService</code><br/><code>StrategyConnectionService</code><br/><code>FrameConnectionService</code><br/><code>SizingConnectionService</code><br/><code>RiskConnectionService</code><br/><code>OptimizerConnectionService</code><br/><code>PartialConnectionService</code></td>
+<td><a href="">src/lib/services/connection/</a></td>
+<td>Factory pattern with memoization for client instances</td>
+</tr>
+<tr>
+<td><strong>Core</strong></td>
+<td><code>ExchangeCoreService</code><br/><code>StrategyCoreService</code><br/><code>FrameCoreService</code></td>
+<td><a href="">src/lib/services/core/</a></td>
+<td>Domain logic for fundamental operations</td>
+</tr>
+<tr>
+<td><strong>Global</strong></td>
+<td><code>SizingGlobalService</code><br/><code>RiskGlobalService</code><br/><code>OptimizerGlobalService</code><br/><code>PartialGlobalService</code></td>
+<td><a href="">src/lib/services/global/</a></td>
+<td>Entry point facades with logging and delegation</td>
+</tr>
+<tr>
+<td><strong>Command</strong></td>
+<td><code>LiveCommandService</code><br/><code>BacktestCommandService</code><br/><code>WalkerCommandService</code></td>
+<td><a href="">src/lib/services/command/</a></td>
+<td>Workflow orchestration for execution modes</td>
+</tr>
+<tr>
+<td><strong>Logic Private</strong></td>
+<td><code>BacktestLogicPrivateService</code><br/><code>LiveLogicPrivateService</code><br/><code>WalkerLogicPrivateService</code></td>
+<td><a href="">src/lib/services/logic/private/</a></td>
+<td>Internal algorithms not exposed externally</td>
+</tr>
+<tr>
+<td><strong>Logic Public</strong></td>
+<td><code>BacktestLogicPublicService</code><br/><code>LiveLogicPublicService</code><br/><code>WalkerLogicPublicService</code></td>
+<td><a href="">src/lib/services/logic/public/</a></td>
+<td>Controlled wrappers with additional validation</td>
+</tr>
+<tr>
+<td><strong>Markdown</strong></td>
+<td><code>BacktestMarkdownService</code><br/><code>LiveMarkdownService</code><br/><code>ScheduleMarkdownService</code><br/><code>PerformanceMarkdownService</code><br/><code>WalkerMarkdownService</code><br/><code>HeatMarkdownService</code><br/><code>PartialMarkdownService</code><br/><code>OutlineMarkdownService</code><br/><code>RiskMarkdownService</code></td>
+<td><a href="">src/lib/services/markdown/</a></td>
+<td>Event-driven report generation with bounded queues</td>
+</tr>
+<tr>
+<td><strong>Template</strong></td>
+<td><code>OptimizerTemplateService</code></td>
+<td><a href="">src/lib/services/template/</a></td>
+<td>Code generation for LLM-based strategy optimization</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="initialization-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Initialization Flow<a href="#initialization-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The DI system initialization occurs in <a href="">src/lib/index.ts:240</a> via the <code>init()</code> function call. This initializes the DI container and prepares it for lazy service instantiation.</p>
+<a id="module-initialization-sequence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Module Initialization Sequence<a href="#module-initialization-sequence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/12_Dependency_Injection_System_3.svg" alt="Mermaid Diagram"></p>
+<p><strong>Key Points</strong>:</p>
+<ol>
+<li><strong>Registration Phase</strong> - All <code>provide()</code> calls execute during <a href="">src/lib/core/provide.ts</a> module initialization</li>
+<li><strong>Injection Phase</strong> - All <code>inject()</code> calls in <a href="">src/lib/index.ts:61-223</a> create lazy accessors but do not instantiate services</li>
+<li><strong>Initialization Call</strong> - <a href="">src/lib/index.ts:240</a> finalizes the container</li>
+<li><strong>Lazy Instantiation</strong> - Services are created only when first accessed by application code</li>
+<li><strong>Singleton Behavior</strong> - Once created, the same instance is returned for all subsequent accesses</li>
+</ol>
+<hr>
+<a id="service-dependency-graph" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Service Dependency Graph<a href="#service-dependency-graph" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Services depend on each other through constructor injection or method calls. The DI system manages these dependencies transparently through lazy evaluation.</p>
+<a id="typical-dependency-chain-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Typical Dependency Chain Example<a href="#typical-dependency-chain-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/12_Dependency_Injection_System_4.svg" alt="Mermaid Diagram"></p>
+<a id="cross-service-dependencies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Cross-Service Dependencies<a href="#cross-service-dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services demonstrate the most complex dependency patterns, as they create client instances that depend on multiple other services:</p>
+<table>
+<thead>
+<tr>
+<th>Client Type</th>
+<th>Created By</th>
+<th>Key Dependencies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ClientStrategy</code></td>
+<td><code>StrategyConnectionService</code></td>
+<td><code>ExecutionContextService</code>, <code>MethodContextService</code>, <code>ExchangeCoreService</code>, <code>RiskGlobalService</code>, <code>SizingGlobalService</code>, <code>PartialGlobalService</code></td>
+</tr>
+<tr>
+<td><code>ClientExchange</code></td>
+<td><code>ExchangeConnectionService</code></td>
+<td><code>ExecutionContextService</code>, <code>MethodContextService</code>, <code>ExchangeSchemaService</code></td>
+</tr>
+<tr>
+<td><code>ClientRisk</code></td>
+<td><code>RiskConnectionService</code></td>
+<td><code>ExecutionContextService</code>, <code>MethodContextService</code>, <code>RiskSchemaService</code>, <code>PersistRiskAdapter</code></td>
+</tr>
+<tr>
+<td><code>ClientSizing</code></td>
+<td><code>SizingConnectionService</code></td>
+<td><code>ExecutionContextService</code>, <code>MethodContextService</code>, <code>SizingSchemaService</code></td>
+</tr>
+<tr>
+<td><code>ClientFrame</code></td>
+<td><code>FrameConnectionService</code></td>
+<td><code>MethodContextService</code>, <code>FrameSchemaService</code>, <code>FrameCoreService</code></td>
+</tr>
+<tr>
+<td><code>ClientPartial</code></td>
+<td><code>PartialConnectionService</code></td>
+<td><code>ExecutionContextService</code>, <code>MethodContextService</code>, <code>PersistPartialAdapter</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="memoization-strategy" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Memoization Strategy<a href="#memoization-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The DI system implements memoization at two levels:</p>
+<a id="container-level-memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Container-Level Memoization<a href="#container-level-memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>inject()</code> function returns a lazy accessor that, when called, executes the factory function once and caches the result. This ensures singleton behavior for all services:</p>
+<pre><code class="typescript"><span class="hl-5">// Conceptual implementation (actual code in src/lib/core/di.ts)</span><br/><span class="hl-7">function</span><span class="hl-1"> </span><span class="hl-0">inject</span><span class="hl-1">&lt;</span><span class="hl-11">T</span><span class="hl-1">&gt;(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">Symbol</span><span class="hl-1">): () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-11">T</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-7">let</span><span class="hl-1"> </span><span class="hl-4">cached</span><span class="hl-1">: </span><span class="hl-11">T</span><span class="hl-1"> | </span><span class="hl-11">undefined</span><span class="hl-1">;</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> () </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-3">if</span><span class="hl-1"> (</span><span class="hl-4">cached</span><span class="hl-1"> === </span><span class="hl-7">undefined</span><span class="hl-1">) {</span><br/><span class="hl-1">      </span><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">factory</span><span class="hl-1"> = </span><span class="hl-4">container</span><span class="hl-1">.</span><span class="hl-0">get</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">      </span><span class="hl-4">cached</span><span class="hl-1"> = </span><span class="hl-0">factory</span><span class="hl-1">();</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-4">cached</span><span class="hl-1">;</span><br/><span class="hl-1">  };</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="connection-level-memoization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Connection-Level Memoization<a href="#connection-level-memoization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connection services use the <code>memoize()</code> utility from <code>functools-kit</code> to cache client instances with composite keys:</p>
+<pre><code class="typescript"><span class="hl-5">// Example from StrategyConnectionService</span><br/><span class="hl-4">private</span><span class="hl-1"> </span><span class="hl-4">_memoized</span><span class="hl-1"> = </span><span class="hl-0">memoize</span><span class="hl-1">(</span><br/><span class="hl-1">  (</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-11">boolean</span><span class="hl-1">) </span><span class="hl-7">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">    </span><span class="hl-5">// Complex client instantiation logic</span><br/><span class="hl-1">    </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">new</span><span class="hl-1"> </span><span class="hl-0">ClientStrategy</span><span class="hl-1">(...);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">);</span><br/><br/><span class="hl-0">getClient</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">: </span><span class="hl-4">string</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">: </span><span class="hl-4">boolean</span><span class="hl-1">) {</span><br/><span class="hl-1">  </span><span class="hl-3">return</span><span class="hl-1"> </span><span class="hl-7">this</span><span class="hl-1">.</span><span class="hl-0">_memoized</span><span class="hl-1">(</span><span class="hl-4">symbol</span><span class="hl-1">, </span><span class="hl-4">strategyName</span><span class="hl-1">, </span><span class="hl-4">backtest</span><span class="hl-1">);</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>This pattern ensures:</p>
+<ul>
+<li>Same <code>ClientStrategy</code> instance for <code>symbol=&quot;BTC/USDT&quot;, strategyName=&quot;my-strategy&quot;, backtest=true</code></li>
+<li>Different instance for <code>symbol=&quot;BTC/USDT&quot;, strategyName=&quot;my-strategy&quot;, backtest=false</code> (live mode)</li>
+<li>Different instance for <code>symbol=&quot;ETH/USDT&quot;, strategyName=&quot;my-strategy&quot;, backtest=true</code> (different symbol)</li>
+</ul>
+<hr>
+<a id="benefits-and-design-rationale" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Benefits and Design Rationale<a href="#benefits-and-design-rationale" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The DI system provides several key benefits for the backtest-kit architecture:</p>
+<a id="testability" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Testability<a href="#testability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services can be mocked or stubbed during testing by replacing the factory function:</p>
+<pre><code class="typescript"><span class="hl-5">// Test setup example</span><br/><span class="hl-0">provide</span><span class="hl-1">(</span><span class="hl-8">TYPES</span><span class="hl-1">.</span><span class="hl-4">exchangeSchemaService</span><span class="hl-1">, () </span><span class="hl-7">=&gt;</span><span class="hl-1"> </span><span class="hl-0">createMockExchangeSchema</span><span class="hl-1">());</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="lazy-initialization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Lazy Initialization<a href="#lazy-initialization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Services are created only when first accessed, reducing startup time and memory usage. This is particularly important for:</p>
+<ul>
+<li><strong>Markdown services</strong> that subscribe to event emitters (only instantiated if reports are needed)</li>
+<li><strong>Connection services</strong> that create client instances (only instantiated per active symbol/strategy)</li>
+<li><strong>Core services</strong> with complex initialization logic</li>
+</ul>
+<a id="singleton-management" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Singleton Management<a href="#singleton-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The DI system guarantees singleton behavior for stateful services without requiring manual singleton implementation:</p>
+<ul>
+<li><strong>Schema services</strong> maintain single registries of configurations</li>
+<li><strong>Context services</strong> use AsyncLocalStorage that must be shared across the application</li>
+<li><strong>Global services</strong> coordinate cross-cutting concerns</li>
+</ul>
+<a id="separation-of-concerns" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Separation of Concerns<a href="#separation-of-concerns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The DI system enforces clear boundaries between service layers:</p>
+<ul>
+<li><strong>Public API functions</strong> access services through the DI container, not direct imports</li>
+<li><strong>Services</strong> declare dependencies through the inject pattern, not constructor parameters</li>
+<li><strong>Client classes</strong> receive services via connection service factories</li>
+</ul>
+<a id="extensibility" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Extensibility<a href="#extensibility" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>New services can be added by:</p>
+<ol>
+<li>Adding a Symbol to <a href="">src/lib/core/types.ts</a></li>
+<li>Adding a <code>provide()</code> call to <a href="">src/lib/core/provide.ts</a></li>
+<li>Adding an <code>inject()</code> call to <a href="">src/lib/index.ts</a></li>
+<li>Exporting the service accessor in the appropriate category object</li>
+</ol>
+<p>No existing code requires modification when adding new services.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#dependency-injection-system"><span>Dependency <wbr/>Injection <wbr/>System</span></a><ul><li><a href="#purpose-and-architecture"><span>Purpose and <wbr/>Architecture</span></a></li><li><ul><li><a href="#di-flow-architecture"><span>DI <wbr/>Flow <wbr/>Architecture</span></a></li></ul></li><li><a href="#types-symbol-registry"><span>TYPES <wbr/>Symbol <wbr/>Registry</span></a></li><li><ul><li><a href="#types-structure"><span>TYPES <wbr/>Structure</span></a></li></ul></li><li><a href="#service-registration-with-provide"><span>Service <wbr/>Registration with provide()</span></a></li><li><ul><li><a href="#registration-pattern"><span>Registration <wbr/>Pattern</span></a></li><li><a href="#service-registration-table"><span>Service <wbr/>Registration <wbr/>Table</span></a></li></ul></li><li><a href="#service-resolution-with-inject"><span>Service <wbr/>Resolution with inject()</span></a></li><li><ul><li><a href="#injection-and-export-pattern"><span>Injection and <wbr/>Export <wbr/>Pattern</span></a></li><li><a href="#service-access-example"><span>Service <wbr/>Access <wbr/>Example</span></a></li></ul></li><li><a href="#service-categories-and-organization"><span>Service <wbr/>Categories and <wbr/>Organization</span></a></li><li><a href="#initialization-flow"><span>Initialization <wbr/>Flow</span></a></li><li><ul><li><a href="#module-initialization-sequence"><span>Module <wbr/>Initialization <wbr/>Sequence</span></a></li></ul></li><li><a href="#service-dependency-graph"><span>Service <wbr/>Dependency <wbr/>Graph</span></a></li><li><ul><li><a href="#typical-dependency-chain-example"><span>Typical <wbr/>Dependency <wbr/>Chain <wbr/>Example</span></a></li><li><a href="#cross-service-dependencies"><span>Cross-<wbr/>Service <wbr/>Dependencies</span></a></li></ul></li><li><a href="#memoization-strategy"><span>Memoization <wbr/>Strategy</span></a></li><li><ul><li><a href="#container-level-memoization"><span>Container-<wbr/>Level <wbr/>Memoization</span></a></li><li><a href="#connection-level-memoization"><span>Connection-<wbr/>Level <wbr/>Memoization</span></a></li></ul></li><li><a href="#benefits-and-design-rationale"><span>Benefits and <wbr/>Design <wbr/>Rationale</span></a></li><li><ul><li><a href="#testability"><span>Testability</span></a></li><li><a href="#lazy-initialization"><span>Lazy <wbr/>Initialization</span></a></li><li><a href="#singleton-management"><span>Singleton <wbr/>Management</span></a></li><li><a href="#separation-of-concerns"><span>Separation of <wbr/>Concerns</span></a></li><li><a href="#extensibility"><span>Extensibility</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
