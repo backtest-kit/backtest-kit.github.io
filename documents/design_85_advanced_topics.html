@@ -41,7 +41,7 @@
 </table>
 <a id="integration-architecture" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Integration Architecture<a href="#integration-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><img src="../media/85_Advanced_Topics_0.svg" alt="Mermaid Diagram"></p>
 <a id="rest-api-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">REST API Integration Example<a href="#rest-api-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To integrate with a REST API exchange, implement the <code>IExchangeSchema</code> interface with HTTP client calls:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference pattern from README.md:32-52</span><br/><span class="hl-5">// User implements getCandles() to fetch from external API</span><br/><span class="hl-5">// User implements formatPrice() and formatQuantity() for precision rules</span>
+<pre><code class="typescript"><span class="hl-0">// Reference pattern from README.md:32-52</span><br/><span class="hl-0">// User implements getCandles() to fetch from external API</span><br/><span class="hl-0">// User implements formatPrice() and formatQuantity() for precision rules</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Key considerations:</strong></p>
@@ -94,7 +94,7 @@
 <li>No API calls needed for static historical data</li>
 </ul>
 <a id="candle-data-transformation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Candle Data Transformation<a href="#candle-data-transformation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All exchange implementations must return data in the <code>ICandleData</code> format:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:104-118</span><br/><span class="hl-5">// timestamp: Unix milliseconds (e.g., 1704067200000)</span><br/><span class="hl-5">// open, high, low, close, volume: positive numbers</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: types.d.ts:104-118</span><br/><span class="hl-0">// timestamp: Unix milliseconds (e.g., 1704067200000)</span><br/><span class="hl-0">// open, high, low, close, volume: positive numbers</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Common transformations:</strong></p>
@@ -137,7 +137,7 @@
 <li><code>volume &gt;= 0</code> (can be zero for illiquid pairs)</li>
 </ul>
 <a id="exchange-callbacks" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Callbacks<a href="#exchange-callbacks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Optional callbacks provide observability into exchange operations:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:131-135</span><br/><span class="hl-5">// onCandleData(symbol, interval, since, limit, data)</span><br/><span class="hl-5">// Called after every successful getCandles() invocation</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: types.d.ts:131-135</span><br/><span class="hl-0">// onCandleData(symbol, interval, since, limit, data)</span><br/><span class="hl-0">// Called after every successful getCandles() invocation</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Use cases:</strong></p>
@@ -245,7 +245,7 @@
 </ul>
 <a id="mongodb-integration-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">MongoDB Integration Example<a href="#mongodb-integration-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>MongoDB provides document-based persistence with flexible schema:</p>
 <p><strong>Collection design:</strong></p>
-<pre><code class="javascript"><span class="hl-5">// Reference schema structure</span><br/><span class="hl-5">// Collection: signal_data</span><br/><span class="hl-5">// Document: { _id: &quot;strategy:symbol&quot;, strategyName, symbol, signalRow, updatedAt }</span>
+<pre><code class="javascript"><span class="hl-0">// Reference schema structure</span><br/><span class="hl-0">// Collection: signal_data</span><br/><span class="hl-0">// Document: { _id: &quot;strategy:symbol&quot;, strategyName, symbol, signalRow, updatedAt }</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Implementation approach:</strong></p>
@@ -320,7 +320,7 @@
 <li>Batch operations when possible</li>
 </ul>
 <a id="registration-and-usage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Registration and Usage<a href="#registration-and-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom persistence adapters are registered globally before running strategies:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: README.md:676-690</span><br/><span class="hl-5">// PersistSignalAdaper.usePersistSignalAdapter(CustomPersistClass)</span><br/><span class="hl-5">// Must be called before first strategy execution</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: README.md:676-690</span><br/><span class="hl-0">// PersistSignalAdaper.usePersistSignalAdapter(CustomPersistClass)</span><br/><span class="hl-0">// Must be called before first strategy execution</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Registration flow:</strong></p>
@@ -338,7 +338,7 @@
 <li>Re-registration is allowed but affects all future operations</li>
 </ul>
 <a id="persistence-data-format" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Data Format<a href="#persistence-data-format" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>All persistence implementations must store and retrieve <code>ISignalData</code> objects:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:896-903</span><br/><span class="hl-5">// interface ISignalData {</span><br/><span class="hl-5">//   signalRow: ISignalRow | null</span><br/><span class="hl-5">// }</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: types.d.ts:896-903</span><br/><span class="hl-0">// interface ISignalData {</span><br/><span class="hl-0">//   signalRow: ISignalRow | null</span><br/><span class="hl-0">// }</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Storage format:</strong></p>
@@ -396,7 +396,7 @@
 </tbody>
 </table>
 <p><strong>Implementation approach:</strong></p>
-<pre><code class="typescript"><span class="hl-5">// Reference: README.md:693-715</span><br/><span class="hl-5">// Promise.all() with multiple Live.run() calls</span><br/><span class="hl-5">// Each symbol gets isolated execution context</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: README.md:693-715</span><br/><span class="hl-0">// Promise.all() with multiple Live.run() calls</span><br/><span class="hl-0">// Each symbol gets isolated execution context</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Parallel execution:</strong></p>
@@ -417,19 +417,19 @@
 <ol>
 <li><strong>Global State Container:</strong></li>
 </ol>
-<pre><code class="typescript"><span class="hl-5">// User implements custom state management</span><br/><span class="hl-5">// Example: Map&lt;symbol, ISignalRow&gt; for tracking all active signals</span><br/><span class="hl-5">// Store in closure or external state management library</span>
+<pre><code class="typescript"><span class="hl-0">// User implements custom state management</span><br/><span class="hl-0">// Example: Map&lt;symbol, ISignalRow&gt; for tracking all active signals</span><br/><span class="hl-0">// Store in closure or external state management library</span>
 </code><button type="button">Copy</button></pre>
 
 <ol start="2">
 <li><strong>Portfolio Persistence:</strong></li>
 </ol>
-<pre><code class="typescript"><span class="hl-5">// User implements custom persistence for shared state</span><br/><span class="hl-5">// Single persistence key for entire portfolio</span><br/><span class="hl-5">// Atomic updates to prevent partial state writes</span>
+<pre><code class="typescript"><span class="hl-0">// User implements custom persistence for shared state</span><br/><span class="hl-0">// Single persistence key for entire portfolio</span><br/><span class="hl-0">// Atomic updates to prevent partial state writes</span>
 </code><button type="button">Copy</button></pre>
 
 <ol start="3">
 <li><strong>Position Sizing:</strong></li>
 </ol>
-<pre><code class="typescript"><span class="hl-5">// User implements portfolio-level position sizing</span><br/><span class="hl-5">// Calculate available capital across all symbols</span><br/><span class="hl-5">// Enforce maximum open positions limit</span><br/><span class="hl-5">// Balance capital allocation dynamically</span>
+<pre><code class="typescript"><span class="hl-0">// User implements portfolio-level position sizing</span><br/><span class="hl-0">// Calculate available capital across all symbols</span><br/><span class="hl-0">// Enforce maximum open positions limit</span><br/><span class="hl-0">// Balance capital allocation dynamically</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Synchronization concerns:</strong></p>
@@ -441,7 +441,7 @@
 </ul>
 <a id="position-limit-enforcement" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Position Limit Enforcement<a href="#position-limit-enforcement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Portfolio-level position limits prevent over-exposure:</p>
 <p><strong>Implementation pattern:</strong></p>
-<pre><code class="typescript"><span class="hl-5">// Inside getSignal() implementation:</span><br/><span class="hl-5">// 1. Check global position counter</span><br/><span class="hl-5">// 2. If at max limit, return null (no new signal)</span><br/><span class="hl-5">// 3. If below limit, generate signal and increment counter</span><br/><span class="hl-5">// 4. On signal close, decrement counter</span>
+<pre><code class="typescript"><span class="hl-0">// Inside getSignal() implementation:</span><br/><span class="hl-0">// 1. Check global position counter</span><br/><span class="hl-0">// 2. If at max limit, return null (no new signal)</span><br/><span class="hl-0">// 3. If below limit, generate signal and increment counter</span><br/><span class="hl-0">// 4. On signal close, decrement counter</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>State tracking:</strong></p>
@@ -484,7 +484,7 @@
 <li>Geographic/regulatory exposure limits</li>
 </ul>
 <a id="event-listeners-for-multi-symbol" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Event Listeners for Multi-Symbol<a href="#event-listeners-for-multi-symbol" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Event listeners aggregate signals across all symbols:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: README.md:336-461</span><br/><span class="hl-5">// listenSignal() receives events from all symbols</span><br/><span class="hl-5">// Filter by symbol, strategyName, or other criteria</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: README.md:336-461</span><br/><span class="hl-0">// listenSignal() receives events from all symbols</span><br/><span class="hl-0">// Filter by symbol, strategyName, or other criteria</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Global monitoring:</strong></p>
@@ -501,7 +501,7 @@
 <li>Example: Alert when any symbol hits stop-loss</li>
 </ul>
 <a id="background-execution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Background Execution<a href="#background-execution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Background execution runs strategies silently with event-driven reactions:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: README.md:341-362</span><br/><span class="hl-5">// Backtest.background() returns cancellation function</span><br/><span class="hl-5">// Live.background() returns cancellation function</span><br/><span class="hl-5">// Use event listeners to react to signals</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: README.md:341-362</span><br/><span class="hl-0">// Backtest.background() returns cancellation function</span><br/><span class="hl-0">// Live.background() returns cancellation function</span><br/><span class="hl-0">// Use event listeners to react to signals</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Benefits:</strong></p>
@@ -512,7 +512,7 @@
 <li>Multiple strategies can run in parallel</li>
 </ul>
 <p><strong>Cancellation handling:</strong></p>
-<pre><code class="typescript"><span class="hl-5">// Store cancellation functions in array</span><br/><span class="hl-5">// Call all cancellation functions to stop portfolio</span><br/><span class="hl-5">// Example: stops[] = [stopBTC, stopETH, stopSOL]</span><br/><span class="hl-5">// stops.forEach(stop =&gt; stop())</span>
+<pre><code class="typescript"><span class="hl-0">// Store cancellation functions in array</span><br/><span class="hl-0">// Call all cancellation functions to stop portfolio</span><br/><span class="hl-0">// Example: stops[] = [stopBTC, stopETH, stopSOL]</span><br/><span class="hl-0">// stops.forEach(stop =&gt; stop())</span>
 </code><button type="button">Copy</button></pre>
 
 <a id="performance-considerations" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Considerations<a href="#performance-considerations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Multi-symbol execution impacts system resources:</p>
@@ -566,7 +566,7 @@
 </ul>
 <hr>
 <a id="advanced-customization-patterns" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Advanced Customization Patterns<a href="#advanced-customization-patterns" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="custom-logger-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Logger Integration<a href="#custom-logger-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Custom loggers integrate with framework internals:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:32-49</span><br/><span class="hl-5">// setLogger({ log, debug, info, warn })</span><br/><span class="hl-5">// All internal services will use custom logger</span><br/><span class="hl-5">// Automatic context injection (strategyName, exchangeName, symbol, when, backtest)</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: types.d.ts:32-49</span><br/><span class="hl-0">// setLogger({ log, debug, info, warn })</span><br/><span class="hl-0">// All internal services will use custom logger</span><br/><span class="hl-0">// Automatic context injection (strategyName, exchangeName, symbol, when, backtest)</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Context injection:</strong></p>
@@ -584,7 +584,7 @@
 <li>Debug production issues with rich context</li>
 </ul>
 <a id="context-services" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Context Services<a href="#context-services" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Context services enable implicit parameter passing through the call stack:</p>
-<pre><code class="typescript"><span class="hl-5">// Reference: types.d.ts:84-95 (ExecutionContextService)</span><br/><span class="hl-5">// Reference: types.d.ts:344-350 (MethodContextService)</span><br/><span class="hl-5">// Uses di-scoped for async-local-storage-like behavior</span>
+<pre><code class="typescript"><span class="hl-0">// Reference: types.d.ts:84-95 (ExecutionContextService)</span><br/><span class="hl-0">// Reference: types.d.ts:344-350 (MethodContextService)</span><br/><span class="hl-0">// Uses di-scoped for async-local-storage-like behavior</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>ExecutionContextService:</strong></p>

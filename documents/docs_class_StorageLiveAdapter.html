@@ -1,0 +1,91 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/class/StorageLiveAdapter | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_class_StorageLiveAdapter.html">docs/class/StorageLiveAdapter</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="storageliveadapter" class="tsd-anchor"></a><h1 class="tsd-anchor-link">StorageLiveAdapter<a href="#storageliveadapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Implements <code>IStorageUtils</code></p>
+<p>Live trading storage adapter with pluggable storage backend.</p>
+<p>Features:</p>
+<ul>
+<li>Adapter pattern for swappable storage implementations</li>
+<li>Default adapter: StoragePersistLiveUtils (persistent storage)</li>
+<li>Alternative adapters: StorageMemoryLiveUtils, StorageDummyLiveUtils</li>
+<li>Convenience methods: usePersist(), useMemory(), useDummy()</li>
+</ul>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="_signalliveutils" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_signalLiveUtils<a href="#_signalliveutils" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_signalLiveUtils</span><span class="hl-2">: </span><span class="hl-6">any</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Internal storage utils instance</p>
+<a id="handleopened" class="tsd-anchor"></a><h3 class="tsd-anchor-link">handleOpened<a href="#handleopened" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">handleOpened</span><span class="hl-2">: (</span><span class="hl-6">tick</span><span class="hl-2">: </span><span class="hl-11">IStrategyTickResultOpened</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal opened event.
+Proxies call to the underlying storage adapter.</p>
+<a id="handleclosed" class="tsd-anchor"></a><h3 class="tsd-anchor-link">handleClosed<a href="#handleclosed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">handleClosed</span><span class="hl-2">: (</span><span class="hl-6">tick</span><span class="hl-2">: </span><span class="hl-11">IStrategyTickResultClosed</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal closed event.
+Proxies call to the underlying storage adapter.</p>
+<a id="handlescheduled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">handleScheduled<a href="#handlescheduled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">handleScheduled</span><span class="hl-2">: (</span><span class="hl-6">tick</span><span class="hl-2">: </span><span class="hl-11">IStrategyTickResultScheduled</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal scheduled event.
+Proxies call to the underlying storage adapter.</p>
+<a id="handlecancelled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">handleCancelled<a href="#handlecancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">handleCancelled</span><span class="hl-2">: (</span><span class="hl-6">tick</span><span class="hl-2">: </span><span class="hl-11">IStrategyTickResultCancelled</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal cancelled event.
+Proxies call to the underlying storage adapter.</p>
+<a id="findbyid" class="tsd-anchor"></a><h3 class="tsd-anchor-link">findById<a href="#findbyid" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">findById</span><span class="hl-2">: (</span><span class="hl-6">id</span><span class="hl-2">: </span><span class="hl-11">string</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-6">IStorageSignalRow</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Finds a signal by its ID.
+Proxies call to the underlying storage adapter.</p>
+<a id="list" class="tsd-anchor"></a><h3 class="tsd-anchor-link">list<a href="#list" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">list</span><span class="hl-2">: () </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-6">IStorageSignalRow</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Lists all stored signals.
+Proxies call to the underlying storage adapter.</p>
+<a id="usestorageadapter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useStorageAdapter<a href="#usestorageadapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useStorageAdapter</span><span class="hl-2">: (</span><span class="hl-6">Ctor</span><span class="hl-2">: </span><span class="hl-11">TStorageUtilsCtor</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-3">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Sets the storage adapter constructor.
+All future storage operations will use this adapter.</p>
+<a id="usedummy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useDummy<a href="#usedummy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useDummy</span><span class="hl-2">: () </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-3">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Switches to dummy storage adapter.
+All future storage writes will be no-ops.</p>
+<a id="usepersist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">usePersist<a href="#usepersist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">usePersist</span><span class="hl-2">: () </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-3">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Switches to persistent storage adapter (default).
+Signals will be persisted to disk.</p>
+<a id="usememory" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useMemory<a href="#usememory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useMemory</span><span class="hl-2">: () </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-3">void</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Switches to in-memory storage adapter.
+Signals will be stored in memory only.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#storageliveadapter"><span>Storage<wbr/>Live<wbr/>Adapter</span></a><ul><li><a href="#constructor"><span>Constructor</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#_signalliveutils"><span>_signal<wbr/>Live<wbr/>Utils</span></a></li><li><a href="#handleopened"><span>handle<wbr/>Opened</span></a></li><li><a href="#handleclosed"><span>handle<wbr/>Closed</span></a></li><li><a href="#handlescheduled"><span>handle<wbr/>Scheduled</span></a></li><li><a href="#handlecancelled"><span>handle<wbr/>Cancelled</span></a></li><li><a href="#findbyid"><span>find<wbr/>By<wbr/>Id</span></a></li><li><a href="#list"><span>list</span></a></li><li><a href="#usestorageadapter"><span>use<wbr/>Storage<wbr/>Adapter</span></a></li><li><a href="#usedummy"><span>use<wbr/>Dummy</span></a></li><li><a href="#usepersist"><span>use<wbr/>Persist</span></a></li><li><a href="#usememory"><span>use<wbr/>Memory</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

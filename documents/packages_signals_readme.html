@@ -1,0 +1,210 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>packages/signals/readme | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="packages_signals_readme.html">packages/signals/readme</a></li></ul></div><div class="tsd-panel tsd-typography"><img src="https://github.com/tripolskypetr/backtest-kit/raw/refs/heads/master/assets/chronos.svg" height="45px" align="right">
+<a id="📊-backtest-kitsignals" class="tsd-anchor"></a><h1 class="tsd-anchor-link">📊 @backtest-kit/signals<a href="#📊-backtest-kitsignals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
+<p>Technical analysis and trading signal generation library for AI-powered trading systems. Computes 50+ indicators across 4 timeframes and generates markdown reports for LLM consumption.</p>
+</blockquote>
+<p><img src="https://raw.githubusercontent.com/tripolskypetr/backtest-kit/HEAD/assets/screenshots/screenshot8.png" alt="screenshot"></p>
+<p><a href="https://deepwiki.com/tripolskypetr/backtest-kit"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+<a href="https://npmjs.org/package/@backtest-kit/signals"><img src="https://img.shields.io/npm/v/@backtest-kit/signals.svg?style=flat-square" alt="npm"></a>
+<a href=""><img src="https://img.shields.io/badge/TypeScript-5.0+-blue" alt="TypeScript"></a></p>
+<p>Transform raw market data into actionable trading insights with multi-timeframe technical analysis, order book depth, and AI-ready markdown reports.</p>
+<p>📚 <strong><a href="https://backtest-kit.github.io/documents/example_02_first_backtest.html">Backtest Kit Docs</a></strong> | 🌟 <strong><a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a></strong></p>
+<a id="✨-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">✨ Features<a href="#✨-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li>📈 <strong>Multi-Timeframe Analysis</strong>: 1m, 15m, 30m, 1h with synchronized indicator computation</li>
+<li>🎯 <strong>50+ Technical Indicators</strong>: RSI, MACD, Bollinger Bands, Stochastic, ADX, ATR, CCI, Fibonacci, Support/Resistance</li>
+<li>📊 <strong>Order Book Analysis</strong>: Bid/ask depth, spread, liquidity imbalance, top 20 levels</li>
+<li>🤖 <strong>AI-Ready Output</strong>: Markdown reports formatted for LLM context injection</li>
+<li>⚡ <strong>Performance Optimized</strong>: Intelligent caching with configurable TTL per timeframe</li>
+<li>🧮 <strong>Custom Algorithms</strong>: Fibonacci retracements, support/resistance detection, volume analysis</li>
+<li>📦 <strong>Zero Config</strong>: Works out-of-the-box with backtest-kit</li>
+</ul>
+<a id="📋-what-it-does" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 What It Does<a href="#📋-what-it-does" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>@backtest-kit/signals</code> analyzes market data and generates comprehensive technical reports across multiple timeframes:</p>
+<table>
+<thead>
+<tr>
+<th>Timeframe</th>
+<th>Candles</th>
+<th>Indicators</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>MicroTerm</strong> (1m)</td>
+<td>60</td>
+<td>RSI(9,14), MACD(8,21,5), Stochastic, ADX(9), Bollinger(8,2), ATR, CCI, Volume, Squeeze</td>
+<td>Scalping, ultra-short entries</td>
+</tr>
+<tr>
+<td><strong>ShortTerm</strong> (15m)</td>
+<td>144</td>
+<td>RSI(9), MACD(8,21,5), Stochastic(5,3,3), ADX(14), Bollinger(10,2), Fibonacci</td>
+<td>Day trading</td>
+</tr>
+<tr>
+<td><strong>SwingTerm</strong> (30m)</td>
+<td>96</td>
+<td>RSI(14), MACD(12,26,9), Stochastic(14,3,3), Bollinger(20,2), Support/Resistance</td>
+<td>Swing trading</td>
+</tr>
+<tr>
+<td><strong>LongTerm</strong> (1h)</td>
+<td>100</td>
+<td>RSI(14), MACD(12,26,9), ADX(14), Bollinger(20,2), SMA(50), DEMA, WMA, Volume Trend</td>
+<td>Trend analysis</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Plus:</strong> Real-time order book analysis with bid/ask depth and imbalance metrics.</p>
+<a id="🚀-installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 Installation<a href="#🚀-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-4">@backtest-kit/signals</span><span class="hl-2"> </span><span class="hl-4">backtest-kit</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="📖-usage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📖 Usage<a href="#📖-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="quick-start---all-in-one-report" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Quick Start - All-in-One Report<a href="#quick-start---all-in-one-report" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The easiest way to inject technical analysis into your LLM strategy:</p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">commitHistorySetup</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/signals&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">getCandles</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;backtest-kit&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-0">// In your strategy&#39;s getSignal function:</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">messages</span><span class="hl-2"> = [];</span><br/><br/><span class="hl-0">// Add all technical analysis + order book + candle history</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitHistorySetup</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);</span><br/><br/><span class="hl-0">// Now messages contains:</span><br/><span class="hl-0">// - Order book analysis (bids/asks, spread, imbalance)</span><br/><span class="hl-0">// - Candle history (1m, 15m, 30m, 1h)</span><br/><span class="hl-0">// - Technical indicators for all 4 timeframes</span><br/><span class="hl-0">// - System info (symbol, price, timestamp)</span><br/><br/><span class="hl-0">// Send to LLM</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">signal</span><span class="hl-2"> = </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">llm</span><span class="hl-2">(</span><span class="hl-6">messages</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="granular-control---individual-reports" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Granular Control - Individual Reports<a href="#granular-control---individual-reports" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For fine-grained control over what data to include:</p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> {</span><br/><span class="hl-2">  </span><span class="hl-6">commitBookDataReport</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitOneMinuteHistory</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitFifteenMinuteHistory</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitThirtyMinuteHistory</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitHourHistory</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitMicroTermMath</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitShortTermMath</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitSwingTermMath</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">commitLongTermMath</span><span class="hl-2">,</span><br/><span class="hl-2">} </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/signals&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">messages</span><span class="hl-2"> = [];</span><br/><br/><span class="hl-0">// Order book analysis</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitBookDataReport</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);</span><br/><br/><span class="hl-0">// Candle histories</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitOneMinuteHistory</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);      </span><span class="hl-0">// Last 15 candles</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitFifteenMinuteHistory</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);  </span><span class="hl-0">// Last 8 candles</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitThirtyMinuteHistory</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);   </span><span class="hl-0">// Last 6 candles</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitHourHistory</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);           </span><span class="hl-0">// Last 6 candles</span><br/><br/><span class="hl-0">// Technical indicators</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitMicroTermMath</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);   </span><span class="hl-0">// 1m indicators</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitShortTermMath</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);   </span><span class="hl-0">// 15m indicators</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitSwingTermMath</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);   </span><span class="hl-0">// 30m indicators</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitLongTermMath</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);    </span><span class="hl-0">// 1h indicators</span><br/><br/><span class="hl-0">// Send to LLM</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">signal</span><span class="hl-2"> = </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">llm</span><span class="hl-2">(</span><span class="hl-6">messages</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="complete-llm-strategy-example" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Complete LLM Strategy Example<a href="#complete-llm-strategy-example" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">v4</span><span class="hl-2"> </span><span class="hl-5">as</span><span class="hl-2"> </span><span class="hl-6">uuid</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;uuid&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">addStrategy</span><span class="hl-2">, </span><span class="hl-6">dumpSignal</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;backtest-kit&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">commitHistorySetup</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/signals&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">json</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;./utils/json.mjs&#39;</span><span class="hl-2">;  </span><span class="hl-0">// Your LLM wrapper</span><br/><br/><span class="hl-1">addStrategy</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">strategyName:</span><span class="hl-2"> </span><span class="hl-4">&#39;llm-strategy&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">interval:</span><span class="hl-2"> </span><span class="hl-4">&#39;5m&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">riskName:</span><span class="hl-2"> </span><span class="hl-4">&#39;demo&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-1">getSignal</span><span class="hl-6">:</span><span class="hl-2"> </span><span class="hl-3">async</span><span class="hl-2"> (</span><span class="hl-6">symbol</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">messages</span><span class="hl-2"> = [</span><br/><span class="hl-2">      {</span><br/><span class="hl-2">        </span><span class="hl-6">role:</span><span class="hl-2"> </span><span class="hl-4">&#39;system&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">        </span><span class="hl-6">content:</span><span class="hl-2"> </span><span class="hl-4">&#39;You are a trading bot. Analyze technical indicators and generate signals.&#39;</span><br/><span class="hl-2">      }</span><br/><span class="hl-2">    ];</span><br/><br/><span class="hl-2">    </span><span class="hl-0">// Inject all technical analysis</span><br/><span class="hl-2">    </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitHistorySetup</span><span class="hl-2">(</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);</span><br/><br/><span class="hl-2">    </span><span class="hl-0">// Add trading instructions</span><br/><span class="hl-2">    </span><span class="hl-6">messages</span><span class="hl-2">.</span><span class="hl-1">push</span><span class="hl-2">({</span><br/><span class="hl-2">      </span><span class="hl-6">role:</span><span class="hl-2"> </span><span class="hl-4">&#39;user&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">      </span><span class="hl-6">content:</span><span class="hl-2"> [</span><br/><span class="hl-2">        </span><span class="hl-4">&#39;Based on the technical analysis above, generate a trading signal.&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">        </span><span class="hl-4">&#39;Use position: &quot;wait&quot; if signals are unclear or contradictory.&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">        </span><span class="hl-4">&#39;Return JSON: { position: &quot;long&quot;|&quot;short&quot;|&quot;wait&quot;, priceTakeProfit: number, priceStopLoss: number }&#39;</span><br/><span class="hl-2">      ].</span><span class="hl-1">join</span><span class="hl-2">(</span><span class="hl-4">&#39;</span><span class="hl-14">\n</span><span class="hl-4">&#39;</span><span class="hl-2">)</span><br/><span class="hl-2">    });</span><br/><br/><span class="hl-2">    </span><span class="hl-0">// Generate signal via LLM</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">resultId</span><span class="hl-2"> = </span><span class="hl-1">uuid</span><span class="hl-2">();</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">signal</span><span class="hl-2"> = </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">json</span><span class="hl-2">(</span><span class="hl-6">messages</span><span class="hl-2">);</span><br/><br/><span class="hl-2">    </span><span class="hl-0">// Save conversation for debugging</span><br/><span class="hl-2">    </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">dumpSignal</span><span class="hl-2">(</span><span class="hl-6">resultId</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">, </span><span class="hl-6">signal</span><span class="hl-2">);</span><br/><br/><span class="hl-2">    </span><span class="hl-5">return</span><span class="hl-2"> { ...</span><span class="hl-6">signal</span><span class="hl-2">, </span><span class="hl-6">id:</span><span class="hl-2"> </span><span class="hl-6">resultId</span><span class="hl-2"> };</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="custom-logger" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Custom Logger<a href="#custom-logger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>By default, signals uses a no-op logger. To enable logging:</p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">setLogger</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/signals&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-1">setLogger</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">log:</span><span class="hl-2"> </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-6">log</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">debug:</span><span class="hl-2"> </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-6">debug</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">info:</span><span class="hl-2"> </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-6">info</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">warn:</span><span class="hl-2"> </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-6">warn</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="📊-generated-report-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📊 Generated Report Structure<a href="#📊-generated-report-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="order-book-report" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Order Book Report<a href="#order-book-report" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown">## Order Book Analysis
+
+**Symbol:** BTCUSDT
+**Best Bid:** 50000.00 | **Best Ask:** 50001.00
+**Mid Price:** 50000.50 | **Spread:** 1.00
+**Depth Imbalance:** +5.2% (buy pressure)
+
+### Top 20 Levels (Bids)
+| Price | Volume | % Total |
+|-------|--------|---------|
+| 50000.00 | 1.234 | 15.5% |
+...
+
+### Top 20 Levels (Asks)
+| Price | Volume | % Total |
+|-------|--------|---------|
+| 50001.00 | 0.987 | 12.3% |
+...
+</code><button type="button">Copy</button></pre>
+
+<a id="candle-history-report" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Candle History Report<a href="#candle-history-report" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown">## 1-Minute Candle History (Last 15)
+
+| Timestamp | Open | High | Low | Close | Volume | Volatility | Body Size |
+|-----------|------|------|-----|-------|--------|------------|-----------|
+| 2025-01-13 10:00 | 50000 | 50050 | 49990 | 50020 | 123.45 | 0.12% | 0.04% |
+...
+</code><button type="button">Copy</button></pre>
+
+<a id="technical-indicators-report" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Technical Indicators Report<a href="#technical-indicators-report" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="markdown">## MicroTerm Analysis (1-Minute Timeframe)
+
+| Time | Price | RSI(9) | RSI(14) | MACD | Signal | Histogram | Stoch %K | Stoch %D | ADX | +DI | -DI | BB Upper | BB Middle | BB Lower | ATR(5) | ATR(9) | CCI(9) | Volume | Vol Trend | Momentum | ROC | Support | Resistance | Squeeze | Pressure |
+|------|-------|--------|---------|------|--------|-----------|----------|----------|-----|-----|-----|----------|-----------|----------|--------|--------|--------|--------|-----------|----------|-----|---------|------------|---------|----------|
+| 10:00 | 50020 | 55.2 | 52.8 | 12.5 | 8.3 | 4.2 | 45.6 | 42.1 | 28.5 | 22.3 | 18.7 | 50100 | 50000 | 49900 | 15.2 | 18.9 | 45.7 | 123.45 | increasing | 0.8% | 1.2% | 49950 | 50100 | 0.85 | 15.2 |
+...
+
+**Data Sources:**
+- RSI periods: 9, 14
+- MACD: Fast=8, Slow=21, Signal=5
+- Stochastic: K=3, D=3, Smooth=3 (primary), K=5, D=3, Smooth=3 (secondary)
+...
+</code><button type="button">Copy</button></pre>
+
+<a id="🔄-caching-strategy" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🔄 Caching Strategy<a href="#🔄-caching-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Reports are cached to avoid redundant calculations:</p>
+<table>
+<thead>
+<tr>
+<th>Timeframe</th>
+<th>Cache Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1-minute data</td>
+<td>1 minute</td>
+</tr>
+<tr>
+<td>15-minute data</td>
+<td>5 minutes</td>
+</tr>
+<tr>
+<td>30-minute data</td>
+<td>15 minutes</td>
+</tr>
+<tr>
+<td>1-hour data</td>
+<td>30 minutes</td>
+</tr>
+<tr>
+<td>Order book</td>
+<td>5 minutes</td>
+</tr>
+</tbody>
+</table>
+<p>Cache is automatically cleared on errors.</p>
+<a id="🧮-key-algorithms" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🧮 Key Algorithms<a href="#🧮-key-algorithms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="supportresistance-detection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Support/Resistance Detection<a href="#supportresistance-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>MicroTerm/SwingTerm</strong>: Looks back N candles for significant highs/lows (±0.3% threshold)</li>
+<li><strong>LongTerm</strong>: 4-candle pivot point method</li>
+</ul>
+<a id="fibonacci-retracement" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Fibonacci Retracement<a href="#fibonacci-retracement" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li>Calculates levels: 0%, 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%</li>
+<li>Extensions: 127.2%, 161.8%, 261.8%</li>
+<li>Finds nearest level to current price (1.5% tolerance)</li>
+</ul>
+<a id="volume-analysis" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Volume Analysis<a href="#volume-analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>MicroTerm</strong>: SMA(5) volume with increasing/decreasing/stable trend (±20% threshold)</li>
+<li><strong>LongTerm</strong>: 6-candle average comparison (±10% threshold)</li>
+</ul>
+<a id="order-book-imbalance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Order Book Imbalance<a href="#order-book-imbalance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Imbalance = (bid_volume - ask_volume) / (bid_volume + ask_volume)</p>
+<p>Positive = buy pressure, Negative = sell pressure</p>
+<a id="🎯-use-cases" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🎯 Use Cases<a href="#🎯-use-cases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="1-llm-powered-trading-strategies" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. LLM-Powered Trading Strategies<a href="#1-llm-powered-trading-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Inject technical analysis into your LLM's context for intelligent signal generation.</p>
+<a id="2-multi-timeframe-confirmation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Multi-Timeframe Confirmation<a href="#2-multi-timeframe-confirmation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Combine indicators from different timeframes to filter false signals.</p>
+<a id="3-market-context-for-ai-agents" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Market Context for AI Agents<a href="#3-market-context-for-ai-agents" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Provide comprehensive market state to AI agents making trading decisions.</p>
+<a id="4-debugging--analysis" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. Debugging &amp; Analysis<a href="#4-debugging--analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Save generated reports for post-analysis and strategy improvement.</p>
+<a id="💡-why-use-backtest-kitsignals" class="tsd-anchor"></a><h2 class="tsd-anchor-link">💡 Why Use @backtest-kit/signals?<a href="#💡-why-use-backtest-kitsignals" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Instead of manually calculating indicators and formatting data for your LLM:</p>
+<pre><code class="typescript"><span class="hl-0">// ❌ Without signals (manual work)</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">candles</span><span class="hl-2"> = </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">getCandles</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-4">&#39;1m&#39;</span><span class="hl-2">, </span><span class="hl-7">60</span><span class="hl-2">);</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">rsi</span><span class="hl-2"> = </span><span class="hl-1">calculateRSI</span><span class="hl-2">(</span><span class="hl-6">candles</span><span class="hl-2">, </span><span class="hl-7">14</span><span class="hl-2">);</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">macd</span><span class="hl-2"> = </span><span class="hl-1">calculateMACD</span><span class="hl-2">(</span><span class="hl-6">candles</span><span class="hl-2">, </span><span class="hl-7">12</span><span class="hl-2">, </span><span class="hl-7">26</span><span class="hl-2">, </span><span class="hl-7">9</span><span class="hl-2">);</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">bb</span><span class="hl-2"> = </span><span class="hl-1">calculateBollingerBands</span><span class="hl-2">(</span><span class="hl-6">candles</span><span class="hl-2">, </span><span class="hl-7">20</span><span class="hl-2">, </span><span class="hl-7">2</span><span class="hl-2">);</span><br/><span class="hl-0">// ... 40+ more indicators</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">report</span><span class="hl-2"> = </span><span class="hl-1">formatToMarkdown</span><span class="hl-2">(</span><span class="hl-6">rsi</span><span class="hl-2">, </span><span class="hl-6">macd</span><span class="hl-2">, </span><span class="hl-6">bb</span><span class="hl-2">, ...);</span><br/><span class="hl-6">messages</span><span class="hl-2">.</span><span class="hl-1">push</span><span class="hl-2">({ </span><span class="hl-6">role:</span><span class="hl-2"> </span><span class="hl-4">&#39;user&#39;</span><span class="hl-2">, </span><span class="hl-6">content:</span><span class="hl-2"> </span><span class="hl-6">report</span><span class="hl-2"> });</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="typescript"><span class="hl-0">// ✅ With signals (one line)</span><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">commitHistorySetup</span><span class="hl-2">(</span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">, </span><span class="hl-6">messages</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>⚡ Pre-computed, cached, optimized</li>
+<li>📊 50+ indicators across 4 timeframes</li>
+<li>🎨 Formatted markdown tables ready for LLM</li>
+<li>🔄 Synchronized with backtest timeline</li>
+<li>🛡️ Error handling and validation built-in</li>
+</ul>
+<a id="🤝-contribute" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🤝 Contribute<a href="#🤝-contribute" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Fork/PR on <a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a>.</p>
+<a id="📜-license" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📜 License<a href="#📜-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MIT © <a href="https://github.com/tripolskypetr">tripolskypetr</a></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#📊-backtest-kitsignals"><span>📊 @backtest-<wbr/>kit/signals</span></a><ul><li><a href="#✨-features"><span>✨ <wbr/>Features</span></a></li><li><a href="#📋-what-it-does"><span>📋 <wbr/>What <wbr/>It <wbr/>Does</span></a></li><li><a href="#🚀-installation"><span>🚀 <wbr/>Installation</span></a></li><li><a href="#📖-usage"><span>📖 <wbr/>Usage</span></a></li><li><ul><li><a href="#quick-start---all-in-one-report"><span>Quick <wbr/>Start -<wbr/> <wbr/>All-<wbr/>in-<wbr/>One <wbr/>Report</span></a></li><li><a href="#granular-control---individual-reports"><span>Granular <wbr/>Control -<wbr/> <wbr/>Individual <wbr/>Reports</span></a></li><li><a href="#complete-llm-strategy-example"><span>Complete LLM <wbr/>Strategy <wbr/>Example</span></a></li><li><a href="#custom-logger"><span>Custom <wbr/>Logger</span></a></li></ul></li><li><a href="#📊-generated-report-structure"><span>📊 <wbr/>Generated <wbr/>Report <wbr/>Structure</span></a></li><li><ul><li><a href="#order-book-report"><span>Order <wbr/>Book <wbr/>Report</span></a></li><li><a href="#candle-history-report"><span>Candle <wbr/>History <wbr/>Report</span></a></li><li><a href="#technical-indicators-report"><span>Technical <wbr/>Indicators <wbr/>Report</span></a></li></ul></li><li><a href="#🔄-caching-strategy"><span>🔄 <wbr/>Caching <wbr/>Strategy</span></a></li><li><a href="#🧮-key-algorithms"><span>🧮 <wbr/>Key <wbr/>Algorithms</span></a></li><li><ul><li><a href="#supportresistance-detection"><span>Support/<wbr/>Resistance <wbr/>Detection</span></a></li><li><a href="#fibonacci-retracement"><span>Fibonacci <wbr/>Retracement</span></a></li><li><a href="#volume-analysis"><span>Volume <wbr/>Analysis</span></a></li><li><a href="#order-book-imbalance"><span>Order <wbr/>Book <wbr/>Imbalance</span></a></li></ul></li><li><a href="#🎯-use-cases"><span>🎯 <wbr/>Use <wbr/>Cases</span></a></li><li><ul><li><a href="#1-llm-powered-trading-strategies"><span>1. LLM-<wbr/>Powered <wbr/>Trading <wbr/>Strategies</span></a></li><li><a href="#2-multi-timeframe-confirmation"><span>2. <wbr/>Multi-<wbr/>Timeframe <wbr/>Confirmation</span></a></li><li><a href="#3-market-context-for-ai-agents"><span>3. <wbr/>Market <wbr/>Context for AI <wbr/>Agents</span></a></li><li><a href="#4-debugging--analysis"><span>4. <wbr/>Debugging &amp; <wbr/>Analysis</span></a></li></ul></li><li><a href="#💡-why-use-backtest-kitsignals"><span>💡 <wbr/>Why <wbr/>Use @backtest-<wbr/>kit/signals?</span></a></li><li><a href="#🤝-contribute"><span>🤝 <wbr/>Contribute</span></a></li><li><a href="#📜-license"><span>📜 <wbr/>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

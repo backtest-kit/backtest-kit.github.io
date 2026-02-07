@@ -14,7 +14,7 @@
 <p><strong>Default Value</strong>: Not explicitly shown in provided code, but referenced in <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:178</a></p>
 <p><strong>Usage in Backtest</strong>:</p>
 <p>When a scheduled signal is detected, the system requests candles for the monitoring period:</p>
-<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = </span><span class="hl-4">bufferMinutes</span><span class="hl-1"> + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> + </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> + </span><span class="hl-6">1</span>
+<pre><code><span class="hl-6">candlesNeeded</span><span class="hl-2"> = </span><span class="hl-6">bufferMinutes</span><span class="hl-2"> + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-2"> + </span><span class="hl-6">minuteEstimatedTime</span><span class="hl-2"> + </span><span class="hl-7">1</span>
 </code><button>Copy</button></pre>
 
 <p>This ensures sufficient historical data is available to:</p>
@@ -64,7 +64,7 @@
 </table>
 <p><strong>Time Expiration Logic</strong>:</p>
 <p>Signals track elapsed time from <code>pendingAt</code> timestamp (when position opened, not when scheduled):</p>
-<pre><code><span class="hl-4">elapsedMinutes</span><span class="hl-1"> = (</span><span class="hl-4">currentTimestamp</span><span class="hl-1"> - </span><span class="hl-4">pendingAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span>
+<pre><code><span class="hl-6">elapsedMinutes</span><span class="hl-2"> = (</span><span class="hl-6">currentTimestamp</span><span class="hl-2"> - </span><span class="hl-6">pendingAt</span><span class="hl-2">) / </span><span class="hl-7">60000</span>
 </code><button>Copy</button></pre>
 
 <p>Closure occurs when:</p>
@@ -84,7 +84,7 @@
 <hr>
 <a id="tick_ttl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TICK_TTL<a href="#tick_ttl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Purpose</strong>: Sleep interval between tick iterations in live trading mode.</p>
 <p><strong>Definition</strong>: <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:14</a></p>
-<pre><code class="typescript"><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">TICK_TTL</span><span class="hl-1"> = </span><span class="hl-6">1</span><span class="hl-1"> * </span><span class="hl-6">60</span><span class="hl-1"> * </span><span class="hl-6">1_000</span><span class="hl-1"> + </span><span class="hl-6">1</span><span class="hl-1">;</span>
+<pre><code class="typescript"><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">TICK_TTL</span><span class="hl-2"> = </span><span class="hl-7">1</span><span class="hl-2"> * </span><span class="hl-7">60</span><span class="hl-2"> * </span><span class="hl-7">1_000</span><span class="hl-2"> + </span><span class="hl-7">1</span><span class="hl-2">;</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Value Breakdown</strong>:</p>
@@ -203,11 +203,11 @@
 <p><img src="../media/80_Timing_Parameters_3.svg" alt="Mermaid Diagram"></p>
 <p><strong>Formula for Candle Count</strong>:</p>
 <p>For <strong>scheduled signals</strong> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:176-178</a>:</p>
-<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">) + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1"> + </span><span class="hl-4">minuteEstimatedTime</span><span class="hl-1"> + </span><span class="hl-6">1</span>
+<pre><code><span class="hl-6">candlesNeeded</span><span class="hl-2"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-2"> - </span><span class="hl-7">1</span><span class="hl-2">) + </span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-2"> + </span><span class="hl-6">minuteEstimatedTime</span><span class="hl-2"> + </span><span class="hl-7">1</span>
 </code><button>Copy</button></pre>
 
 <p>For <strong>immediate signals</strong> <a href="">src/lib/services/logic/private/BacktestLogicPrivateService.ts:320-322</a>:</p>
-<pre><code><span class="hl-4">candlesNeeded</span><span class="hl-1"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1"> - </span><span class="hl-6">1</span><span class="hl-1">) + </span><span class="hl-4">minuteEstimatedTime</span>
+<pre><code><span class="hl-6">candlesNeeded</span><span class="hl-2"> = (</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-2"> - </span><span class="hl-7">1</span><span class="hl-2">) + </span><span class="hl-6">minuteEstimatedTime</span>
 </code><button>Copy</button></pre>
 
 <p><strong>Component Breakdown</strong>:</p>
@@ -266,7 +266,7 @@
 <p><img src="../media/80_Timing_Parameters_5.svg" alt="Mermaid Diagram"></p>
 <p><strong>Elapsed Time Tracking</strong>:</p>
 <p>Each tick recalculates time-based conditions:</p>
-<pre><code><span class="hl-4">elapsedSinceScheduled</span><span class="hl-1"> = (</span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">scheduledAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span><br/><span class="hl-4">elapsedSincePending</span><span class="hl-1"> = (</span><span class="hl-4">Date</span><span class="hl-1">.</span><span class="hl-0">now</span><span class="hl-1">() - </span><span class="hl-4">pendingAt</span><span class="hl-1">) / </span><span class="hl-6">60000</span>
+<pre><code><span class="hl-6">elapsedSinceScheduled</span><span class="hl-2"> = (</span><span class="hl-6">Date</span><span class="hl-2">.</span><span class="hl-1">now</span><span class="hl-2">() - </span><span class="hl-6">scheduledAt</span><span class="hl-2">) / </span><span class="hl-7">60000</span><br/><span class="hl-6">elapsedSincePending</span><span class="hl-2"> = (</span><span class="hl-6">Date</span><span class="hl-2">.</span><span class="hl-1">now</span><span class="hl-2">() - </span><span class="hl-6">pendingAt</span><span class="hl-2">) / </span><span class="hl-7">60000</span>
 </code><button>Copy</button></pre>
 
 <p><strong>Timeout Checks per Tick</strong>:</p>
@@ -325,11 +325,11 @@
 </ul>
 <hr>
 <a id="configuration-access" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Access<a href="#configuration-access" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All timing parameters are accessed via the global configuration object:</p>
-<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">GLOBAL_CONFIG</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;./config/params&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">scheduleTimeout</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">maxLifetime</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-1">;</span><br/><span class="hl-7">const</span><span class="hl-1"> </span><span class="hl-8">avgPriceCandleCount</span><span class="hl-1"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-1">.</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-1">;</span>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">GLOBAL_CONFIG</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&quot;./config/params&quot;</span><span class="hl-2">;</span><br/><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">scheduleTimeout</span><span class="hl-2"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-2">.</span><span class="hl-8">CC_SCHEDULE_AWAIT_MINUTES</span><span class="hl-2">;</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">maxLifetime</span><span class="hl-2"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-2">.</span><span class="hl-8">CC_MAX_SIGNAL_LIFETIME_MINUTES</span><span class="hl-2">;</span><br/><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">avgPriceCandleCount</span><span class="hl-2"> = </span><span class="hl-8">GLOBAL_CONFIG</span><span class="hl-2">.</span><span class="hl-8">CC_AVG_PRICE_CANDLES_COUNT</span><span class="hl-2">;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>To customize these values, use <code>setConfig()</code> before running backtests or live trading:</p>
-<pre><code class="typescript"><span class="hl-3">import</span><span class="hl-1"> { </span><span class="hl-4">setConfig</span><span class="hl-1"> } </span><span class="hl-3">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">setConfig</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-4">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">30</span><span class="hl-1">,        </span><span class="hl-5">// Wait up to 30 minutes for activation</span><br/><span class="hl-1">  </span><span class="hl-4">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-1"> </span><span class="hl-6">1440</span><span class="hl-1">, </span><span class="hl-5">// Max 24 hours per signal</span><br/><span class="hl-1">  </span><span class="hl-4">CC_AVG_PRICE_CANDLES_COUNT:</span><span class="hl-1"> </span><span class="hl-6">5</span><span class="hl-1">,        </span><span class="hl-5">// Use 5 candles for VWAP (default)</span><br/><span class="hl-1">});</span>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">setConfig</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&quot;backtest-kit&quot;</span><span class="hl-2">;</span><br/><br/><span class="hl-1">setConfig</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">CC_SCHEDULE_AWAIT_MINUTES:</span><span class="hl-2"> </span><span class="hl-7">30</span><span class="hl-2">,        </span><span class="hl-0">// Wait up to 30 minutes for activation</span><br/><span class="hl-2">  </span><span class="hl-6">CC_MAX_SIGNAL_LIFETIME_MINUTES:</span><span class="hl-2"> </span><span class="hl-7">1440</span><span class="hl-2">, </span><span class="hl-0">// Max 24 hours per signal</span><br/><span class="hl-2">  </span><span class="hl-6">CC_AVG_PRICE_CANDLES_COUNT:</span><span class="hl-2"> </span><span class="hl-7">5</span><span class="hl-2">,        </span><span class="hl-0">// Use 5 candles for VWAP (default)</span><br/><span class="hl-2">});</span>
 </code><button type="button">Copy</button></pre>
 
 <p><strong>Note</strong>: <code>TICK_TTL</code> is hardcoded in <a href="">src/lib/services/logic/private/LiveLogicPrivateService.ts:14</a> and not user-configurable. To modify tick frequency, you must edit the source code directly.</p>

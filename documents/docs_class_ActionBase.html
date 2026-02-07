@@ -1,0 +1,194 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/class/ActionBase | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_class_ActionBase.html">docs/class/ActionBase</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="actionbase" class="tsd-anchor"></a><h1 class="tsd-anchor-link">ActionBase<a href="#actionbase" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Implements <code>IPublicAction</code></p>
+<p>Base class for custom action handlers.</p>
+<p>Provides default implementations for all IPublicAction methods that log events.
+Extend this class to implement custom action handlers for:</p>
+<ul>
+<li>State management (Redux, Zustand, MobX)</li>
+<li>Real-time notifications (Telegram, Discord, Email)</li>
+<li>Event logging and monitoring</li>
+<li>Analytics and metrics collection</li>
+<li>Custom business logic triggers</li>
+</ul>
+<p>Key features:</p>
+<ul>
+<li>All methods have default implementations (no need to implement unused methods)</li>
+<li>Automatic logging of all events via backtest.loggerService</li>
+<li>Access to strategy context (strategyName, frameName, actionName)</li>
+<li>Implements full IPublicAction interface</li>
+</ul>
+<p>Lifecycle:</p>
+<ol>
+<li>Constructor called with (strategyName, frameName, actionName)</li>
+<li>init() called once for async initialization</li>
+<li>Event methods called as strategy executes (signal, breakeven, partialProfit, etc.)</li>
+<li>dispose() called once for cleanup</li>
+</ol>
+<p>Event flow:</p>
+<ul>
+<li>signal() - Called on every tick/candle (all modes)</li>
+<li>signalLive() - Called only in live mode</li>
+<li>signalBacktest() - Called only in backtest mode</li>
+<li>breakevenAvailable() - Called when SL moved to entry</li>
+<li>partialProfitAvailable() - Called on profit milestones (10%, 20%, etc.)</li>
+<li>partialLossAvailable() - Called on loss milestones (-10%, -20%, etc.)</li>
+<li>pingScheduled() - Called every minute during scheduled signal monitoring</li>
+<li>pingActive() - Called every minute during active pending signal monitoring</li>
+<li>riskRejection() - Called when signal rejected by risk management</li>
+</ul>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">(</span><span class="hl-6">strategyName</span><span class="hl-2">: </span><span class="hl-6">string</span><span class="hl-2">, </span><span class="hl-6">frameName</span><span class="hl-2">: </span><span class="hl-6">string</span><span class="hl-2">, </span><span class="hl-6">actionName</span><span class="hl-2">: </span><span class="hl-6">string</span><span class="hl-2">, </span><span class="hl-6">backtest</span><span class="hl-2">: </span><span class="hl-6">boolean</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="strategyname" class="tsd-anchor"></a><h3 class="tsd-anchor-link">strategyName<a href="#strategyname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">strategyName</span><span class="hl-2">: </span><span class="hl-6">string</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="framename" class="tsd-anchor"></a><h3 class="tsd-anchor-link">frameName<a href="#framename" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">frameName</span><span class="hl-2">: </span><span class="hl-6">string</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="actionname" class="tsd-anchor"></a><h3 class="tsd-anchor-link">actionName<a href="#actionname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">actionName</span><span class="hl-2">: </span><span class="hl-6">string</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">backtest<a href="#backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">backtest</span><span class="hl-2">: </span><span class="hl-6">boolean</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="methods" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="init" class="tsd-anchor"></a><h3 class="tsd-anchor-link">init<a href="#init" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">init</span><span class="hl-2">(</span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Initializes the action handler.</p>
+<p>Called once after construction. Override to perform async initialization:</p>
+<ul>
+<li>Establish database connections</li>
+<li>Initialize API clients</li>
+<li>Load configuration files</li>
+<li>Open file handles or network sockets</li>
+</ul>
+<p>Default implementation: Logs initialization event.</p>
+<a id="signal" class="tsd-anchor"></a><h3 class="tsd-anchor-link">signal<a href="#signal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">signal</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">IStrategyTickResult</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal events from all modes (live + backtest).</p>
+<p>Called every tick/candle when strategy is evaluated.
+Receives all signal states: idle, scheduled, opened, active, closed, cancelled.</p>
+<p>Triggered by: ActionCoreService.signal() via StrategyConnectionService
+Source: signalEmitter.next() in tick() and backtest() methods
+Frequency: Every tick/candle</p>
+<p>Default implementation: Logs signal event.</p>
+<a id="signallive" class="tsd-anchor"></a><h3 class="tsd-anchor-link">signalLive<a href="#signallive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">signalLive</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">IStrategyTickResult</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal events from live trading only.</p>
+<p>Called every tick in live mode.
+Use for actions that should only run in production (e.g., sending real notifications).</p>
+<p>Triggered by: ActionCoreService.signalLive() via StrategyConnectionService
+Source: signalLiveEmitter.next() in tick() and backtest() methods when backtest=false
+Frequency: Every tick in live mode</p>
+<p>Default implementation: Logs live signal event.</p>
+<a id="signalbacktest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">signalBacktest<a href="#signalbacktest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">signalBacktest</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">IStrategyTickResult</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles signal events from backtest only.</p>
+<p>Called every candle in backtest mode.
+Use for actions specific to backtesting (e.g., collecting test metrics).</p>
+<p>Triggered by: ActionCoreService.signalBacktest() via StrategyConnectionService
+Source: signalBacktestEmitter.next() in tick() and backtest() methods when backtest=true
+Frequency: Every candle in backtest mode</p>
+<p>Default implementation: Logs backtest signal event.</p>
+<a id="breakevenavailable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">breakevenAvailable<a href="#breakevenavailable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">breakevenAvailable</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">BreakevenContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles breakeven events when stop-loss is moved to entry price.</p>
+<p>Called once per signal when price moves far enough to cover fees and slippage.
+Breakeven threshold: (CC_PERCENT_SLIPPAGE + CC_PERCENT_FEE) * 2 + CC_BREAKEVEN_THRESHOLD</p>
+<p>Triggered by: ActionCoreService.breakevenAvailable() via BreakevenConnectionService
+Source: breakevenSubject.next() in CREATE_COMMIT_BREAKEVEN_FN callback
+Frequency: Once per signal when threshold reached</p>
+<p>Default implementation: Logs breakeven event.</p>
+<a id="partialprofitavailable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">partialProfitAvailable<a href="#partialprofitavailable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">partialProfitAvailable</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">PartialProfitContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles partial profit level events (10%, 20%, 30%, etc).</p>
+<p>Called once per profit level per signal (deduplicated).
+Use to track profit milestones and adjust position management.</p>
+<p>Triggered by: ActionCoreService.partialProfitAvailable() via PartialConnectionService
+Source: partialProfitSubject.next() in CREATE_COMMIT_PROFIT_FN callback
+Frequency: Once per profit level per signal</p>
+<p>Default implementation: Logs partial profit event.</p>
+<a id="partiallossavailable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">partialLossAvailable<a href="#partiallossavailable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">partialLossAvailable</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">PartialLossContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles partial loss level events (-10%, -20%, -30%, etc).</p>
+<p>Called once per loss level per signal (deduplicated).
+Use to track loss milestones and implement risk management actions.</p>
+<p>Triggered by: ActionCoreService.partialLossAvailable() via PartialConnectionService
+Source: partialLossSubject.next() in CREATE_COMMIT_LOSS_FN callback
+Frequency: Once per loss level per signal</p>
+<p>Default implementation: Logs partial loss event.</p>
+<a id="pingscheduled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">pingScheduled<a href="#pingscheduled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">pingScheduled</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">SchedulePingContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles scheduled ping events during scheduled signal monitoring.</p>
+<p>Called every minute while a scheduled signal is waiting for activation.
+Use to monitor pending signals and track wait time.</p>
+<p>Triggered by: ActionCoreService.pingScheduled() via StrategyConnectionService
+Source: schedulePingSubject.next() in CREATE_COMMIT_SCHEDULE_PING_FN callback
+Frequency: Every minute while scheduled signal is waiting</p>
+<p>Default implementation: Logs scheduled ping event.</p>
+<a id="pingactive" class="tsd-anchor"></a><h3 class="tsd-anchor-link">pingActive<a href="#pingactive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">pingActive</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">ActivePingContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles active ping events during active pending signal monitoring.</p>
+<p>Called every minute while a pending signal is active (position open).
+Use to monitor active positions and track lifecycle.</p>
+<p>Triggered by: ActionCoreService.pingActive() via StrategyConnectionService
+Source: activePingSubject.next() in CREATE_COMMIT_ACTIVE_PING_FN callback
+Frequency: Every minute while pending signal is active</p>
+<p>Default implementation: Logs active ping event.</p>
+<a id="riskrejection" class="tsd-anchor"></a><h3 class="tsd-anchor-link">riskRejection<a href="#riskrejection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">riskRejection</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">: </span><span class="hl-6">RiskContract</span><span class="hl-2">, </span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Handles risk rejection events when signals fail risk validation.</p>
+<p>Called only when signal is rejected (not emitted for allowed signals).
+Use to track rejected signals and analyze risk management effectiveness.</p>
+<p>Triggered by: ActionCoreService.riskRejection() via RiskConnectionService
+Source: riskSubject.next() in CREATE_COMMIT_REJECTION_FN callback
+Frequency: Only when signal fails risk validation</p>
+<p>Default implementation: Logs risk rejection event.</p>
+<a id="dispose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dispose<a href="#dispose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">dispose</span><span class="hl-2">(</span><span class="hl-6">source</span><span class="hl-2">?: </span><span class="hl-6">string</span><span class="hl-2">): </span><span class="hl-3">void</span><span class="hl-2"> | </span><span class="hl-11">Promise</span><span class="hl-2">&lt;</span><span class="hl-3">void</span><span class="hl-2">&gt;;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Cleans up resources and subscriptions when action handler is disposed.</p>
+<p>Called once when strategy execution ends.
+Guaranteed to run exactly once via singleshot pattern.</p>
+<p>Override to:</p>
+<ul>
+<li>Close database connections</li>
+<li>Disconnect from external services</li>
+<li>Flush buffers</li>
+<li>Save state to disk</li>
+<li>Unsubscribe from observables</li>
+</ul>
+<p>Default implementation: Logs dispose event.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#actionbase"><span>Action<wbr/>Base</span></a><ul><li><a href="#constructor"><span>Constructor</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#strategyname"><span>strategy<wbr/>Name</span></a></li><li><a href="#framename"><span>frame<wbr/>Name</span></a></li><li><a href="#actionname"><span>action<wbr/>Name</span></a></li><li><a href="#backtest"><span>backtest</span></a></li></ul></li><li><a href="#methods"><span>Methods</span></a></li><li><ul><li><a href="#init"><span>init</span></a></li><li><a href="#signal"><span>signal</span></a></li><li><a href="#signallive"><span>signal<wbr/>Live</span></a></li><li><a href="#signalbacktest"><span>signal<wbr/>Backtest</span></a></li><li><a href="#breakevenavailable"><span>breakeven<wbr/>Available</span></a></li><li><a href="#partialprofitavailable"><span>partial<wbr/>Profit<wbr/>Available</span></a></li><li><a href="#partiallossavailable"><span>partial<wbr/>Loss<wbr/>Available</span></a></li><li><a href="#pingscheduled"><span>ping<wbr/>Scheduled</span></a></li><li><a href="#pingactive"><span>ping<wbr/>Active</span></a></li><li><a href="#riskrejection"><span>risk<wbr/>Rejection</span></a></li><li><a href="#dispose"><span>dispose</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
