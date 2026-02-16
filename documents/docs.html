@@ -107,6 +107,8 @@
 </ul>
 <a id="enums" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Enums<a href="#enums" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Functions<a href="#functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
 <li><a href="docs_function_getBacktestTimeframe.html">getBacktestTimeframe</a></li>
+<li><a href="docs_function_checkCandles.html">checkCandles</a></li>
+<li><a href="docs_function_warmCandles.html">warmCandles</a></li>
 <li><a href="docs_function_validate.html">validate</a></li>
 <li><a href="docs_function_getStrategySchema.html">getStrategySchema</a></li>
 <li><a href="docs_function_getExchangeSchema.html">getExchangeSchema</a></li>
@@ -200,7 +202,6 @@
 <li><a href="docs_function_getNextCandles.html">getNextCandles</a></li>
 </ul>
 <a id="interfaces" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Interfaces<a href="#interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
-<li><a href="docs_interface_ValidateArgs.html">ValidateArgs</a></li>
 <li><a href="docs_interface_IExecutionContext.html">IExecutionContext</a></li>
 <li><a href="docs_interface_ILogger.html">ILogger</a></li>
 <li><a href="docs_interface_ICandleData.html">ICandleData</a></li>
@@ -210,6 +211,9 @@
 <li><a href="docs_interface_IExchangeCallbacks.html">IExchangeCallbacks</a></li>
 <li><a href="docs_interface_IExchangeSchema.html">IExchangeSchema</a></li>
 <li><a href="docs_interface_IExchange.html">IExchange</a></li>
+<li><a href="docs_interface_ICacheCandlesParams.html">ICacheCandlesParams</a></li>
+<li><a href="docs_interface_ICheckCandlesParams.html">ICheckCandlesParams</a></li>
+<li><a href="docs_interface_ValidateArgs.html">ValidateArgs</a></li>
 <li><a href="docs_interface_IFrameParams.html">IFrameParams</a></li>
 <li><a href="docs_interface_IFrameCallbacks.html">IFrameCallbacks</a></li>
 <li><a href="docs_interface_IFrameSchema.html">IFrameSchema</a></li>
@@ -229,6 +233,16 @@
 <li><a href="docs_interface_IPartial.html">IPartial</a></li>
 <li><a href="docs_interface_IBreakevenData.html">IBreakevenData</a></li>
 <li><a href="docs_interface_IBreakeven.html">IBreakeven</a></li>
+<li><a href="docs_interface_BreakevenContract.html">BreakevenContract</a></li>
+<li><a href="docs_interface_PartialProfitContract.html">PartialProfitContract</a></li>
+<li><a href="docs_interface_PartialLossContract.html">PartialLossContract</a></li>
+<li><a href="docs_interface_SchedulePingContract.html">SchedulePingContract</a></li>
+<li><a href="docs_interface_ActivePingContract.html">ActivePingContract</a></li>
+<li><a href="docs_interface_RiskContract.html">RiskContract</a></li>
+<li><a href="docs_interface_IActionParams.html">IActionParams</a></li>
+<li><a href="docs_interface_IActionCallbacks.html">IActionCallbacks</a></li>
+<li><a href="docs_interface_IActionSchema.html">IActionSchema</a></li>
+<li><a href="docs_interface_IAction.html">IAction</a></li>
 <li><a href="docs_interface_SignalCommitBase.html">SignalCommitBase</a></li>
 <li><a href="docs_interface_CancelScheduledCommit.html">CancelScheduledCommit</a></li>
 <li><a href="docs_interface_ClosePendingCommit.html">ClosePendingCommit</a></li>
@@ -267,17 +281,6 @@
 <li><a href="docs_interface_IStrategyTickResultClosed.html">IStrategyTickResultClosed</a></li>
 <li><a href="docs_interface_IStrategyTickResultCancelled.html">IStrategyTickResultCancelled</a></li>
 <li><a href="docs_interface_IStrategy.html">IStrategy</a></li>
-<li><a href="docs_interface_BreakevenContract.html">BreakevenContract</a></li>
-<li><a href="docs_interface_PartialProfitContract.html">PartialProfitContract</a></li>
-<li><a href="docs_interface_PartialLossContract.html">PartialLossContract</a></li>
-<li><a href="docs_interface_SchedulePingContract.html">SchedulePingContract</a></li>
-<li><a href="docs_interface_ActivePingContract.html">ActivePingContract</a></li>
-<li><a href="docs_interface_RiskContract.html">RiskContract</a></li>
-<li><a href="docs_interface_IActionParams.html">IActionParams</a></li>
-<li><a href="docs_interface_IActionCallbacks.html">IActionCallbacks</a></li>
-<li><a href="docs_interface_IActionSchema.html">IActionSchema</a></li>
-<li><a href="docs_interface_IPublicAction.html">IPublicAction</a></li>
-<li><a href="docs_interface_IAction.html">IAction</a></li>
 <li><a href="docs_interface_BacktestStatisticsModel.html">BacktestStatisticsModel</a></li>
 <li><a href="docs_interface_WalkerCompleteContract.html">WalkerCompleteContract</a></li>
 <li><a href="docs_interface_IWalkerSchema.html">IWalkerSchema</a></li>
@@ -355,16 +358,19 @@
 <li><a href="docs_interface_IParseArgsResult.html">IParseArgsResult</a></li>
 </ul>
 <a id="types" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Types<a href="#types" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
-<li><a href="docs_type_Enum.html">Enum</a></li>
-<li><a href="docs_type_Args.html">Args</a></li>
 <li><a href="docs_type_TExecutionContextService.html">TExecutionContextService</a></li>
 <li><a href="docs_type_CandleInterval.html">CandleInterval</a></li>
 <li><a href="docs_type_ExchangeName.html">ExchangeName</a></li>
+<li><a href="docs_type_Enum.html">Enum</a></li>
+<li><a href="docs_type_Args.html">Args</a></li>
 <li><a href="docs_type_FrameInterval.html">FrameInterval</a></li>
 <li><a href="docs_type_FrameName.html">FrameName</a></li>
 <li><a href="docs_type_RiskRejection.html">RiskRejection</a></li>
 <li><a href="docs_type_RiskName.html">RiskName</a></li>
 <li><a href="docs_type_PartialLevel.html">PartialLevel</a></li>
+<li><a href="docs_type_TActionCtor.html">TActionCtor</a></li>
+<li><a href="docs_type_IPublicAction.html">IPublicAction</a></li>
+<li><a href="docs_type_ActionName.html">ActionName</a></li>
 <li><a href="docs_type_StrategyCommitContract.html">StrategyCommitContract</a></li>
 <li><a href="docs_type_SignalInterval.html">SignalInterval</a></li>
 <li><a href="docs_type_IStorageSignalRow.html">IStorageSignalRow</a></li>
@@ -374,8 +380,6 @@
 <li><a href="docs_type_IStrategyTickResult.html">IStrategyTickResult</a></li>
 <li><a href="docs_type_IStrategyBacktestResult.html">IStrategyBacktestResult</a></li>
 <li><a href="docs_type_StrategyName.html">StrategyName</a></li>
-<li><a href="docs_type_TActionCtor.html">TActionCtor</a></li>
-<li><a href="docs_type_ActionName.html">ActionName</a></li>
 <li><a href="docs_type_WalkerMetric.html">WalkerMetric</a></li>
 <li><a href="docs_type_WalkerName.html">WalkerName</a></li>
 <li><a href="docs_type_ISizingCalculateParams.html">ISizingCalculateParams</a></li>
