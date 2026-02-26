@@ -1,0 +1,549 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>cli/readme | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="cli_readme.html">cli/readme</a></li></ul></div><div class="tsd-panel tsd-typography"><img src="https://github.com/tripolskypetr/backtest-kit/raw/refs/heads/master/assets/square_compasses.svg" height="45px" align="right">
+<a id="📟-backtest-kitcli" class="tsd-anchor"></a><h1 class="tsd-anchor-link">📟 @backtest-kit/cli<a href="#📟-backtest-kitcli" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
+<p>Zero-boilerplate CLI for launching backtests, paper trading, and live trading. Run any backtest-kit strategy from the command line — no setup code required.</p>
+</blockquote>
+<p><img src="https://raw.githubusercontent.com/tripolskypetr/backtest-kit/HEAD/assets/screenshots/screenshot8.png" alt="screenshot"></p>
+<p><a href="https://deepwiki.com/tripolskypetr/backtest-kit"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+<a href="https://npmjs.org/package/@backtest-kit/cli"><img src="https://img.shields.io/npm/v/@backtest-kit/cli.svg?style=flat-square" alt="npm"></a>
+<a href=""><img src="https://img.shields.io/badge/TypeScript-5.0+-blue" alt="TypeScript"></a></p>
+<p>Point the CLI at your strategy file, choose a mode, and it handles exchange connectivity, candle caching, UI dashboard, and Telegram notifications for you.</p>
+<p>📚 <strong><a href="https://backtest-kit.github.io/documents/example_02_first_backtest.html">Backtest Kit Docs</a></strong> | 🌟 <strong><a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a></strong></p>
+<a id="✨-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">✨ Features<a href="#✨-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li>🚀 <strong>Zero Config</strong>: Run <code>npx @backtest-kit/cli --backtest ./strategy.mjs</code> — no boilerplate needed</li>
+<li>🔄 <strong>Three Modes</strong>: Backtest on historical data, paper trade on live prices, or deploy live bots</li>
+<li>💾 <strong>Auto Candle Cache</strong>: Warms OHLCV cache for all required intervals before backtest starts</li>
+<li>🌐 <strong>Web Dashboard</strong>: Launch <code>@backtest-kit/ui</code> with a single <code>--ui</code> flag</li>
+<li>📬 <strong>Telegram Alerts</strong>: Send formatted trade notifications with charts via <code>--telegram</code></li>
+<li>🔌 <strong>Default Binance</strong>: CCXT Binance exchange schema registered automatically when none is provided</li>
+<li>🧩 <strong>Module Hooks</strong>: Drop a <code>modules/live.module.mjs</code> file to handle every position lifecycle event</li>
+<li>🔑 <strong>Pluggable Logger</strong>: Override the built-in logger with <code>setLogger()</code> from your strategy module</li>
+<li>🛑 <strong>Graceful Shutdown</strong>: SIGINT stops the active run and cleans up all subscriptions safely</li>
+</ul>
+<a id="📋-what-it-does" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 What It Does<a href="#📋-what-it-does" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>@backtest-kit/cli</code> wraps the <code>backtest-kit</code> engine and resolves all scaffolding automatically:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Command Line Args</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Backtest</strong></td>
+<td><code>--backtest</code></td>
+<td>Run strategy on historical candle data</td>
+</tr>
+<tr>
+<td><strong>Paper</strong></td>
+<td><code>--paper</code></td>
+<td>Live prices, no real orders</td>
+</tr>
+<tr>
+<td><strong>Live</strong></td>
+<td><code>--live</code></td>
+<td>Real trades via exchange API</td>
+</tr>
+<tr>
+<td><strong>UI Dashboard</strong></td>
+<td><code>--ui</code></td>
+<td>Web dashboard at <code>http://localhost:60050</code></td>
+</tr>
+<tr>
+<td><strong>Telegram</strong></td>
+<td><code>--telegram</code></td>
+<td>Trade notifications with price charts</td>
+</tr>
+</tbody>
+</table>
+<a id="🚀-installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 Installation<a href="#🚀-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Add <code>@backtest-kit/cli</code> to your project and wire it up in <code>package.json</code> scripts:</p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">install</span><span class="hl-2"> </span><span class="hl-4">@backtest-kit/cli</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./src/index.mjs&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;paper&quot;</span><span class="hl-2">:    </span><span class="hl-4">&quot;npx @backtest-kit/cli --paper    ./src/index.mjs&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;start&quot;</span><span class="hl-2">:    </span><span class="hl-4">&quot;npx @backtest-kit/cli --live     ./src/index.mjs&quot;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;dependencies&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;@backtest-kit/cli&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest-kit&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;ccxt&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Or run once without installing:</p>
+<pre><code class="bash"><span class="hl-1">npx</span><span class="hl-2"> </span><span class="hl-4">@backtest-kit/cli</span><span class="hl-2"> </span><span class="hl-3">--backtest</span><span class="hl-2"> </span><span class="hl-4">./src/index.mjs</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="📖-quick-start" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📖 Quick Start<a href="#📖-quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Create your strategy entry point (<code>src/index.mjs</code>). The file registers schemas via <code>backtest-kit</code> — <code>@backtest-kit/cli</code> is only the runner:</p>
+<pre><code class="javascript"><span class="hl-0">// src/index.mjs</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">addStrategySchema</span><span class="hl-2">, </span><span class="hl-6">addExchangeSchema</span><span class="hl-2">, </span><span class="hl-6">addFrameSchema</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;backtest-kit&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> </span><span class="hl-6">ccxt</span><span class="hl-2"> </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;ccxt&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-0">// Register exchange</span><br/><span class="hl-1">addExchangeSchema</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">exchangeName:</span><span class="hl-2"> </span><span class="hl-4">&#39;binance&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-1">getCandles</span><span class="hl-6">:</span><span class="hl-2"> </span><span class="hl-3">async</span><span class="hl-2"> (</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">interval</span><span class="hl-2">, </span><span class="hl-6">since</span><span class="hl-2">, </span><span class="hl-6">limit</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">exchange</span><span class="hl-2"> = </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-6">ccxt</span><span class="hl-2">.</span><span class="hl-1">binance</span><span class="hl-2">();</span><br/><span class="hl-2">    </span><span class="hl-3">const</span><span class="hl-2"> </span><span class="hl-8">ohlcv</span><span class="hl-2"> = </span><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-6">exchange</span><span class="hl-2">.</span><span class="hl-1">fetchOHLCV</span><span class="hl-2">(</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">interval</span><span class="hl-2">, </span><span class="hl-6">since</span><span class="hl-2">.</span><span class="hl-1">getTime</span><span class="hl-2">(), </span><span class="hl-6">limit</span><span class="hl-2">);</span><br/><span class="hl-2">    </span><span class="hl-5">return</span><span class="hl-2"> </span><span class="hl-6">ohlcv</span><span class="hl-2">.</span><span class="hl-1">map</span><span class="hl-2">(([</span><span class="hl-6">timestamp</span><span class="hl-2">, </span><span class="hl-6">open</span><span class="hl-2">, </span><span class="hl-6">high</span><span class="hl-2">, </span><span class="hl-6">low</span><span class="hl-2">, </span><span class="hl-6">close</span><span class="hl-2">, </span><span class="hl-6">volume</span><span class="hl-2">]) </span><span class="hl-3">=&gt;</span><span class="hl-2"> ({</span><br/><span class="hl-2">      </span><span class="hl-6">timestamp</span><span class="hl-2">, </span><span class="hl-6">open</span><span class="hl-2">, </span><span class="hl-6">high</span><span class="hl-2">, </span><span class="hl-6">low</span><span class="hl-2">, </span><span class="hl-6">close</span><span class="hl-2">, </span><span class="hl-6">volume</span><span class="hl-2">,</span><br/><span class="hl-2">    }));</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-1">formatPrice</span><span class="hl-6">:</span><span class="hl-2"> (</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">price</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-6">price</span><span class="hl-2">.</span><span class="hl-1">toFixed</span><span class="hl-2">(</span><span class="hl-7">2</span><span class="hl-2">),</span><br/><span class="hl-2">  </span><span class="hl-1">formatQuantity</span><span class="hl-6">:</span><span class="hl-2"> (</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">quantity</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> </span><span class="hl-6">quantity</span><span class="hl-2">.</span><span class="hl-1">toFixed</span><span class="hl-2">(</span><span class="hl-7">8</span><span class="hl-2">),</span><br/><span class="hl-2">});</span><br/><br/><span class="hl-0">// Register frame (backtest only)</span><br/><span class="hl-1">addFrameSchema</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">frameName:</span><span class="hl-2"> </span><span class="hl-4">&#39;feb-2024&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">interval:</span><span class="hl-2"> </span><span class="hl-4">&#39;1m&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">startDate:</span><span class="hl-2"> </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-1">Date</span><span class="hl-2">(</span><span class="hl-4">&#39;2024-02-01&#39;</span><span class="hl-2">),</span><br/><span class="hl-2">  </span><span class="hl-6">endDate:</span><span class="hl-2"> </span><span class="hl-3">new</span><span class="hl-2"> </span><span class="hl-1">Date</span><span class="hl-2">(</span><span class="hl-4">&#39;2024-02-29&#39;</span><span class="hl-2">),</span><br/><span class="hl-2">});</span><br/><br/><span class="hl-0">// Register strategy</span><br/><span class="hl-1">addStrategySchema</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-6">strategyName:</span><span class="hl-2"> </span><span class="hl-4">&#39;my-strategy&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">interval:</span><span class="hl-2"> </span><span class="hl-4">&#39;15m&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-1">getSignal</span><span class="hl-6">:</span><span class="hl-2"> </span><span class="hl-3">async</span><span class="hl-2"> (</span><span class="hl-6">symbol</span><span class="hl-2">) </span><span class="hl-3">=&gt;</span><span class="hl-2"> {</span><br/><span class="hl-2">    </span><span class="hl-0">// return signal or null</span><br/><span class="hl-2">    </span><span class="hl-5">return</span><span class="hl-2"> </span><span class="hl-3">null</span><span class="hl-2">;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Run a backtest:</p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest</span><span class="hl-2"> </span><span class="hl-3">--</span><span class="hl-2"> </span><span class="hl-3">--symbol</span><span class="hl-2"> </span><span class="hl-4">BTCUSDT</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Run with UI dashboard and Telegram:</p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest</span><span class="hl-2"> </span><span class="hl-3">--</span><span class="hl-2"> </span><span class="hl-3">--symbol</span><span class="hl-2"> </span><span class="hl-4">BTCUSDT</span><span class="hl-2"> </span><span class="hl-3">--ui</span><span class="hl-2"> </span><span class="hl-3">--telegram</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Run live trading:</p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">start</span><span class="hl-2"> </span><span class="hl-3">--</span><span class="hl-2"> </span><span class="hl-3">--symbol</span><span class="hl-2"> </span><span class="hl-4">BTCUSDT</span><span class="hl-2"> </span><span class="hl-3">--ui</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🎛️-cli-flags" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🎛️ CLI Flags<a href="#🎛️-cli-flags" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Command Line Args</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--backtest</code></td>
+<td>boolean</td>
+<td>Run historical backtest (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--paper</code></td>
+<td>boolean</td>
+<td>Paper trading (live prices, no orders) (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--live</code></td>
+<td>boolean</td>
+<td>Run live trading (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--ui</code></td>
+<td>boolean</td>
+<td>Start web UI dashboard (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--telegram</code></td>
+<td>boolean</td>
+<td>Enable Telegram notifications (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--verbose</code></td>
+<td>boolean</td>
+<td>Log each candle fetch (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--noCache</code></td>
+<td>boolean</td>
+<td>Skip candle cache warming before backtest (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>--symbol</code></td>
+<td>string</td>
+<td>Trading pair (default: <code>&quot;BTCUSDT&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>--strategy</code></td>
+<td>string</td>
+<td>Strategy name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>--exchange</code></td>
+<td>string</td>
+<td>Exchange name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>--frame</code></td>
+<td>string</td>
+<td>Backtest frame name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>--cacheInterval</code></td>
+<td>string</td>
+<td>Intervals to pre-cache before backtest (default: <code>&quot;1m, 15m, 30m, 4h&quot;</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Positional argument (required):</strong> path to your strategy entry point file (set once in <code>package.json</code> scripts).</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./src/index.mjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🏃-execution-modes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🏃 Execution Modes<a href="#🏃-execution-modes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest<a href="#backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Runs the strategy against historical candle data using a registered <code>FrameSchema</code>.</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest --symbol ETHUSDT --strategy my-strategy --exchange binance --frame feb-2024 --cacheInterval </span><span class="hl-13">\&quot;</span><span class="hl-4">1m, 15m, 1h, 4h</span><span class="hl-13">\&quot;</span><span class="hl-4"> ./src/index.mjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Before running, the CLI warms the candle cache for every interval in <code>--cacheInterval</code>. On the next run, cached data is used directly — no API calls needed. Pass <code>--noCache</code> to skip this step entirely.</p>
+<a id="paper-trading" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Paper Trading<a href="#paper-trading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Connects to the live exchange but does not place real orders. Identical code path to live — safe for strategy validation.</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;paper&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --paper --symbol BTCUSDT ./src/index.mjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">paper</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="live-trading" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading<a href="#live-trading" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Deploys a real trading bot. Requires exchange API keys configured in your <code>.env</code> or environment.</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;start&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --live --ui --telegram --symbol BTCUSDT ./src/index.mjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">start</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🗂️-monorepo-usage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🗂️ Monorepo Usage<a href="#🗂️-monorepo-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>@backtest-kit/cli</code> works out of the box in a monorepo where each strategy lives in its own subdirectory. When the CLI loads your entry point file, it automatically changes the working directory to the file's location — so all relative paths (<code>dump/</code>, <code>modules/</code>, <code>template/</code>) resolve inside that strategy's folder, not the project root.</p>
+<a id="how-it-works" class="tsd-anchor"></a><h3 class="tsd-anchor-link">How It Works<a href="#how-it-works" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Internally, <code>ResolveService</code> does the following before executing your entry point:</p>
+<pre><code><span class="hl-6">process</span><span class="hl-2">.</span><span class="hl-1">chdir</span><span class="hl-2">(</span><span class="hl-6">path</span><span class="hl-2">.</span><span class="hl-1">dirname</span><span class="hl-2">(</span><span class="hl-6">entryPoint</span><span class="hl-2">))  </span><span class="hl-0">// cwd → strategy directory</span><br/><span class="hl-6">dotenv</span><span class="hl-2">.</span><span class="hl-1">config</span><span class="hl-2">({ </span><span class="hl-6">path:</span><span class="hl-2"> </span><span class="hl-6">rootDir</span><span class="hl-2"> + </span><span class="hl-4">&#39;/.env&#39;</span><span class="hl-2"> })            </span><span class="hl-0">// load root .env first</span><br/><span class="hl-6">dotenv</span><span class="hl-2">.</span><span class="hl-1">config</span><span class="hl-2">({ </span><span class="hl-6">path:</span><span class="hl-2"> </span><span class="hl-6">strategyDir</span><span class="hl-2"> + </span><span class="hl-4">&#39;/.env&#39;</span><span class="hl-2">, </span><span class="hl-6">override:</span><span class="hl-2"> </span><span class="hl-3">true</span><span class="hl-2"> })  </span><span class="hl-0">// strategy .env overrides</span>
+</code><button>Copy</button></pre>
+
+<p>Everything that follows — candle cache warming, report generation, module loading, template resolution — uses the new cwd automatically.</p>
+<a id="project-structure" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Project Structure<a href="#project-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code><span class="hl-6">monorepo</span><span class="hl-2">/</span><br/><span class="hl-2">├── </span><span class="hl-6">package</span><span class="hl-2">.</span><span class="hl-6">json</span><span class="hl-2">              # </span><span class="hl-6">root</span><span class="hl-2"> </span><span class="hl-1">scripts</span><span class="hl-2"> (</span><span class="hl-6">one</span><span class="hl-2"> </span><span class="hl-6">per</span><span class="hl-2"> </span><span class="hl-6">strategy</span><span class="hl-2">)</span><br/><span class="hl-2">├── .</span><span class="hl-6">env</span><span class="hl-2">                      # </span><span class="hl-6">shared</span><span class="hl-2"> </span><span class="hl-8">API</span><span class="hl-2"> </span><span class="hl-1">keys</span><span class="hl-2"> (</span><span class="hl-6">exchange</span><span class="hl-2">, </span><span class="hl-6">Telegram</span><span class="hl-2">, </span><span class="hl-6">etc</span><span class="hl-2">.)</span><br/><span class="hl-2">└── </span><span class="hl-6">strategies</span><span class="hl-2">/</span><br/><span class="hl-2">    ├── </span><span class="hl-6">oct_2025</span><span class="hl-2">/</span><br/><span class="hl-2">    │   ├── </span><span class="hl-6">index</span><span class="hl-2">.</span><span class="hl-6">mjs</span><span class="hl-2">         # </span><span class="hl-6">entry</span><span class="hl-2"> </span><span class="hl-6">point</span><span class="hl-2"> — </span><span class="hl-6">registers</span><span class="hl-2"> </span><span class="hl-6">exchange</span><span class="hl-2">/</span><span class="hl-6">frame</span><span class="hl-2">/</span><span class="hl-6">strategy</span><span class="hl-2"> </span><span class="hl-6">schemas</span><br/><span class="hl-2">    │   ├── .</span><span class="hl-6">env</span><span class="hl-2">              # </span><span class="hl-6">overrides</span><span class="hl-2"> </span><span class="hl-6">root</span><span class="hl-2"> .</span><span class="hl-6">env</span><span class="hl-2"> </span><span class="hl-6">for</span><span class="hl-2"> </span><span class="hl-3">this</span><span class="hl-2"> </span><span class="hl-1">strategy</span><span class="hl-2"> (</span><span class="hl-6">optional</span><span class="hl-2">)</span><br/><span class="hl-2">    │   ├── </span><span class="hl-6">modules</span><span class="hl-2">/          # </span><span class="hl-6">live</span><span class="hl-2">.</span><span class="hl-6">module</span><span class="hl-2">.</span><span class="hl-6">mjs</span><span class="hl-2"> </span><span class="hl-6">specific</span><span class="hl-2"> </span><span class="hl-6">to</span><span class="hl-2"> </span><span class="hl-3">this</span><span class="hl-2"> </span><span class="hl-6">strategy</span><br/><span class="hl-2">    │   ├── </span><span class="hl-6">template</span><span class="hl-2">/         # </span><span class="hl-6">custom</span><span class="hl-2"> </span><span class="hl-6">Mustache</span><span class="hl-2"> </span><span class="hl-1">templates</span><span class="hl-2"> (</span><span class="hl-6">optional</span><span class="hl-2">)</span><br/><span class="hl-2">    │   └── </span><span class="hl-6">dump</span><span class="hl-2">/             # </span><span class="hl-6">auto</span><span class="hl-2">-</span><span class="hl-10">created</span><span class="hl-2">: </span><span class="hl-6">candle</span><span class="hl-2"> </span><span class="hl-6">cache</span><span class="hl-2"> + </span><span class="hl-6">backtest</span><span class="hl-2"> </span><span class="hl-6">reports</span><br/><span class="hl-2">    └── </span><span class="hl-6">dec_2025</span><span class="hl-2">/</span><br/><span class="hl-2">        ├── </span><span class="hl-6">index</span><span class="hl-2">.</span><span class="hl-6">mjs</span><br/><span class="hl-2">        ├── .</span><span class="hl-6">env</span><br/><span class="hl-2">        └── </span><span class="hl-6">dump</span><span class="hl-2">/</span>
+</code><button>Copy</button></pre>
+
+<a id="root-packagejson" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Root <code>package.json</code><a href="#root-packagejson" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest:oct&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./strategies/oct_2025/index.mjs&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest:dec&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./strategies/dec_2025/index.mjs&quot;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;dependencies&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;@backtest-kit/cli&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest-kit&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;ccxt&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest:oct</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest:dec</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="isolated-resources-per-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Isolated Resources Per Strategy<a href="#isolated-resources-per-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Path (relative to strategy dir)</th>
+<th>Isolated</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Candle cache</td>
+<td><code>./dump/data/candle/</code></td>
+<td>✅ per-strategy</td>
+</tr>
+<tr>
+<td>Backtest reports</td>
+<td><code>./dump/</code></td>
+<td>✅ per-strategy</td>
+</tr>
+<tr>
+<td>Live module</td>
+<td><code>./modules/live.module.mjs</code></td>
+<td>✅ per-strategy</td>
+</tr>
+<tr>
+<td>Telegram templates</td>
+<td><code>./template/*.mustache</code></td>
+<td>✅ per-strategy</td>
+</tr>
+<tr>
+<td>Environment variables</td>
+<td><code>./.env</code> (overrides root)</td>
+<td>✅ per-strategy</td>
+</tr>
+</tbody>
+</table>
+<p>Each strategy run produces its own <code>dump/</code> directory, making it straightforward to compare results across time periods — both by inspection and by pointing an AI agent at a specific strategy folder.</p>
+<a id="🔔-integrations" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🔔 Integrations<a href="#🔔-integrations" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="web-dashboard---ui" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Web Dashboard (<code>--ui</code>)<a href="#web-dashboard---ui" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Starts <code>@backtest-kit/ui</code> server. Access the interactive dashboard at:</p>
+<pre><code><span class="hl-10">http</span><span class="hl-2">:</span><span class="hl-0">//localhost:60050</span>
+</code><button>Copy</button></pre>
+
+<p>Customize host/port via environment variables <code>CC_WWWROOT_HOST</code> and <code>CC_WWWROOT_PORT</code>.</p>
+<a id="telegram-notifications---telegram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Telegram Notifications (<code>--telegram</code>)<a href="#telegram-notifications---telegram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Sends formatted HTML messages with 1m / 15m / 1h price charts to your Telegram channel for every position event: opened, closed, scheduled, cancelled, risk rejection, partial profit/loss, trailing stop/take, and breakeven.</p>
+<p>Requires <code>CC_TELEGRAM_TOKEN</code> and <code>CC_TELEGRAM_CHANNEL</code> in your environment.</p>
+<a id="🧩-live-module-hooks" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🧩 Live Module Hooks<a href="#🧩-live-module-hooks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Create a <code>modules/live.module.mjs</code> file in your <strong>project root</strong> to receive lifecycle callbacks for every trading event:</p>
+<pre><code class="javascript"><span class="hl-0">// modules/live.module.mjs</span><br/><br/><span class="hl-5">export</span><span class="hl-2"> </span><span class="hl-5">default</span><span class="hl-2"> </span><span class="hl-3">class</span><span class="hl-2"> {</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onOpened</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Position opened&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">priceOpen</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onClosed</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Position closed&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">priceClosed</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onScheduled</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Signal scheduled&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">id</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onCancelled</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Signal cancelled&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">id</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onRisk</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">warn</span><span class="hl-2">(</span><span class="hl-4">&#39;Risk rejection&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">reason</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onPartialProfit</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Partial profit taken&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onPartialLoss</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Partial loss taken&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onTrailingTake</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Trailing take adjusted&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onTrailingStop</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Trailing stop adjusted&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onBreakeven</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Breakeven triggered&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><br/><span class="hl-2">  </span><span class="hl-1">onAverageBuy</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) {</span><br/><span class="hl-2">    </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-1">log</span><span class="hl-2">(</span><span class="hl-4">&#39;Cost averaging (DCA)&#39;</span><span class="hl-2">, </span><span class="hl-6">event</span><span class="hl-2">.</span><span class="hl-6">symbol</span><span class="hl-2">);</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All methods are optional — implement only the events you care about. The module is loaded dynamically from <code>{cwd}/modules/live.module.mjs</code> (supports <code>.cjs</code> and <code>.mjs</code> extensions).</p>
+<a id="typescript-interface" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TypeScript Interface<a href="#typescript-interface" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> </span><span class="hl-5">type</span><span class="hl-2"> { </span><span class="hl-6">ILiveModule</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/cli&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-5">export</span><span class="hl-2"> </span><span class="hl-5">default</span><span class="hl-2"> </span><span class="hl-3">class</span><span class="hl-2"> </span><span class="hl-11">MyModule</span><span class="hl-2"> </span><span class="hl-3">implements</span><span class="hl-2"> </span><span class="hl-11">ILiveModule</span><span class="hl-2"> {</span><br/><span class="hl-2">  </span><span class="hl-1">onOpened</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) { </span><span class="hl-0">/* ... */</span><span class="hl-2"> }</span><br/><span class="hl-2">  </span><span class="hl-1">onClosed</span><span class="hl-2">(</span><span class="hl-6">event</span><span class="hl-2">) { </span><span class="hl-0">/* ... */</span><span class="hl-2"> }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="📦-supported-entry-point-formats" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📦 Supported Entry Point Formats<a href="#📦-supported-entry-point-formats" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>@backtest-kit/cli</code> automatically detects the format of your strategy file and loads it with the appropriate runtime — no flags or configuration required.</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Extension</th>
+<th>Runtime</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>TypeScript</strong></td>
+<td><code>.ts</code></td>
+<td><a href="https://tsx.is/"><code>tsx</code></a> via <code>tsImport()</code></td>
+<td>TypeScript strategies with cross-imports (ESM ↔ CJS)</td>
+</tr>
+<tr>
+<td><strong>ES Module</strong></td>
+<td><code>.mjs</code></td>
+<td>Native <code>import()</code></td>
+<td>Modern JavaScript with top-level <code>await</code> and ESM syntax</td>
+</tr>
+<tr>
+<td><strong>CommonJS</strong></td>
+<td><code>.cjs</code></td>
+<td>Native <code>require()</code></td>
+<td>Legacy or dual-package strategies</td>
+</tr>
+</tbody>
+</table>
+<a id="typescript-ts" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TypeScript (<code>.ts</code>)<a href="#typescript-ts" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Run TypeScript strategy files directly — no <code>tsc</code> compilation step needed. Powered by <code>tsx</code>, which handles cross-format imports transparently:</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./src/index.ts&quot;</span><br/><span class="hl-2">  },</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;dependencies&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;@backtest-kit/cli&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest-kit&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;tsx&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;latest&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="es-module-mjs" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ES Module (<code>.mjs</code>)<a href="#es-module-mjs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Standard ESM format. Supports top-level <code>await</code>, named exports, and <code>import</code> syntax:</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./src/index.mjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="commonjs-cjs" class="tsd-anchor"></a><h3 class="tsd-anchor-link">CommonJS (<code>.cjs</code>)<a href="#commonjs-cjs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For projects that compile to or use CommonJS. Loaded via <code>require()</code>:</p>
+<pre><code class="json"><span class="hl-2">{</span><br/><span class="hl-2">  </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: {</span><br/><span class="hl-2">    </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest ./dist/index.cjs&quot;</span><br/><span class="hl-2">  }</span><br/><span class="hl-2">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🌍-environment-variables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🌍 Environment Variables<a href="#🌍-environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Create a <code>.env</code> file in your project root:</p>
+<pre><code class="env"># Telegram notifications (required for --telegram)
+CC_TELEGRAM_TOKEN=your_bot_token_here
+CC_TELEGRAM_CHANNEL=-100123456789
+
+# Web UI server (optional, defaults shown)
+CC_WWWROOT_HOST=0.0.0.0
+CC_WWWROOT_PORT=60050
+
+# Custom QuickChart service URL (optional)
+CC_QUICKCHART_HOST=
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CC_TELEGRAM_TOKEN</code></td>
+<td>—</td>
+<td>Telegram bot token (from @BotFather)</td>
+</tr>
+<tr>
+<td><code>CC_TELEGRAM_CHANNEL</code></td>
+<td>—</td>
+<td>Telegram channel or chat ID</td>
+</tr>
+<tr>
+<td><code>CC_WWWROOT_HOST</code></td>
+<td><code>0.0.0.0</code></td>
+<td>UI server bind address</td>
+</tr>
+<tr>
+<td><code>CC_WWWROOT_PORT</code></td>
+<td><code>60050</code></td>
+<td>UI server port</td>
+</tr>
+<tr>
+<td><code>CC_QUICKCHART_HOST</code></td>
+<td>—</td>
+<td>Self-hosted QuickChart instance URL</td>
+</tr>
+</tbody>
+</table>
+<a id="⚙️-default-behaviors" class="tsd-anchor"></a><h2 class="tsd-anchor-link">⚙️ Default Behaviors<a href="#⚙️-default-behaviors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When your strategy module does not register an exchange, frame, or strategy name, the CLI falls back to built-in defaults and prints a console warning:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Default</th>
+<th>Warning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exchange</strong></td>
+<td>CCXT Binance (<code>default_exchange</code>)</td>
+<td><code>Warning: The default exchange schema is set to CCXT Binance...</code></td>
+</tr>
+<tr>
+<td><strong>Frame</strong></td>
+<td>February 2024 (<code>default_frame</code>)</td>
+<td><code>Warning: The default frame schema is set to February 2024...</code></td>
+</tr>
+<tr>
+<td><strong>Symbol</strong></td>
+<td><code>BTCUSDT</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Cache intervals</strong></td>
+<td><code>1m, 15m, 30m, 4h</code></td>
+<td>Used if <code>--cacheInterval</code> not provided; skip entirely with <code>--noCache</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Note:</strong> The default exchange schema <strong>does not support order book fetching in backtest mode</strong>. If your strategy calls <code>getOrderBook()</code> during backtest, you must register a custom exchange schema with your own snapshot storage.</p>
+</blockquote>
+<a id="🔧-programmatic-api" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🔧 Programmatic API<a href="#🔧-programmatic-api" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In addition to the CLI, <code>@backtest-kit/cli</code> can be used as a library — call <code>run()</code> directly from your own script without spawning a child process or parsing CLI flags.</p>
+<a id="runmode-args" class="tsd-anchor"></a><h3 class="tsd-anchor-link"><code>run(mode, args)</code><a href="#runmode-args" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">run</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/cli&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">run</span><span class="hl-2">(</span><span class="hl-6">mode</span><span class="hl-2">, </span><span class="hl-6">args</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mode</code></td>
+<td><code>&quot;backtest&quot; | &quot;paper&quot; | &quot;live&quot;</code> — Execution mode</td>
+</tr>
+<tr>
+<td><code>args</code></td>
+<td>Mode-specific options (all optional — same defaults as CLI)</td>
+</tr>
+</tbody>
+</table>
+<p><code>run()</code> can be called <strong>only once per process</strong>. A second call throws <code>&quot;Should be called only once&quot;</code>.</p>
+<a id="payload-fields" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Payload fields<a href="#payload-fields" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest</strong> (<code>mode: &quot;backtest&quot;</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>entryPoint</code></td>
+<td><code>string</code></td>
+<td>Path to strategy entry point file</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair (default: <code>&quot;BTCUSDT&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>strategy</code></td>
+<td><code>string</code></td>
+<td>Strategy name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>exchange</code></td>
+<td><code>string</code></td>
+<td>Exchange name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>frame</code></td>
+<td><code>string</code></td>
+<td>Frame name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>cacheInterval</code></td>
+<td><code>CandleInterval[]</code></td>
+<td>Intervals to pre-cache (default: <code>[&quot;1m&quot;,&quot;15m&quot;,&quot;30m&quot;,&quot;1h&quot;,&quot;4h&quot;]</code>)</td>
+</tr>
+<tr>
+<td><code>noCache</code></td>
+<td><code>boolean</code></td>
+<td>Skip candle cache warming (default: <code>false</code>)</td>
+</tr>
+<tr>
+<td><code>verbose</code></td>
+<td><code>boolean</code></td>
+<td>Log each candle fetch (default: <code>false</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Paper</strong> and <strong>Live</strong> (<code>mode: &quot;paper&quot;</code> / <code>mode: &quot;live&quot;</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>entryPoint</code></td>
+<td><code>string</code></td>
+<td>Path to strategy entry point file</td>
+</tr>
+<tr>
+<td><code>symbol</code></td>
+<td><code>string</code></td>
+<td>Trading pair (default: <code>&quot;BTCUSDT&quot;</code>)</td>
+</tr>
+<tr>
+<td><code>strategy</code></td>
+<td><code>string</code></td>
+<td>Strategy name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>exchange</code></td>
+<td><code>string</code></td>
+<td>Exchange name (default: first registered)</td>
+</tr>
+<tr>
+<td><code>verbose</code></td>
+<td><code>boolean</code></td>
+<td>Log each candle fetch (default: <code>false</code>)</td>
+</tr>
+</tbody>
+</table>
+<a id="examples" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Examples<a href="#examples" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><strong>Backtest:</strong></p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">run</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/cli&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">run</span><span class="hl-2">(</span><span class="hl-4">&#39;backtest&#39;</span><span class="hl-2">, {</span><br/><span class="hl-2">  </span><span class="hl-6">entryPoint:</span><span class="hl-2"> </span><span class="hl-4">&#39;./src/index.mjs&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">symbol:</span><span class="hl-2"> </span><span class="hl-4">&#39;ETHUSDT&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">frame:</span><span class="hl-2"> </span><span class="hl-4">&#39;feb-2024&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">cacheInterval:</span><span class="hl-2"> [</span><span class="hl-4">&#39;1m&#39;</span><span class="hl-2">, </span><span class="hl-4">&#39;15m&#39;</span><span class="hl-2">, </span><span class="hl-4">&#39;1h&#39;</span><span class="hl-2">],</span><br/><span class="hl-2">  </span><span class="hl-6">verbose:</span><span class="hl-2"> </span><span class="hl-3">true</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Paper trading:</strong></p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">run</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/cli&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">run</span><span class="hl-2">(</span><span class="hl-4">&#39;paper&#39;</span><span class="hl-2">, {</span><br/><span class="hl-2">  </span><span class="hl-6">entryPoint:</span><span class="hl-2"> </span><span class="hl-4">&#39;./src/index.mjs&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">symbol:</span><span class="hl-2"> </span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Live trading:</strong></p>
+<pre><code class="typescript"><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">run</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/cli&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-5">await</span><span class="hl-2"> </span><span class="hl-1">run</span><span class="hl-2">(</span><span class="hl-4">&#39;live&#39;</span><span class="hl-2">, {</span><br/><span class="hl-2">  </span><span class="hl-6">entryPoint:</span><span class="hl-2"> </span><span class="hl-4">&#39;./src/index.mjs&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">symbol:</span><span class="hl-2"> </span><span class="hl-4">&#39;BTCUSDT&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-6">verbose:</span><span class="hl-2"> </span><span class="hl-3">true</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="💡-why-use-backtest-kitcli" class="tsd-anchor"></a><h2 class="tsd-anchor-link">💡 Why Use @backtest-kit/cli?<a href="#💡-why-use-backtest-kitcli" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Instead of writing infrastructure code for every project:</p>
+<p><strong>❌ Without @backtest-kit/cli (manual setup)</strong></p>
+<pre><code class="typescript"><span class="hl-0">// index.ts</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">setLogger</span><span class="hl-2">, </span><span class="hl-6">setConfig</span><span class="hl-2">, </span><span class="hl-6">Storage</span><span class="hl-2">, </span><span class="hl-6">Notification</span><span class="hl-2">, </span><span class="hl-6">Report</span><span class="hl-2">, </span><span class="hl-6">Markdown</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;backtest-kit&#39;</span><span class="hl-2">;</span><br/><span class="hl-5">import</span><span class="hl-2"> { </span><span class="hl-6">serve</span><span class="hl-2"> } </span><span class="hl-5">from</span><span class="hl-2"> </span><span class="hl-4">&#39;@backtest-kit/ui&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-1">setLogger</span><span class="hl-2">({ </span><span class="hl-6">log:</span><span class="hl-2"> </span><span class="hl-6">console</span><span class="hl-2">.</span><span class="hl-6">log</span><span class="hl-2">, ... });</span><br/><span class="hl-6">Storage</span><span class="hl-2">.</span><span class="hl-1">enable</span><span class="hl-2">();</span><br/><span class="hl-6">Notification</span><span class="hl-2">.</span><span class="hl-1">enable</span><span class="hl-2">();</span><br/><span class="hl-6">Report</span><span class="hl-2">.</span><span class="hl-1">enable</span><span class="hl-2">();</span><br/><span class="hl-6">Markdown</span><span class="hl-2">.</span><span class="hl-1">disable</span><span class="hl-2">();</span><br/><br/><span class="hl-0">// ... parse CLI args manually</span><br/><span class="hl-0">// ... register exchange schema</span><br/><span class="hl-0">// ... warm candle cache</span><br/><span class="hl-0">// ... set up Telegram bot</span><br/><span class="hl-0">// ... handle SIGINT gracefully</span><br/><span class="hl-0">// ... load and run backtest</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>✅ With @backtest-kit/cli (one script)</strong></p>
+<pre><code class="json"><span class="hl-2">{ </span><span class="hl-14">&quot;scripts&quot;</span><span class="hl-2">: { </span><span class="hl-14">&quot;backtest&quot;</span><span class="hl-2">: </span><span class="hl-4">&quot;npx @backtest-kit/cli --backtest --ui --telegram ./src/index.mjs&quot;</span><span class="hl-2"> } }</span>
+</code><button type="button">Copy</button></pre>
+
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-4">run</span><span class="hl-2"> </span><span class="hl-4">backtest</span>
+</code><button type="button">Copy</button></pre>
+
+<p><strong>Benefits:</strong></p>
+<ul>
+<li>🚀 From zero to running backtest in seconds</li>
+<li>💾 Automatic candle cache warming with retry logic</li>
+<li>🌐 Production-ready web dashboard out of the box</li>
+<li>📬 Telegram notifications with price charts — no chart code needed</li>
+<li>🛑 Graceful shutdown on SIGINT — no hanging processes</li>
+<li>🔌 Works with any <code>backtest-kit</code> strategy file as-is</li>
+<li>🧩 Module hooks for custom logic without touching the CLI internals</li>
+</ul>
+<a id="🤝-contribute" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🤝 Contribute<a href="#🤝-contribute" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Fork/PR on <a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a>.</p>
+<a id="📜-license" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📜 License<a href="#📜-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MIT © <a href="https://github.com/tripolskypetr">tripolskypetr</a></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#📟-backtest-kitcli"><span>📟 @backtest-<wbr/>kit/cli</span></a><ul><li><a href="#✨-features"><span>✨ <wbr/>Features</span></a></li><li><a href="#📋-what-it-does"><span>📋 <wbr/>What <wbr/>It <wbr/>Does</span></a></li><li><a href="#🚀-installation"><span>🚀 <wbr/>Installation</span></a></li><li><a href="#📖-quick-start"><span>📖 <wbr/>Quick <wbr/>Start</span></a></li><li><a href="#🎛️-cli-flags"><span>🎛️ CLI <wbr/>Flags</span></a></li><li><a href="#🏃-execution-modes"><span>🏃 <wbr/>Execution <wbr/>Modes</span></a></li><li><ul><li><a href="#backtest"><span>Backtest</span></a></li><li><a href="#paper-trading"><span>Paper <wbr/>Trading</span></a></li><li><a href="#live-trading"><span>Live <wbr/>Trading</span></a></li></ul></li><li><a href="#🗂️-monorepo-usage"><span>🗂️ <wbr/>Monorepo <wbr/>Usage</span></a></li><li><ul><li><a href="#how-it-works"><span>How <wbr/>It <wbr/>Works</span></a></li><li><a href="#project-structure"><span>Project <wbr/>Structure</span></a></li><li><a href="#root-packagejson"><span>Root package.json</span></a></li><li><a href="#isolated-resources-per-strategy"><span>Isolated <wbr/>Resources <wbr/>Per <wbr/>Strategy</span></a></li></ul></li><li><a href="#🔔-integrations"><span>🔔 <wbr/>Integrations</span></a></li><li><ul><li><a href="#web-dashboard---ui"><span>Web <wbr/>Dashboard (--ui)</span></a></li><li><a href="#telegram-notifications---telegram"><span>Telegram <wbr/>Notifications (--telegram)</span></a></li></ul></li><li><a href="#🧩-live-module-hooks"><span>🧩 <wbr/>Live <wbr/>Module <wbr/>Hooks</span></a></li><li><ul><li><a href="#typescript-interface"><span>Type<wbr/>Script <wbr/>Interface</span></a></li></ul></li><li><a href="#📦-supported-entry-point-formats"><span>📦 <wbr/>Supported <wbr/>Entry <wbr/>Point <wbr/>Formats</span></a></li><li><ul><li><a href="#typescript-ts"><span>Type<wbr/>Script (.ts)</span></a></li><li><a href="#es-module-mjs"><span>ES <wbr/>Module (.mjs)</span></a></li><li><a href="#commonjs-cjs"><span>CommonJS (.cjs)</span></a></li></ul></li><li><a href="#🌍-environment-variables"><span>🌍 <wbr/>Environment <wbr/>Variables</span></a></li><li><a href="#⚙️-default-behaviors"><span>⚙️ <wbr/>Default <wbr/>Behaviors</span></a></li><li><a href="#🔧-programmatic-api"><span>🔧 <wbr/>Programmatic API</span></a></li><li><ul><li><a href="#runmode-args"><span>run(mode, args)</span></a></li><li><a href="#payload-fields"><span>Payload fields</span></a></li><li><a href="#examples"><span>Examples</span></a></li></ul></li><li><a href="#💡-why-use-backtest-kitcli"><span>💡 <wbr/>Why <wbr/>Use @backtest-<wbr/>kit/cli?</span></a></li><li><a href="#🤝-contribute"><span>🤝 <wbr/>Contribute</span></a></li><li><a href="#📜-license"><span>📜 <wbr/>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
