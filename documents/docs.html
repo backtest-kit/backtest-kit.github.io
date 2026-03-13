@@ -33,6 +33,8 @@
 <li><a href="docs_class_PositionSizeUtils.html">PositionSizeUtils</a></li>
 <li><a href="docs_class_PartialMarkdownService.html">PartialMarkdownService</a></li>
 <li><a href="docs_class_PartialUtils.html">PartialUtils</a></li>
+<li><a href="docs_class_HighestProfitMarkdownService.html">HighestProfitMarkdownService</a></li>
+<li><a href="docs_class_HighestProfitUtils.html">HighestProfitUtils</a></li>
 <li><a href="docs_class_ConstantUtils.html">ConstantUtils</a></li>
 <li><a href="docs_class_RiskMarkdownService.html">RiskMarkdownService</a></li>
 <li><a href="docs_class_RiskUtils.html">RiskUtils</a></li>
@@ -63,6 +65,8 @@
 <li><a href="docs_class_RiskConnectionService.html">RiskConnectionService</a></li>
 <li><a href="docs_class_PartialConnectionService.html">PartialConnectionService</a></li>
 <li><a href="docs_class_BreakevenConnectionService.html">BreakevenConnectionService</a></li>
+<li><a href="docs_class_TimeMetaService.html">TimeMetaService</a></li>
+<li><a href="docs_class_PriceMetaService.html">PriceMetaService</a></li>
 <li><a href="docs_class_StrategyConnectionService.html">StrategyConnectionService</a></li>
 <li><a href="docs_class_ClientFrame.html">ClientFrame</a></li>
 <li><a href="docs_class_FrameConnectionService.html">FrameConnectionService</a></li>
@@ -112,6 +116,7 @@
 <li><a href="docs_class_RiskReportService.html">RiskReportService</a></li>
 <li><a href="docs_class_StrategyReportService.html">StrategyReportService</a></li>
 <li><a href="docs_class_SyncReportService.html">SyncReportService</a></li>
+<li><a href="docs_class_HighestProfitReportService.html">HighestProfitReportService</a></li>
 </ul>
 <a id="enums" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Enums<a href="#enums" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="functions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Functions<a href="#functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
 <li><a href="docs_function_getBacktestTimeframe.html">getBacktestTimeframe</a></li>
@@ -141,7 +146,7 @@
 <li><a href="docs_function_getPendingSignal.html">getPendingSignal</a></li>
 <li><a href="docs_function_getScheduledSignal.html">getScheduledSignal</a></li>
 <li><a href="docs_function_getBreakeven.html">getBreakeven</a></li>
-<li><a href="docs_function_getPositionAveragePrice.html">getPositionAveragePrice</a></li>
+<li><a href="docs_function_getPositionEffectivePrice.html">getPositionEffectivePrice</a></li>
 <li><a href="docs_function_getPositionInvestedCount.html">getPositionInvestedCount</a></li>
 <li><a href="docs_function_getPositionInvestedCost.html">getPositionInvestedCost</a></li>
 <li><a href="docs_function_getPositionPnlPercent.html">getPositionPnlPercent</a></li>
@@ -150,6 +155,17 @@
 <li><a href="docs_function_getPositionPnlCost.html">getPositionPnlCost</a></li>
 <li><a href="docs_function_getPositionLevels.html">getPositionLevels</a></li>
 <li><a href="docs_function_getPositionPartials.html">getPositionPartials</a></li>
+<li><a href="docs_function_getPositionEntries.html">getPositionEntries</a></li>
+<li><a href="docs_function_getPositionEstimateMinutes.html">getPositionEstimateMinutes</a></li>
+<li><a href="docs_function_getPositionCountdownMinutes.html">getPositionCountdownMinutes</a></li>
+<li><a href="docs_function_getPositionHighestProfitPrice.html">getPositionHighestProfitPrice</a></li>
+<li><a href="docs_function_getPositionHighestProfitTimestamp.html">getPositionHighestProfitTimestamp</a></li>
+<li><a href="docs_function_getPositionHighestPnlPercentage.html">getPositionHighestPnlPercentage</a></li>
+<li><a href="docs_function_getPositionHighestPnlCost.html">getPositionHighestPnlCost</a></li>
+<li><a href="docs_function_getPositionHighestProfitBreakeven.html">getPositionHighestProfitBreakeven</a></li>
+<li><a href="docs_function_getPositionDrawdownMinutes.html">getPositionDrawdownMinutes</a></li>
+<li><a href="docs_function_getPositionEntryOverlap.html">getPositionEntryOverlap</a></li>
+<li><a href="docs_function_getPositionPartialOverlap.html">getPositionPartialOverlap</a></li>
 <li><a href="docs_function_stopStrategy.html">stopStrategy</a></li>
 <li><a href="docs_function_shutdown.html">shutdown</a></li>
 <li><a href="docs_function_setLogger.html">setLogger</a></li>
@@ -216,6 +232,8 @@
 <li><a href="docs_function_listenStrategyCommitOnce.html">listenStrategyCommitOnce</a></li>
 <li><a href="docs_function_listenSync.html">listenSync</a></li>
 <li><a href="docs_function_listenSyncOnce.html">listenSyncOnce</a></li>
+<li><a href="docs_function_listenHighestProfit.html">listenHighestProfit</a></li>
+<li><a href="docs_function_listenHighestProfitOnce.html">listenHighestProfitOnce</a></li>
 <li><a href="docs_function_hasTradeContext.html">hasTradeContext</a></li>
 <li><a href="docs_function_getCandles.html">getCandles</a></li>
 <li><a href="docs_function_getAveragePrice.html">getAveragePrice</a></li>
@@ -342,6 +360,7 @@
 <li><a href="docs_interface_ISizingSchemaKelly.html">ISizingSchemaKelly</a></li>
 <li><a href="docs_interface_ISizingSchemaATR.html">ISizingSchemaATR</a></li>
 <li><a href="docs_interface_ISizing.html">ISizing</a></li>
+<li><a href="docs_interface_IPositionOverlapLadder.html">IPositionOverlapLadder</a></li>
 <li><a href="docs_interface_BreakevenEvent.html">BreakevenEvent</a></li>
 <li><a href="docs_interface_BreakevenStatisticsModel.html">BreakevenStatisticsModel</a></li>
 <li><a href="docs_interface_DoneContract.html">DoneContract</a></li>
@@ -349,6 +368,7 @@
 <li><a href="docs_interface_ProgressWalkerContract.html">ProgressWalkerContract</a></li>
 <li><a href="docs_interface_PerformanceContract.html">PerformanceContract</a></li>
 <li><a href="docs_interface_WalkerContract.html">WalkerContract</a></li>
+<li><a href="docs_interface_HighestProfitContract.html">HighestProfitContract</a></li>
 <li><a href="docs_interface_Message.html">Message</a></li>
 <li><a href="docs_interface_IHeatmapRow.html">IHeatmapRow</a></li>
 <li><a href="docs_interface_ColumnModel.html">ColumnModel</a></li>
@@ -372,6 +392,8 @@
 <li><a href="docs_interface_InfoErrorNotification.html">InfoErrorNotification</a></li>
 <li><a href="docs_interface_CriticalErrorNotification.html">CriticalErrorNotification</a></li>
 <li><a href="docs_interface_ValidationErrorNotification.html">ValidationErrorNotification</a></li>
+<li><a href="docs_interface_CancelScheduledCommitNotification.html">CancelScheduledCommitNotification</a></li>
+<li><a href="docs_interface_ClosePendingCommitNotification.html">ClosePendingCommitNotification</a></li>
 <li><a href="docs_interface_TickEvent.html">TickEvent</a></li>
 <li><a href="docs_interface_LiveStatisticsModel.html">LiveStatisticsModel</a></li>
 <li><a href="docs_interface_HeatmapStatisticsModel.html">HeatmapStatisticsModel</a></li>
@@ -384,6 +406,8 @@
 <li><a href="docs_interface_WalkerStatisticsModel.html">WalkerStatisticsModel</a></li>
 <li><a href="docs_interface_PartialEvent.html">PartialEvent</a></li>
 <li><a href="docs_interface_PartialStatisticsModel.html">PartialStatisticsModel</a></li>
+<li><a href="docs_interface_HighestProfitEvent.html">HighestProfitEvent</a></li>
+<li><a href="docs_interface_HighestProfitStatisticsModel.html">HighestProfitStatisticsModel</a></li>
 <li><a href="docs_interface_RiskEvent.html">RiskEvent</a></li>
 <li><a href="docs_interface_RiskStatisticsModel.html">RiskStatisticsModel</a></li>
 <li><a href="docs_interface_StrategyEvent.html">StrategyEvent</a></li>
@@ -472,12 +496,13 @@
 <li><a href="docs_type_TMarkdownBase.html">TMarkdownBase</a></li>
 <li><a href="docs_type_TMarkdownBaseCtor.html">TMarkdownBaseCtor</a></li>
 <li><a href="docs_type_TLogCtor.html">TLogCtor</a></li>
+<li><a href="docs_type_Columns_a.html">Columns$a</a></li>
 <li><a href="docs_type_Columns_9.html">Columns$9</a></li>
 <li><a href="docs_type_Columns_8.html">Columns$8</a></li>
 <li><a href="docs_type_Columns_7.html">Columns$7</a></li>
-<li><a href="docs_type_Columns_6.html">Columns$6</a></li>
 <li><a href="docs_type_StrategyColumn.html">StrategyColumn</a></li>
 <li><a href="docs_type_PnlColumn.html">PnlColumn</a></li>
+<li><a href="docs_type_Columns_6.html">Columns$6</a></li>
 <li><a href="docs_type_Columns_5.html">Columns$5</a></li>
 <li><a href="docs_type_Columns_4.html">Columns$4</a></li>
 <li><a href="docs_type_Columns_3.html">Columns$3</a></li>
