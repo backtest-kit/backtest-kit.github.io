@@ -10,6 +10,7 @@
 <li><a href="docs_class_PersistNotificationUtils.html">PersistNotificationUtils</a></li>
 <li><a href="docs_class_PersistLogUtils.html">PersistLogUtils</a></li>
 <li><a href="docs_class_PersistMeasureUtils.html">PersistMeasureUtils</a></li>
+<li><a href="docs_class_PersistMemoryUtils.html">PersistMemoryUtils</a></li>
 <li><a href="docs_class_ReportBase.html">ReportBase</a></li>
 <li><a href="docs_class_ReportUtils.html">ReportUtils</a></li>
 <li><a href="docs_class_ReportAdapter.html">ReportAdapter</a></li>
@@ -46,6 +47,8 @@
 <li><a href="docs_class_NotificationBacktestAdapter.html">NotificationBacktestAdapter</a></li>
 <li><a href="docs_class_NotificationLiveAdapter.html">NotificationLiveAdapter</a></li>
 <li><a href="docs_class_NotificationAdapter.html">NotificationAdapter</a></li>
+<li><a href="docs_class_MemoryAdapter.html">MemoryAdapter</a></li>
+<li><a href="docs_class_DumpAdapter.html">DumpAdapter</a></li>
 <li><a href="docs_class_ExchangeUtils.html">ExchangeUtils</a></li>
 <li><a href="docs_class_CacheUtils.html">CacheUtils</a></li>
 <li><a href="docs_class_BreakevenMarkdownService.html">BreakevenMarkdownService</a></li>
@@ -166,6 +169,8 @@
 <li><a href="docs_function_getPositionDrawdownMinutes.html">getPositionDrawdownMinutes</a></li>
 <li><a href="docs_function_getPositionEntryOverlap.html">getPositionEntryOverlap</a></li>
 <li><a href="docs_function_getPositionPartialOverlap.html">getPositionPartialOverlap</a></li>
+<li><a href="docs_function_hasNoPendingSignal.html">hasNoPendingSignal</a></li>
+<li><a href="docs_function_hasNoScheduledSignal.html">hasNoScheduledSignal</a></li>
 <li><a href="docs_function_stopStrategy.html">stopStrategy</a></li>
 <li><a href="docs_function_shutdown.html">shutdown</a></li>
 <li><a href="docs_function_setLogger.html">setLogger</a></li>
@@ -248,7 +253,17 @@
 <li><a href="docs_function_getRawCandles.html">getRawCandles</a></li>
 <li><a href="docs_function_getNextCandles.html">getNextCandles</a></li>
 <li><a href="docs_function_getAggregatedTrades.html">getAggregatedTrades</a></li>
-<li><a href="docs_function_dumpMessages.html">dumpMessages</a></li>
+<li><a href="docs_function_writeMemory.html">writeMemory</a></li>
+<li><a href="docs_function_readMemory.html">readMemory</a></li>
+<li><a href="docs_function_searchMemory.html">searchMemory</a></li>
+<li><a href="docs_function_listMemory.html">listMemory</a></li>
+<li><a href="docs_function_removeMemory.html">removeMemory</a></li>
+<li><a href="docs_function_dumpAgentAnswer.html">dumpAgentAnswer</a></li>
+<li><a href="docs_function_dumpRecord.html">dumpRecord</a></li>
+<li><a href="docs_function_dumpTable.html">dumpTable</a></li>
+<li><a href="docs_function_dumpText.html">dumpText</a></li>
+<li><a href="docs_function_dumpError.html">dumpError</a></li>
+<li><a href="docs_function_dumpJson.html">dumpJson</a></li>
 </ul>
 <a id="interfaces" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Interfaces<a href="#interfaces" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
 <li><a href="docs_interface_IExecutionContext.html">IExecutionContext</a></li>
@@ -361,15 +376,13 @@
 <li><a href="docs_interface_ISizingSchemaATR.html">ISizingSchemaATR</a></li>
 <li><a href="docs_interface_ISizing.html">ISizing</a></li>
 <li><a href="docs_interface_IPositionOverlapLadder.html">IPositionOverlapLadder</a></li>
-<li><a href="docs_interface_BreakevenEvent.html">BreakevenEvent</a></li>
-<li><a href="docs_interface_BreakevenStatisticsModel.html">BreakevenStatisticsModel</a></li>
 <li><a href="docs_interface_DoneContract.html">DoneContract</a></li>
 <li><a href="docs_interface_ProgressBacktestContract.html">ProgressBacktestContract</a></li>
 <li><a href="docs_interface_ProgressWalkerContract.html">ProgressWalkerContract</a></li>
 <li><a href="docs_interface_PerformanceContract.html">PerformanceContract</a></li>
 <li><a href="docs_interface_WalkerContract.html">WalkerContract</a></li>
 <li><a href="docs_interface_HighestProfitContract.html">HighestProfitContract</a></li>
-<li><a href="docs_interface_Message.html">Message</a></li>
+<li><a href="docs_interface_MessageModel.html">MessageModel</a></li>
 <li><a href="docs_interface_IHeatmapRow.html">IHeatmapRow</a></li>
 <li><a href="docs_interface_ColumnModel.html">ColumnModel</a></li>
 <li><a href="docs_interface_SignalOpenedNotification.html">SignalOpenedNotification</a></li>
@@ -410,6 +423,8 @@
 <li><a href="docs_interface_HighestProfitStatisticsModel.html">HighestProfitStatisticsModel</a></li>
 <li><a href="docs_interface_RiskEvent.html">RiskEvent</a></li>
 <li><a href="docs_interface_RiskStatisticsModel.html">RiskStatisticsModel</a></li>
+<li><a href="docs_interface_BreakevenEvent.html">BreakevenEvent</a></li>
+<li><a href="docs_interface_BreakevenStatisticsModel.html">BreakevenStatisticsModel</a></li>
 <li><a href="docs_interface_StrategyEvent.html">StrategyEvent</a></li>
 <li><a href="docs_interface_StrategyStatisticsModel.html">StrategyStatisticsModel</a></li>
 <li><a href="docs_interface_IEntity.html">IEntity</a></li>
@@ -423,6 +438,9 @@
 <li><a href="docs_interface_SyncStatisticsModel.html">SyncStatisticsModel</a></li>
 <li><a href="docs_interface_IStorageUtils.html">IStorageUtils</a></li>
 <li><a href="docs_interface_INotificationUtils.html">INotificationUtils</a></li>
+<li><a href="docs_interface_IMemoryInstance.html">IMemoryInstance</a></li>
+<li><a href="docs_interface_IDumpContext.html">IDumpContext</a></li>
+<li><a href="docs_interface_IDumpInstance.html">IDumpInstance</a></li>
 <li><a href="docs_interface_IBroker.html">IBroker</a></li>
 <li><a href="docs_interface_WalkerStopContract.html">WalkerStopContract</a></li>
 <li><a href="docs_interface_IParseArgsParams.html">IParseArgsParams</a></li>
@@ -472,8 +490,8 @@
 <li><a href="docs_type_TRiskSchema.html">TRiskSchema</a></li>
 <li><a href="docs_type_TActionSchema.html">TActionSchema</a></li>
 <li><a href="docs_type_PerformanceMetricType.html">PerformanceMetricType</a></li>
-<li><a href="docs_type_ResultId.html">ResultId</a></li>
-<li><a href="docs_type_BaseRole.html">BaseRole</a></li>
+<li><a href="docs_type_MessageRole.html">MessageRole</a></li>
+<li><a href="docs_type_MessageToolCall.html">MessageToolCall</a></li>
 <li><a href="docs_type_NotificationModel.html">NotificationModel</a></li>
 <li><a href="docs_type_StrategyActionType.html">StrategyActionType</a></li>
 <li><a href="docs_type_SignalData.html">SignalData</a></li>
@@ -489,6 +507,7 @@
 <li><a href="docs_type_StorageData.html">StorageData</a></li>
 <li><a href="docs_type_NotificationData.html">NotificationData</a></li>
 <li><a href="docs_type_LogData.html">LogData</a></li>
+<li><a href="docs_type_MemoryData.html">MemoryData</a></li>
 <li><a href="docs_type_ReportName.html">ReportName</a></li>
 <li><a href="docs_type_TReportBase.html">TReportBase</a></li>
 <li><a href="docs_type_TReportBaseCtor.html">TReportBaseCtor</a></li>
@@ -511,6 +530,10 @@
 <li><a href="docs_type_StorageId.html">StorageId</a></li>
 <li><a href="docs_type_TStorageUtilsCtor.html">TStorageUtilsCtor</a></li>
 <li><a href="docs_type_TNotificationUtilsCtor.html">TNotificationUtilsCtor</a></li>
+<li><a href="docs_type_SearchSettings.html">SearchSettings</a></li>
+<li><a href="docs_type_TMemoryInstanceCtor.html">TMemoryInstanceCtor</a></li>
+<li><a href="docs_type_TMemoryInstance.html">TMemoryInstance</a></li>
+<li><a href="docs_type_TDumpInstanceCtor.html">TDumpInstanceCtor</a></li>
 <li><a href="docs_type_Function.html">Function</a></li>
 <li><a href="docs_type_CacheFileFunction.html">CacheFileFunction</a></li>
 <li><a href="docs_type_DropFirst.html">DropFirst</a></li>
