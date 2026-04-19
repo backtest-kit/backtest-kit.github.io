@@ -1,0 +1,133 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/17_live_trading_mode | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_17_live_trading_mode.html">begin/17_live_trading_mode</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="live-trading-mode" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Live Trading Mode<a href="#live-trading-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The Live Trading mode in the <code>backtest-kit</code> framework enables continuous strategy execution against real-time market data. Unlike backtesting, which iterates through historical data frames, Live mode operates in an infinite loop, managing the complete signal lifecycle with integrated crash recovery and persistence mechanisms.</p>
+<a id="execution-model-livebackground" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Model: Live.background()<a href="#execution-model-livebackground" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The primary entry point for non-blocking live execution is <code>Live.background()</code>. This function initializes the trading environment and starts an asynchronous process that monitors market conditions and manages positions.</p>
+<a id="the-infinite-loop-and-pacing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">The Infinite Loop and Pacing<a href="#the-infinite-loop-and-pacing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live trading is governed by a <code>while(true)</code> loop within the <code>Live.run()</code> generator, which <code>Live.background()</code> consumes. To prevent overwhelming the exchange API and CPU, the system implements a pacing mechanism:</p>
+<ul>
+<li><strong>TICK_TTL</strong>: The system enforces a minimum wait time between iterations, typically 1 minute + 1ms.</li>
+<li><strong>Time Progression</strong>: Uses the system clock (<code>new Date()</code>) for every tick.</li>
+<li><strong>MAX_EVENTS</strong>: The event queue is capped at 25 events to ensure stability and prevent memory leaks during high-volatility periods.</li>
+</ul>
+<a id="background-data-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Background Data Flow<a href="#background-data-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates the relationship between the <code>Live</code> process and the strategy execution components.</p>
+<p><strong>Live Execution and Signal Flow</strong>
+<img src="../media/17-live-trading-mode_0.svg" alt="Mermaid Diagram"></p>
+<a id="crash-recovery-and-persistence" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Crash Recovery and Persistence<a href="#crash-recovery-and-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Live trading is designed to be resilient against process crashes. It uses a suite of persistence adapters to save the state of active signals and schedules to the filesystem.</p>
+<a id="persistence-directories" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Directories<a href="#persistence-directories" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Data is stored in two primary directories within the project root:</p>
+<ul>
+<li><code>data/signals/</code>: Stores the current state of <code>opened</code> and <code>active</code> signals.</li>
+<li><code>data/risk/</code>: Stores risk-related metadata and validation states.</li>
+</ul>
+<a id="persistence-adapters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Persistence Adapters<a href="#persistence-adapters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system utilizes specific adapters to handle different stages of the signal lifecycle:</p>
+<ol>
+<li><strong>PersistScheduleAdapter</strong>: Tracks signals that are <code>scheduled</code> but not yet triggered.</li>
+<li><strong>PersistSignalAdapter</strong>: Manages the state for signals in <code>opened</code> or <code>active</code> states.</li>
+<li><strong>PersistPartialAdapter</strong>: Handles incremental updates to signal metadata.</li>
+</ol>
+<a id="atomic-write-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Atomic Write Implementation<a href="#atomic-write-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To prevent data corruption during a crash, the persistence layer uses an atomic write strategy:</p>
+<ol>
+<li>Serialize the signal state to JSON.</li>
+<li>Write to a temporary file (e.g., <code>*.json.tmp</code>).</li>
+<li>Perform an atomic rename to the final filename.</li>
+</ol>
+<p><strong>Crash Recovery State Mapping</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Signal State</th>
+<th style="text-align:left">Persisted?</th>
+<th style="text-align:left">Adapter Class</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>idle</code></td>
+<td style="text-align:left">No</td>
+<td style="text-align:left">N/A</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>scheduled</code></td>
+<td style="text-align:left">Yes</td>
+<td style="text-align:left"><code>PersistScheduleAdapter</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>opened</code></td>
+<td style="text-align:left">Yes</td>
+<td style="text-align:left"><code>PersistSignalAdapter</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>active</code></td>
+<td style="text-align:left">Yes</td>
+<td style="text-align:left"><code>PersistSignalAdapter</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>closed</code></td>
+<td style="text-align:left">No</td>
+<td style="text-align:left">N/A (Finalized)</td>
+</tr>
+</tbody>
+</table>
+<a id="live-vs-backtest-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Live vs. Backtest Comparison<a href="#live-vs-backtest-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The technical implementation of Live mode differs significantly from Backtest mode to accommodate real-world constraints.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Characteristic</th>
+<th style="text-align:left">Live Mode</th>
+<th style="text-align:left">Backtest Mode</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Loop Type</strong></td>
+<td style="text-align:left">Infinite <code>while(true)</code></td>
+<td style="text-align:left">Finite <code>for</code> loop over frames</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Clock</strong></td>
+<td style="text-align:left"><code>new Date()</code> (Real-time)</td>
+<td style="text-align:left">Simulated <code>Date</code> from Frame Service</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Queue Limit</strong></td>
+<td style="text-align:left"><code>MAX_EVENTS = 25</code></td>
+<td style="text-align:left">Unlimited</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Pacing</strong></td>
+<td style="text-align:left"><code>TICK_TTL</code> (1 min delay)</td>
+<td style="text-align:left">Immediate (No delay)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Persistence</strong></td>
+<td style="text-align:left">Enabled (Atomic FS writes)</td>
+<td style="text-align:left">Disabled (In-memory only)</td>
+</tr>
+</tbody>
+</table>
+<a id="system-integration-natural-language-to-code-entities" class="tsd-anchor"></a><h2 class="tsd-anchor-link">System Integration: Natural Language to Code Entities<a href="#system-integration-natural-language-to-code-entities" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The live trading environment bridges high-level trading concepts with specific code entities and filesystem locations.</p>
+<p><strong>Entity Relationship Diagram</strong>
+<img src="../media/17-live-trading-mode_1.svg" alt="Mermaid Diagram"></p>
+<a id="implementation-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="signal-state-transitions" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal State Transitions<a href="#signal-state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In Live mode, signals are processed through a state machine. The <code>tick()</code> function is the primary driver, checking if <code>scheduled</code> signals should move to <code>opened</code>, or if <code>active</code> positions should be <code>closed</code> based on real-time price updates or strategy logic.</p>
+<a id="exchange-configuration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Configuration<a href="#exchange-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Live trading requires <code>enableRateLimit: true</code> in the CCXT configuration to prevent IP bans. Furthermore, <code>formatPrice</code> and <code>formatQuantity</code> must use exchange-specific precision (<code>priceToPrecision</code>, <code>amountToPrecision</code>) to ensure orders are accepted by the exchange matching engine.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#live-trading-mode"><span>Live <wbr/>Trading <wbr/>Mode</span></a><ul><li><a href="#execution-model-livebackground"><span>Execution <wbr/>Model: <wbr/>Live.background()</span></a></li><li><ul><li><a href="#the-infinite-loop-and-pacing"><span>The <wbr/>Infinite <wbr/>Loop and <wbr/>Pacing</span></a></li><li><a href="#background-data-flow"><span>Background <wbr/>Data <wbr/>Flow</span></a></li></ul></li><li><a href="#crash-recovery-and-persistence"><span>Crash <wbr/>Recovery and <wbr/>Persistence</span></a></li><li><ul><li><a href="#persistence-directories"><span>Persistence <wbr/>Directories</span></a></li><li><a href="#persistence-adapters"><span>Persistence <wbr/>Adapters</span></a></li><li><a href="#atomic-write-implementation"><span>Atomic <wbr/>Write <wbr/>Implementation</span></a></li></ul></li><li><a href="#live-vs-backtest-comparison"><span>Live vs. <wbr/>Backtest <wbr/>Comparison</span></a></li><li><a href="#system-integration-natural-language-to-code-entities"><span>System <wbr/>Integration: <wbr/>Natural <wbr/>Language to <wbr/>Code <wbr/>Entities</span></a></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li><li><ul><li><a href="#signal-state-transitions"><span>Signal <wbr/>State <wbr/>Transitions</span></a></li><li><a href="#exchange-configuration"><span>Exchange <wbr/>Configuration</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

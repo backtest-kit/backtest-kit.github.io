@@ -1,0 +1,91 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/16_signal_state_machine | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_16_signal_state_machine.html">begin/16_signal_state_machine</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-state-machine" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal State Machine<a href="#signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The Signal State Machine is the core execution logic of the <code>backtest-kit</code> framework. It governs the lifecycle of a trading instruction from its initial generation by a strategy to its final settlement. The state machine ensures logical consistency, prevents overlapping trades for the same symbol-strategy pair, and handles precise PNL calculations including slippage and exchange fees.</p>
+<a id="signal-lifecycle--transitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Lifecycle &amp; Transitions<a href="#signal-lifecycle--transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>A signal progresses through six distinct states. Transitions are strictly controlled to maintain the integrity of the trading simulation and live execution.</p>
+<a id="state-transition-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">State Transition Diagram<a href="#state-transition-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates the flow between states and the triggers for each transition.</p>
+<p>Title: Signal State Transitions
+<img src="../media/16-signal-state-machine_0.svg" alt="Mermaid Diagram"></p>
+<a id="state-definitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">State Definitions<a href="#state-definitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="1-idle" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Idle<a href="#1-idle" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The baseline state where no active signal exists for a specific symbol-strategy pair. The framework calls the strategy's <code>getSignal()</code> function during this state.</p>
+<a id="2-scheduled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Scheduled<a href="#2-scheduled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A pending state where a signal waits for the market price to reach a specific <code>priceOpen</code> (limit order behavior).</p>
+<ul>
+<li><strong>LONG</strong>: Activates when <code>currentPrice &lt;= priceOpen</code>.</li>
+<li><strong>SHORT</strong>: Activates when <code>currentPrice &gt;= priceOpen</code>.</li>
+<li><strong>Expiry</strong>: If not reached within <code>CC_SCHEDULE_AWAIT_MINUTES</code> (default 60), it transitions to <code>CANCELLED</code>.</li>
+</ul>
+<a id="3-opened" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Opened<a href="#3-opened" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>An intermediate state triggered the moment entry conditions are met. It serves as a hook for logging and notifications before the position becomes &quot;Active&quot; for monitoring.</p>
+<a id="4-active" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. Active<a href="#4-active" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The position is live and being monitored for exit conditions every tick.</p>
+<ul>
+<li><strong>Take-Profit (TP)</strong>: <code>currentPrice &gt;= priceTakeProfit</code> (Long) or <code>&lt;= priceTakeProfit</code> (Short).</li>
+<li><strong>Stop-Loss (SL)</strong>: <code>currentPrice &lt;= priceStopLoss</code> (Long) or <code>&gt;= priceStopLoss</code> (Short).</li>
+<li><strong>Time Expiry</strong>: Triggered if <code>currentTime - pendingAt &gt; minuteEstimatedTime</code>.</li>
+</ul>
+<a id="5-closed" class="tsd-anchor"></a><h3 class="tsd-anchor-link">5. Closed<a href="#5-closed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A terminal state reached after an exit condition is met. The framework calculates the final PNL at this stage.</p>
+<a id="6-cancelled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">6. Cancelled<a href="#6-cancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A terminal state for <code>SCHEDULED</code> signals that failed to trigger because the price hit the Stop-Loss first or the entry timeout expired.</p>
+<a id="pnl-calculation-with-slippage-and-fees" class="tsd-anchor"></a><h2 class="tsd-anchor-link">PNL Calculation with Slippage and Fees<a href="#pnl-calculation-with-slippage-and-fees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The state machine calculates PNL by adjusting raw entry and exit prices to account for market impact (slippage) and exchange commissions.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Parameter</th>
+<th style="text-align:left">Default Value</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>CC_PERCENT_SLIPPAGE</code></td>
+<td style="text-align:left">0.1%</td>
+<td style="text-align:left">Market impact for entry/exit</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>CC_PERCENT_FEE</code></td>
+<td style="text-align:left">0.1%</td>
+<td style="text-align:left">Exchange trading commission</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Calculation Logic (Long Position):</strong></p>
+<ol>
+<li><strong>Adjusted Entry</strong>: <code>priceOpen * (1 + slippage) * (1 + fee)</code></li>
+<li><strong>Adjusted Exit</strong>: <code>priceClose * (1 - slippage) * (1 - fee)</code></li>
+<li><strong>Final PNL %</strong>: <code>((Adjusted Exit - Adjusted Entry) / Adjusted Entry) * 100</code></li>
+</ol>
+<a id="validation-engine" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Validation Engine<a href="#validation-engine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Before a signal can transition from <code>IDLE</code> to <code>SCHEDULED</code> or <code>OPENED</code>, it must pass a multi-stage validation engine to ensure logical consistency and risk compliance.</p>
+<a id="logical-consistency--economic-viability" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logical Consistency &amp; Economic Viability<a href="#logical-consistency--economic-viability" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system validates that the signal parameters make sense relative to the current market price.</p>
+<p>Title: Signal Validation Logic (Code Entity Space)
+<img src="../media/16-signal-state-machine_1.svg" alt="Mermaid Diagram"></p>
+<p><strong>Validation Rules:</strong></p>
+<ul>
+<li><strong>Logical Consistency</strong>: For a LONG, <code>priceTakeProfit</code> must be &gt; <code>priceOpen</code>, and <code>priceStopLoss</code> must be &lt; <code>priceOpen</code>.</li>
+<li><strong>Economic Viability</strong>: The distance between <code>priceOpen</code> and <code>priceTakeProfit</code> must be greater than the total trading costs (~0.4%) to ensure the trade can actually result in a net profit.</li>
+<li><strong>Risk Mitigation</strong>: Checks against <code>maxConcurrentPositions</code> and symbol-specific blacklists via the <code>addRisk()</code> registry.</li>
+</ul>
+<a id="time-expiry-mechanism-minuteestimatedtime" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Time Expiry Mechanism (<code>minuteEstimatedTime</code>)<a href="#time-expiry-mechanism-minuteestimatedtime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>minuteEstimatedTime</code> parameter acts as a &quot;time-based stop-loss.&quot; It prevents capital from being locked in stagnant trades.</p>
+<ul>
+<li><strong>Mechanism</strong>: When a signal transitions to <code>OPENED</code>, a <code>pendingAt</code> timestamp is recorded.</li>
+<li><strong>Calculation</strong>: In every <code>ACTIVE</code> tick, the engine checks:
+<code>isExpired = (currentTimestamp - pendingAt) &gt; (minuteEstimatedTime * 60 * 1000)</code></li>
+<li><strong>Result</strong>: If <code>true</code>, the position is closed with the reason <code>&quot;time_expired&quot;</code>, and the PNL is settled at the current market price.</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-state-machine"><span>Signal <wbr/>State <wbr/>Machine</span></a><ul><li><a href="#signal-lifecycle--transitions"><span>Signal <wbr/>Lifecycle &amp; <wbr/>Transitions</span></a></li><li><ul><li><a href="#state-transition-diagram"><span>State <wbr/>Transition <wbr/>Diagram</span></a></li></ul></li><li><a href="#state-definitions"><span>State <wbr/>Definitions</span></a></li><li><ul><li><a href="#1-idle"><span>1. <wbr/>Idle</span></a></li><li><a href="#2-scheduled"><span>2. <wbr/>Scheduled</span></a></li><li><a href="#3-opened"><span>3. <wbr/>Opened</span></a></li><li><a href="#4-active"><span>4. <wbr/>Active</span></a></li><li><a href="#5-closed"><span>5. <wbr/>Closed</span></a></li><li><a href="#6-cancelled"><span>6. <wbr/>Cancelled</span></a></li></ul></li><li><a href="#pnl-calculation-with-slippage-and-fees"><span>PNL <wbr/>Calculation with <wbr/>Slippage and <wbr/>Fees</span></a></li><li><a href="#validation-engine"><span>Validation <wbr/>Engine</span></a></li><li><ul><li><a href="#logical-consistency--economic-viability"><span>Logical <wbr/>Consistency &amp; <wbr/>Economic <wbr/>Viability</span></a></li></ul></li><li><a href="#time-expiry-mechanism-minuteestimatedtime"><span>Time <wbr/>Expiry <wbr/>Mechanism (minute<wbr/>Estimated<wbr/>Time)</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

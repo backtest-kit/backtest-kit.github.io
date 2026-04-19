@@ -1,0 +1,134 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/18_risk_management | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_18_risk_management.html">begin/18_risk_management</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="risk-management" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Risk Management<a href="#risk-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The risk management system in <code>backtest-kit</code> provides portfolio-level validation and position tracking to prevent excessive risk exposure. Unlike individual signal validation, which checks internal parameters, risk management analyzes the state of the entire portfolio across all active strategies before a signal is permitted to execute.</p>
+<a id="risk-management-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Risk Management Architecture<a href="#risk-management-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk management operates as a gatekeeper between the strategy's request for a signal and the actual creation of that signal. It ensures that any new position adheres to global constraints defined in a risk profile.</p>
+<a id="execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Execution Flow<a href="#execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ol>
+<li><strong>Request</strong>: A strategy calls <code>getSignal()</code> to generate a new trading signal.</li>
+<li><strong>Check</strong>: <code>ClientRisk.checkSignal()</code> evaluates the signal against registered risk rules.</li>
+<li><strong>Validation</strong>: Each validation function receives an <code>IRiskValidationPayload</code> containing the current portfolio state.</li>
+<li><strong>Decision</strong>: If any validation throws an error, the signal is <strong>rejected</strong>. Otherwise, it is created.</li>
+<li><strong>Persistence</strong>: Position tracking is updated and saved via <code>PersistRiskAdapter</code> to ensure crash safety.</li>
+</ol>
+<a id="risk-management-component-interaction" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Management Component Interaction<a href="#risk-management-component-interaction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how the <code>ClientRisk</code> entity coordinates between strategies and validation logic.</p>
+<p><strong>Risk Logic Sequence</strong>
+<img src="../media/18-risk-management_0.svg" alt="Mermaid Diagram"></p>
+<a id="registering-risk-profiles" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Registering Risk Profiles<a href="#registering-risk-profiles" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Risk profiles are registered using the <code>addRisk()</code> function. Strategies link to these profiles by matching the <code>riskName</code> identifier.</p>
+<pre><code class="typescript"><span class="hl-4">import</span><span class="hl-1"> { </span><span class="hl-5">addRisk</span><span class="hl-1"> } </span><span class="hl-4">from</span><span class="hl-1"> </span><span class="hl-2">&quot;backtest-kit&quot;</span><span class="hl-1">;</span><br/><br/><span class="hl-0">addRisk</span><span class="hl-1">({</span><br/><span class="hl-1">  </span><span class="hl-5">riskName:</span><span class="hl-1"> </span><span class="hl-2">&quot;conservative&quot;</span><span class="hl-1">,          </span><span class="hl-6">// Unique identifier</span><br/><span class="hl-1">  </span><span class="hl-5">note:</span><span class="hl-1"> </span><span class="hl-2">&quot;Conservative profile&quot;</span><span class="hl-1">,      </span><span class="hl-6">// Optional documentation</span><br/><span class="hl-1">  </span><span class="hl-5">validations:</span><span class="hl-1"> [                     </span><span class="hl-6">// Array of validation rules</span><br/><span class="hl-1">    </span><span class="hl-6">// Validation logic here</span><br/><span class="hl-1">  ],</span><br/><span class="hl-1">  </span><span class="hl-5">callbacks:</span><span class="hl-1"> {                       </span><span class="hl-6">// Optional event hooks</span><br/><span class="hl-1">    </span><span class="hl-0">onRejected</span><span class="hl-5">:</span><span class="hl-1"> (</span><span class="hl-5">symbol</span><span class="hl-1">, </span><span class="hl-5">params</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> { </span><span class="hl-6">/* ... */</span><span class="hl-1"> },</span><br/><span class="hl-1">    </span><span class="hl-0">onAllowed</span><span class="hl-5">:</span><span class="hl-1"> (</span><span class="hl-5">symbol</span><span class="hl-1">, </span><span class="hl-5">params</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> { </span><span class="hl-6">/* ... */</span><span class="hl-1"> },</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">});</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="risk-profile-schema" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Profile Schema<a href="#risk-profile-schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th style="text-align:left">Field</th>
+<th style="text-align:left">Type</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>riskName</code></td>
+<td style="text-align:left"><code>string</code></td>
+<td style="text-align:left">Unique profile identifier used by strategies</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>note</code></td>
+<td style="text-align:left"><code>string?</code></td>
+<td style="text-align:left">Optional documentation for the profile</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>validations</code></td>
+<td style="text-align:left"><code>Array</code></td>
+<td style="text-align:left">Array of functions or objects containing validation logic</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>callbacks</code></td>
+<td style="text-align:left"><code>object?</code></td>
+<td style="text-align:left">Event callbacks for <code>onRejected</code> and <code>onAllowed</code></td>
+</tr>
+</tbody>
+</table>
+<a id="iriskvalidationpayload" class="tsd-anchor"></a><h2 class="tsd-anchor-link">IRiskValidationPayload<a href="#iriskvalidationpayload" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Every validation function receives an <code>IRiskValidationPayload</code> object. This provides the &quot;World View&quot; necessary for portfolio-level decision making.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Field</th>
+<th style="text-align:left">Type</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>symbol</code></td>
+<td style="text-align:left"><code>string</code></td>
+<td style="text-align:left">The trading pair being requested</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>pendingSignal</code></td>
+<td style="text-align:left"><code>ISignalDto</code></td>
+<td style="text-align:left">The signal data awaiting validation</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>strategyName</code></td>
+<td style="text-align:left"><code>string</code></td>
+<td style="text-align:left">The strategy requesting the signal</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>activePositionCount</code></td>
+<td style="text-align:left"><code>number</code></td>
+<td style="text-align:left">Total active positions across all strategies</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>activePositions</code></td>
+<td style="text-align:left"><code>Array</code></td>
+<td style="text-align:left">List of <code>IRiskActivePosition</code> objects currently open</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>timestamp</code></td>
+<td style="text-align:left"><code>number</code></td>
+<td style="text-align:left">Current system/backtest timestamp in ms</td>
+</tr>
+</tbody>
+</table>
+<a id="built-in--custom-validators" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Built-in &amp; Custom Validators<a href="#built-in--custom-validators" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system supports diverse validation logic, ranging from simple count limits to complex temporal and multi-strategy checks.</p>
+<a id="1-concurrent-position-limits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Concurrent Position Limits<a href="#1-concurrent-position-limits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Limits the total number of open positions to manage capital exposure.</p>
+<pre><code class="typescript"><span class="hl-1">({ </span><span class="hl-5">activePositionCount</span><span class="hl-1"> }) </span><span class="hl-3">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">activePositionCount</span><span class="hl-1"> &gt;= </span><span class="hl-7">3</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">throw</span><span class="hl-1"> </span><span class="hl-3">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Maximum 3 concurrent positions reached&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="2-symbol-filtering" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Symbol Filtering<a href="#2-symbol-filtering" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Prevents trading on specific instruments (e.g., blacklisting high-volatility assets).</p>
+<pre><code class="typescript"><span class="hl-1">({ </span><span class="hl-5">symbol</span><span class="hl-1"> }) </span><span class="hl-3">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">restricted</span><span class="hl-1"> = [</span><span class="hl-2">&quot;DOGEUSDT&quot;</span><span class="hl-1">, </span><span class="hl-2">&quot;PEPEUSDT&quot;</span><span class="hl-1">];</span><br/><span class="hl-1">  </span><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">restricted</span><span class="hl-1">.</span><span class="hl-0">includes</span><span class="hl-1">(</span><span class="hl-5">symbol</span><span class="hl-1">)) {</span><br/><span class="hl-1">    </span><span class="hl-4">throw</span><span class="hl-1"> </span><span class="hl-3">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`Symbol </span><span class="hl-3">${</span><span class="hl-5">symbol</span><span class="hl-3">}</span><span class="hl-2"> is restricted`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="3-trading-time-windows" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Trading Time Windows<a href="#3-trading-time-windows" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Restricts activity to specific hours or days (e.g., avoiding weekend gaps or illiquid hours).</p>
+<pre><code class="typescript"><span class="hl-1">({ </span><span class="hl-5">timestamp</span><span class="hl-1"> }) </span><span class="hl-3">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">hour</span><span class="hl-1"> = </span><span class="hl-3">new</span><span class="hl-1"> </span><span class="hl-0">Date</span><span class="hl-1">(</span><span class="hl-5">timestamp</span><span class="hl-1">).</span><span class="hl-0">getUTCHours</span><span class="hl-1">();</span><br/><span class="hl-1">  </span><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">hour</span><span class="hl-1"> &lt; </span><span class="hl-7">9</span><span class="hl-1"> || </span><span class="hl-5">hour</span><span class="hl-1"> &gt;= </span><span class="hl-7">17</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">throw</span><span class="hl-1"> </span><span class="hl-3">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">&quot;Outside of business hours (9:00-17:00 UTC)&quot;</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="4-multi-strategy-coordination" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. Multi-Strategy Coordination<a href="#4-multi-strategy-coordination" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Ensures strategies do not &quot;fight&quot; over the same symbol or exceed per-strategy quotas.</p>
+<pre><code class="typescript"><span class="hl-1">({ </span><span class="hl-5">activePositions</span><span class="hl-1">, </span><span class="hl-5">strategyName</span><span class="hl-1">, </span><span class="hl-5">symbol</span><span class="hl-1"> }) </span><span class="hl-3">=&gt;</span><span class="hl-1"> {</span><br/><span class="hl-1">  </span><span class="hl-6">// Check if this symbol is already being traded by ANY strategy</span><br/><span class="hl-1">  </span><span class="hl-3">const</span><span class="hl-1"> </span><span class="hl-8">duplicate</span><span class="hl-1"> = </span><span class="hl-5">activePositions</span><span class="hl-1">.</span><span class="hl-0">find</span><span class="hl-1">(</span><span class="hl-5">p</span><span class="hl-1"> </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-5">p</span><span class="hl-1">.</span><span class="hl-5">signal</span><span class="hl-1">.</span><span class="hl-5">symbol</span><span class="hl-1"> === </span><span class="hl-5">symbol</span><span class="hl-1">);</span><br/><span class="hl-1">  </span><span class="hl-4">if</span><span class="hl-1"> (</span><span class="hl-5">duplicate</span><span class="hl-1">) {</span><br/><span class="hl-1">    </span><span class="hl-4">throw</span><span class="hl-1"> </span><span class="hl-3">new</span><span class="hl-1"> </span><span class="hl-0">Error</span><span class="hl-1">(</span><span class="hl-2">`</span><span class="hl-3">${</span><span class="hl-5">symbol</span><span class="hl-3">}</span><span class="hl-2"> already has a position via </span><span class="hl-3">${</span><span class="hl-5">duplicate</span><span class="hl-9">.</span><span class="hl-5">strategyName</span><span class="hl-3">}</span><span class="hl-2">`</span><span class="hl-1">);</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="rejection-events-risksubject" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Rejection Events (<code>riskSubject</code>)<a href="#rejection-events-risksubject" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>When a signal is rejected by the risk layer, an event is emitted to the <code>riskSubject</code>. This allows UI components or monitoring logs to display the specific reason for the trade failure without the strategy needing to handle the error internally.</p>
+<p><strong>Entity Mapping: Code to Logic</strong>
+<img src="../media/18-risk-management_1.svg" alt="Mermaid Diagram"></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#risk-management"><span>Risk <wbr/>Management</span></a><ul><li><a href="#risk-management-architecture"><span>Risk <wbr/>Management <wbr/>Architecture</span></a></li><li><ul><li><a href="#execution-flow"><span>Execution <wbr/>Flow</span></a></li><li><a href="#risk-management-component-interaction"><span>Risk <wbr/>Management <wbr/>Component <wbr/>Interaction</span></a></li></ul></li><li><a href="#registering-risk-profiles"><span>Registering <wbr/>Risk <wbr/>Profiles</span></a></li><li><ul><li><a href="#risk-profile-schema"><span>Risk <wbr/>Profile <wbr/>Schema</span></a></li></ul></li><li><a href="#iriskvalidationpayload"><span>IRisk<wbr/>Validation<wbr/>Payload</span></a></li><li><a href="#built-in--custom-validators"><span>Built-<wbr/>in &amp; <wbr/>Custom <wbr/>Validators</span></a></li><li><ul><li><a href="#1-concurrent-position-limits"><span>1. <wbr/>Concurrent <wbr/>Position <wbr/>Limits</span></a></li><li><a href="#2-symbol-filtering"><span>2. <wbr/>Symbol <wbr/>Filtering</span></a></li><li><a href="#3-trading-time-windows"><span>3. <wbr/>Trading <wbr/>Time <wbr/>Windows</span></a></li><li><a href="#4-multi-strategy-coordination"><span>4. <wbr/>Multi-<wbr/>Strategy <wbr/>Coordination</span></a></li></ul></li><li><a href="#rejection-events-risksubject"><span>Rejection <wbr/>Events (risk<wbr/>Subject)</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

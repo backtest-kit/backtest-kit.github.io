@@ -1,0 +1,79 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/15_backtesting_execution_reporting | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_15_backtesting_execution_reporting.html">begin/15_backtesting_execution_reporting</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="backtesting-execution--reporting" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Backtesting: Execution &amp; Reporting<a href="#backtesting-execution--reporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The <code>backtest-kit</code> framework provides a robust engine for historical strategy evaluation. It operates through a two-phase lifecycle: <strong>configuration</strong> (registering components via <code>add*</code> functions) and <strong>execution</strong> (running the simulation and analyzing results).</p>
+<a id="execution-models" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Models<a href="#execution-models" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework supports two primary execution modes: streaming and event-driven.</p>
+<a id="1-streaming-generator-backtestrun" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Streaming Generator: <code>Backtest.run()</code><a href="#1-streaming-generator-backtestrun" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>Backtest.run()</code> is an asynchronous generator that yields the current timestamp at every step of the backtest. This is ideal for linear execution where the caller needs to synchronize external logic with the backtest clock.</p>
+<a id="2-event-driven-backtestbackground" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Event-Driven: <code>Backtest.background()</code><a href="#2-event-driven-backtestbackground" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p><code>Backtest.background()</code> executes the backtest as a background process, emitting events as it progresses. This is the preferred method for complex integrations where multiple listeners respond to signals and state changes.</p>
+<a id="data-flow-execution-logic" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Data Flow: Execution Logic<a href="#data-flow-execution-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>The following diagram illustrates the internal command flow during a background backtest execution.</p>
+<p><strong>Backtest Execution Sequence</strong>
+<img src="../media/15-backtesting-execution-reporting_0.svg" alt="Mermaid Diagram"></p>
+<a id="event-listeners" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Event Listeners<a href="#event-listeners" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>To capture data during a background run, the framework provides specific listener functions:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Function</th>
+<th style="text-align:left">Purpose</th>
+<th style="text-align:left">Data Provided</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>listenSignalBacktest</code></td>
+<td style="text-align:left">Triggered when a strategy generates a new signal.</td>
+<td style="text-align:left"><code>Signal</code> object</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>listenBacktestProgress</code></td>
+<td style="text-align:left">Reports the completion percentage of the current run.</td>
+<td style="text-align:left"><code>number</code> (0-100)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>listenDoneBacktest</code></td>
+<td style="text-align:left">Triggered upon completion of the frame window.</td>
+<td style="text-align:left">Final statistics object</td>
+</tr>
+</tbody>
+</table>
+<a id="statistics--reporting" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Statistics &amp; Reporting<a href="#statistics--reporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>Backtest</code> singleton provides methods to retrieve performance metrics after or during execution.</p>
+<a id="key-metrics-backtestgetdata" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Key Metrics (<code>Backtest.getData()</code>)<a href="#key-metrics-backtestgetdata" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getData()</code> method returns a structured object containing the strategy's performance:</p>
+<ul>
+<li><strong>Total PNL</strong>: The cumulative profit and loss across all trades.</li>
+<li><strong>Win Rate</strong>: Percentage of trades that closed with a positive PNL.</li>
+<li><strong>Sharpe Ratio</strong>: Risk-adjusted return metric.</li>
+<li><strong>Max Drawdown</strong>: The largest peak-to-trough decline in equity.</li>
+</ul>
+<a id="reporting-and-persistence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Reporting and Persistence<a href="#reporting-and-persistence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong><code>Backtest.getReport()</code></strong>: Generates a formatted Markdown report of the backtest results.</li>
+<li><strong><code>Backtest.dump()</code></strong>: Persists the entire backtest state, including all signals and metrics, to a JSON file for later analysis.</li>
+</ul>
+<p><strong>Reporting Component Association</strong>
+<img src="../media/15-backtesting-execution-reporting_1.svg" alt="Mermaid Diagram"></p>
+<a id="look-ahead-bias-prevention" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Look-Ahead Bias Prevention<a href="#look-ahead-bias-prevention" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>A critical feature of the <code>backtest-kit</code> is the prevention of look-ahead bias. This is achieved through &quot;Context-Aware Data Fetching&quot;.</p>
+<p>When a strategy calls <code>getCandles()</code> or <code>fetchNews()</code>, the framework automatically detects the execution context (Backtest vs. Live) using internal async hooks:</p>
+<ol>
+<li><strong>Timestamp Masking</strong>: The strategy only receives data older than or equal to the &quot;current&quot; backtest timestamp.</li>
+<li><strong>News Filtering</strong>: In the <code>feb_2026_strategy</code>, news fetching is constrained to a 24-hour window relative to the simulated time, ensuring the LLM cannot &quot;see&quot; future events.</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#backtesting-execution--reporting"><span>Backtesting: <wbr/>Execution &amp; <wbr/>Reporting</span></a><ul><li><a href="#execution-models"><span>Execution <wbr/>Models</span></a></li><li><ul><li><a href="#1-streaming-generator-backtestrun"><span>1. <wbr/>Streaming <wbr/>Generator: <wbr/>Backtest.run()</span></a></li><li><a href="#2-event-driven-backtestbackground"><span>2. <wbr/>Event-<wbr/>Driven: <wbr/>Backtest.background()</span></a></li><li><ul><li><a href="#data-flow-execution-logic"><span>Data <wbr/>Flow: <wbr/>Execution <wbr/>Logic</span></a></li></ul></li></ul></li><li><a href="#event-listeners"><span>Event <wbr/>Listeners</span></a></li><li><a href="#statistics--reporting"><span>Statistics &amp; <wbr/>Reporting</span></a></li><li><ul><li><a href="#key-metrics-backtestgetdata"><span>Key <wbr/>Metrics (<wbr/>Backtest.get<wbr/>Data())</span></a></li><li><a href="#reporting-and-persistence"><span>Reporting and <wbr/>Persistence</span></a></li></ul></li><li><a href="#look-ahead-bias-prevention"><span>Look-<wbr/>Ahead <wbr/>Bias <wbr/>Prevention</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,96 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/19_ai_strategy_optimization_walker | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_19_ai_strategy_optimization_walker.html">begin/19_ai_strategy_optimization_walker</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="ai-strategy-optimization--walker" class="tsd-anchor"></a><h1 class="tsd-anchor-link">AI Strategy Optimization &amp; Walker<a href="#ai-strategy-optimization--walker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The AI Strategy Optimization system is a meta-level framework within <code>backtest-kit</code> designed to automate the creation and evaluation of trading strategies. Unlike standard execution modes, the <strong>Optimizer</strong> uses Large Language Models (LLMs) via Ollama to synthesize executable strategy code (<code>.mjs</code> files) based on historical data and natural language prompts. The <strong>Walker</strong> component then facilitates the multi-strategy comparison of these generated assets to identify the most robust performers.</p>
+<a id="optimizer-meta-system" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Optimizer Meta-System<a href="#optimizer-meta-system" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The Optimizer functions as a code generation pipeline. It collects data from defined sources (News, Technical Indicators, etc.), formats them into LLM prompts, and processes the AI's response into a functional trading strategy.</p>
+<a id="configuration--registration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Configuration &amp; Registration<a href="#configuration--registration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Optimizers are registered using the <code>addOptimizer</code> function. This requires defining training ranges (where the LLM &quot;learns&quot; patterns) and testing ranges (where the generated code is validated).</p>
+<a id="data-sources-source" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Sources (<code>source</code>)<a href="#data-sources-source" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Data sources are the bridge between raw market information and the LLM's context. Each source must implement:</p>
+<ul>
+<li><strong>fetch</strong>: An async function to retrieve raw data (e.g., via APIs or CCXT).</li>
+<li><strong>user</strong>: Formats the fetched data into a string for the LLM's &quot;user&quot; message.</li>
+<li><strong>assistant</strong>: (Optional) Provides a pre-analyzed summary to guide the LLM's reasoning.</li>
+</ul>
+<a id="prompt-generation-getprompt" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Prompt Generation (<code>getPrompt</code>)<a href="#prompt-generation-getprompt" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getPrompt</code> function assembles the final instructions for the LLM. It typically instructs the model to produce a strategy that follows specific risk parameters or logic structures.</p>
+<hr>
+<a id="strategy-code-generation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Strategy Code Generation<a href="#strategy-code-generation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The system generates fully executable <code>.mjs</code> files. These files often utilize structured JSON output to ensure the strategy can be parsed by the <code>backtest-kit</code> engine.</p>
+<a id="structured-output-schema" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Structured Output Schema<a href="#structured-output-schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To ensure the generated AI logic is actionable, the system enforces a JSON schema via Ollama's <code>format</code> parameter.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Property</th>
+<th style="text-align:left">Type</th>
+<th style="text-align:left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>position</code></td>
+<td style="text-align:left">enum</td>
+<td style="text-align:left">&quot;wait&quot;, &quot;long&quot;, or &quot;short&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>priceOpen</code></td>
+<td style="text-align:left">number</td>
+<td style="text-align:left">Entry price (market or limit)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>priceTakeProfit</code></td>
+<td style="text-align:left">number</td>
+<td style="text-align:left">Target exit price</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>priceStopLoss</code></td>
+<td style="text-align:left">number</td>
+<td style="text-align:left">Risk exit price</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>minuteEstimatedTime</code></td>
+<td style="text-align:left">number</td>
+<td style="text-align:left">Expected duration (max 360m)</td>
+</tr>
+</tbody>
+</table>
+<a id="from-logic-to-code" class="tsd-anchor"></a><h3 class="tsd-anchor-link">From Logic to Code<a href="#from-logic-to-code" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how the Optimizer converts high-level trading concepts into internal code entities.</p>
+<p><strong>Diagram: Optimizer Entity Mapping</strong>
+<img src="../media/19-ai-strategy-optimization-walker_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="walker--exchange-schema" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Walker &amp; Exchange Schema<a href="#walker--exchange-schema" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <strong>Walker</strong> is the comparison engine. It executes multiple strategies (often those generated by the Optimizer) against the same market data to compare performance metrics like Sharpe Ratio and Win Rate.</p>
+<a id="exchange-schema-ccxt-exchange" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Schema (<code>ccxt-exchange</code>)<a href="#exchange-schema-ccxt-exchange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>For the Walker to function across different symbols and intervals, it relies on the <code>ccxt-exchange</code> schema defined in <code>modules/walker.module.ts</code>. This schema provides a standardized interface for the underlying Binance exchange via the <code>ccxt</code> library.</p>
+<p>Key functions in <code>modules/walker.module.ts</code>:</p>
+<ul>
+<li><code>getCandles</code>: Fetches OHLCV data and maps it to the internal <code>backtest-kit</code> format.</li>
+<li><code>getOrderBook</code>: Retrieves bid/ask data (Note: Throws error in backtest mode to prevent look-ahead bias).</li>
+<li><code>formatPrice</code> / <code>formatQuantity</code>: Uses <code>market.limits</code> and <code>roundTicks</code> to ensure orders meet exchange precision requirements.</li>
+</ul>
+<a id="multi-timeframe-analysis" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Multi-Timeframe Analysis<a href="#multi-timeframe-analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Generated strategies often implement a &quot;Waterfall&quot; analysis pattern, where the LLM is prompted to analyze 1h, 15m, 5m, and 1m candles sequentially before generating a final signal.</p>
+<p><strong>Diagram: Walker Execution Flow</strong>
+<img src="../media/19-ai-strategy-optimization-walker_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="infrastructure-requirements" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Infrastructure Requirements<a href="#infrastructure-requirements" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="ollama-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Ollama Integration<a href="#ollama-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system requires an active Ollama instance. Recommended models include <code>deepseek-v3.1</code> for its ability to handle complex trading logic and structured JSON.</p>
+<p><strong>Environment Configuration:</strong></p>
+<ul>
+<li><code>OLLAMA_HOST</code>: Defaults to <code>http://localhost:11434</code>.</li>
+<li><code>OLLAMA_MODEL</code>: Specifies the target model for generation.</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ai-strategy-optimization--walker"><span>AI <wbr/>Strategy <wbr/>Optimization &amp; <wbr/>Walker</span></a><ul><li><a href="#optimizer-meta-system"><span>Optimizer <wbr/>Meta-<wbr/>System</span></a></li><li><ul><li><a href="#configuration--registration"><span>Configuration &amp; <wbr/>Registration</span></a></li><li><a href="#data-sources-source"><span>Data <wbr/>Sources (source)</span></a></li><li><a href="#prompt-generation-getprompt"><span>Prompt <wbr/>Generation (get<wbr/>Prompt)</span></a></li></ul></li><li><a href="#strategy-code-generation"><span>Strategy <wbr/>Code <wbr/>Generation</span></a></li><li><ul><li><a href="#structured-output-schema"><span>Structured <wbr/>Output <wbr/>Schema</span></a></li><li><a href="#from-logic-to-code"><span>From <wbr/>Logic to <wbr/>Code</span></a></li></ul></li><li><a href="#walker--exchange-schema"><span>Walker &amp; <wbr/>Exchange <wbr/>Schema</span></a></li><li><ul><li><a href="#exchange-schema-ccxt-exchange"><span>Exchange <wbr/>Schema (ccxt-<wbr/>exchange)</span></a></li><li><a href="#multi-timeframe-analysis"><span>Multi-<wbr/>Timeframe <wbr/>Analysis</span></a></li></ul></li><li><a href="#infrastructure-requirements"><span>Infrastructure <wbr/>Requirements</span></a></li><li><ul><li><a href="#ollama-integration"><span>Ollama <wbr/>Integration</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

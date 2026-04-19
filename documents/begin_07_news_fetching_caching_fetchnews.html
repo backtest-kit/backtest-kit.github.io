@@ -1,0 +1,111 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/07_news_fetching_caching_fetchnews | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_07_news_fetching_caching_fetchnews.html">begin/07_news_fetching_caching_fetchnews</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="news-fetching--caching-fetchnews" class="tsd-anchor"></a><h1 class="tsd-anchor-link">News Fetching &amp; Caching (fetchNews)<a href="#news-fetching--caching-fetchnews" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The <code>fetchNews</code> module serves as the primary data retrieval layer for the AI forecasting engine. It abstracts the complexity of searching for financial news, managing API rate limits via caching, and enforcing strict temporal boundaries to ensure backtest integrity.</p>
+<a id="purpose-and-scope" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Purpose and Scope<a href="#purpose-and-scope" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The module integrates with the Tavily Search API to provide high-quality, filtered news content to the LLM advisors. It is designed to handle two distinct execution modes:</p>
+<ol>
+<li><strong>Live Mode</strong>: Real-time fetching of the most recent news.</li>
+<li><strong>Backtest Mode</strong>: Deterministic retrieval of historical news with aggressive caching and look-ahead bias prevention.</li>
+</ol>
+<hr>
+<a id="news-retrieval-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">News Retrieval Architecture<a href="#news-retrieval-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The news fetching process is centralized in <code>logic/api/fetchNews.ts</code>. It utilizes the <code>Tavily</code> client, which is initialized as a singleton using the <code>TAVILY_TOKEN</code> environment variable.</p>
+<a id="system-data-flow-fetchnews" class="tsd-anchor"></a><h3 class="tsd-anchor-link">System Data Flow (fetchNews)<a href="#system-data-flow-fetchnews" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>This diagram illustrates how the <code>fetchNews</code> function interacts with the <code>backtest-kit</code> state and external APIs to provide data to the forecasting logic.</p>
+<p>&quot;fetchNews Data Flow&quot;
+<img src="../media/07-news-fetching-caching-fetchnews_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="domain-filtering--validation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Domain Filtering &amp; Validation<a href="#domain-filtering--validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>To ensure the LLM receives high-signal data, the system implements strict domain whitelisting and blacklisting.</p>
+<a id="allowed-and-disallowed-domains" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Allowed and Disallowed Domains<a href="#allowed-and-disallowed-domains" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system prioritizes crypto-native media, regulatory bodies, and specific social platforms while excluding sources that frequently omit publication timestamps.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Category</th>
+<th style="text-align:left">Domains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Crypto Media</strong></td>
+<td style="text-align:left"><code>cointelegraph.com</code>, <code>theblock.co</code>, <code>decrypt.co</code>, <code>blockworks.co</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Regulators</strong></td>
+<td style="text-align:left"><code>sec.gov</code>, <code>federalreserve.gov</code>, <code>whitehouse.gov</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Social/Personas</strong></td>
+<td style="text-align:left"><code>truthsocial.com</code>, <code>stocktwits.com</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Blacklisted</strong></td>
+<td style="text-align:left"><code>coindesk.com</code>, <code>reuters.com</code>, <code>bloomberg.com</code>, <code>wsj.com</code> (Missing <code>publishedDate</code>)</td>
+</tr>
+</tbody>
+</table>
+<a id="validation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Validation Logic<a href="#validation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>getDomainList</code> function ensures that no domain exists in both lists simultaneously. Additionally, the <code>search</code> function rejects any result where the <code>publishedDate</code> is missing or defaults to <code>00:00</code> (often indicating a placeholder date).</p>
+<hr>
+<a id="temporal-windows--look-ahead-bias" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Temporal Windows &amp; Look-Ahead Bias<a href="#temporal-windows--look-ahead-bias" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>A critical requirement for valid backtesting is the prevention of &quot;look-ahead bias&quot;—using information that would not have been available at the time of the trade.</p>
+<a id="the-news_window_hours-constraint" class="tsd-anchor"></a><h3 class="tsd-anchor-link">The NEWS_WINDOW_HOURS Constraint<a href="#the-news_window_hours-constraint" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system defines a global <code>NEWS_WINDOW_HOURS = 24</code>. Regardless of the mode, <code>fetchNews</code> only returns articles published within the 24-hour window ending exactly at the current system time (<code>getDate()</code>).</p>
+<a id="mode-specific-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Mode-Specific Implementation<a href="#mode-specific-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th style="text-align:left">Feature</th>
+<th style="text-align:left"><code>fetchNewsInLive</code></th>
+<th style="text-align:left"><code>fetchNewsInBacktest</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Time Range</strong></td>
+<td style="text-align:left">Last 48 hours (buffer for filtering)</td>
+<td style="text-align:left">+/- 1 day from <code>alignToInterval(when, &quot;1d&quot;)</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Caching</strong></td>
+<td style="text-align:left">None (always fresh)</td>
+<td style="text-align:left"><code>Cache.file</code> (persisted to disk)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Cache Key</strong></td>
+<td style="text-align:left">N/A</td>
+<td style="text-align:left"><code>symbol_topic_alignMs_query</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>API Frequency</strong></td>
+<td style="text-align:left">Every call</td>
+<td style="text-align:left">Once per daily candle open</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="implementation-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="backtest-caching-strategy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtest Caching Strategy<a href="#backtest-caching-strategy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>fetchNewsInBacktest</code> function uses <code>Cache.file</code> from the <code>backtest-kit</code>. This is vital because a 1-minute backtest for one month would otherwise trigger ~43,000 API calls. By aligning the cache to <code>1d</code> (one day), the system fetches a &quot;daily batch&quot; of news and stores it locally.</p>
+<p>&quot;Backtest Cache Resolution&quot;
+<img src="../media/07-news-fetching-caching-fetchnews_1.svg" alt="Mermaid Diagram"></p>
+<a id="configuration--localization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Configuration &amp; Localization<a href="#configuration--localization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The module relies on a global <code>dayjs</code> configuration defined in <code>logic/config/setup.ts</code>, which enables UTC support and Russian locale formatting for LLM-friendly date strings.</p>
+<a id="api-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">API Parameters<a href="#api-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>search</code> function configures the Tavily client with specific parameters:</p>
+<ul>
+<li><code>topic: &quot;news&quot;</code>: Restricts search to news indices.</li>
+<li><code>searchDepth: &quot;advanced&quot;</code>: Enables more thorough crawling.</li>
+<li><code>maxResults: 20</code>: Limits the volume of data per query to maintain LLM context window limits.</li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#news-fetching--caching-fetchnews"><span>News <wbr/>Fetching &amp; <wbr/>Caching (fetch<wbr/>News)</span></a><ul><li><ul><li><a href="#purpose-and-scope"><span>Purpose and <wbr/>Scope</span></a></li></ul></li><li><a href="#news-retrieval-architecture"><span>News <wbr/>Retrieval <wbr/>Architecture</span></a></li><li><ul><li><a href="#system-data-flow-fetchnews"><span>System <wbr/>Data <wbr/>Flow (fetch<wbr/>News)</span></a></li></ul></li><li><a href="#domain-filtering--validation"><span>Domain <wbr/>Filtering &amp; <wbr/>Validation</span></a></li><li><ul><li><a href="#allowed-and-disallowed-domains"><span>Allowed and <wbr/>Disallowed <wbr/>Domains</span></a></li><li><a href="#validation-logic"><span>Validation <wbr/>Logic</span></a></li></ul></li><li><a href="#temporal-windows--look-ahead-bias"><span>Temporal <wbr/>Windows &amp; <wbr/>Look-<wbr/>Ahead <wbr/>Bias</span></a></li><li><ul><li><a href="#the-news_window_hours-constraint"><span>The NEWS_<wbr/>WINDOW_<wbr/>HOURS <wbr/>Constraint</span></a></li><li><a href="#mode-specific-implementation"><span>Mode-<wbr/>Specific <wbr/>Implementation</span></a></li></ul></li><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li><li><ul><li><a href="#backtest-caching-strategy"><span>Backtest <wbr/>Caching <wbr/>Strategy</span></a></li><li><a href="#configuration--localization"><span>Configuration &amp; <wbr/>Localization</span></a></li><li><a href="#api-parameters"><span>API <wbr/>Parameters</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

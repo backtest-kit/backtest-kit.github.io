@@ -1,0 +1,84 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/14_backtest_kit_framework | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_14_backtest_kit_framework.html">begin/14_backtest_kit_framework</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="backtest-kit-framework" class="tsd-anchor"></a><h1 class="tsd-anchor-link">backtest-kit Framework<a href="#backtest-kit-framework" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The <code>backtest-kit</code> framework is the core execution engine of the <strong>news-sentiment-ai-trader</strong>. It provides a standardized, modular environment for developing, testing, and deploying trading strategies. The framework is built on a registry pattern, allowing developers to decouple trading logic (Strategies) from data sources (Exchanges) and execution environments (Backtest vs. Live).</p>
+<a id="core-philosophy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Core Philosophy<a href="#core-philosophy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Registry Pattern</strong>: All components (Strategies, Exchanges, Risk Profiles) are registered via <code>add*</code> functions before execution.</li>
+<li><strong>Context Awareness</strong>: The framework uses <code>di-kit</code> and <code>di-scoped</code> to manage service lifetimes, ensuring that logic like <code>getCandles</code> automatically fetches the correct data depending on whether it's running in a historical backtest or a live market.</li>
+<li><strong>State Machine Execution</strong>: Every trade follows a strict state transition model to prevent logical errors and ensure accurate PNL calculation.</li>
+</ul>
+<a id="system-architecture-overview" class="tsd-anchor"></a><h3 class="tsd-anchor-link">System Architecture Overview<a href="#system-architecture-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how the framework bridges high-level strategy definitions with low-level code entities and the execution loop.</p>
+<p><strong>Framework Entity Mapping</strong>
+<img src="../media/14-backtest-kit-framework_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="backtesting--performance-reporting" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Backtesting &amp; Performance Reporting<a href="#backtesting--performance-reporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The backtesting engine simulates market conditions by iterating through timeframes defined in a <code>Frame</code>. It uses an asynchronous generator <code>Backtest.run()</code> to stream results in real-time or <code>Backtest.background()</code> for event-driven processing. A critical feature is the prevention of look-ahead bias; the framework ensures that <code>getSignal</code> only has access to data available at the simulated timestamp.</p>
+<p>For details, see <a href="begin_15_backtesting_execution_reporting.html">Backtesting: Execution &amp; Reporting</a>.</p>
+<hr>
+<a id="signal-state-machine" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal State Machine<a href="#signal-state-machine" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Every signal generated by a strategy enters a state machine that governs its lifecycle. This system handles the transition from a &quot;scheduled&quot; pending order to an &quot;active&quot; position, and finally to a &quot;closed&quot; state. It calculates PNL by factoring in slippage (<code>CC_PERCENT_SLIPPAGE</code>) and exchange fees (<code>CC_PERCENT_FEE</code>).</p>
+<p>For details, see <a href="begin_16_signal_state_machine.html">Signal State Machine</a>.</p>
+<p><strong>State Transition Flow</strong>
+<img src="../media/14-backtest-kit-framework_1.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="live-trading-mode" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Live Trading Mode<a href="#live-trading-mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>In live mode, the framework switches from iterating over historical frames to a real-time <code>while(true)</code> loop. It includes robust crash recovery mechanisms using persistence adapters (e.g., <code>PersistSignalAdapter</code>) to ensure that if the process restarts, it can resume tracking active positions and pending schedules without data loss.</p>
+<p>For details, see <a href="begin_17_live_trading_mode.html">Live Trading Mode</a>.</p>
+<hr>
+<a id="risk-management" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk Management<a href="#risk-management" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The risk subsystem acts as a gatekeeper between signal generation and execution. Registered via <code>addRisk()</code>, these validators check the <code>IRiskValidationPayload</code> (portfolio state) to enforce constraints such as maximum concurrent positions, symbol-specific restrictions, or time-based trading halts.</p>
+<p>For details, see <a href="begin_18_risk_management.html">Risk Management</a>.</p>
+<hr>
+<a id="ai-strategy-optimization--walker" class="tsd-anchor"></a><h3 class="tsd-anchor-link">AI Strategy Optimization &amp; Walker<a href="#ai-strategy-optimization--walker" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>Walker</code> and <code>Optimizer</code> modules represent the meta-layer of the framework. The <code>Optimizer</code> uses LLMs (via Ollama) to generate strategy code, while the <code>Walker</code> executes multi-strategy comparisons over the same timeframe to identify the most profitable logic.</p>
+<p>For details, see <a href="begin_19_ai_strategy_optimization_walker.html">AI Strategy Optimization &amp; Walker</a>.</p>
+<hr>
+<a id="global-configuration-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Global Configuration Parameters<a href="#global-configuration-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The framework behavior is tuned via <code>GLOBAL_CONFIG</code>. These parameters define the economic environment of the simulation and the safety bounds of live execution.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Parameter</th>
+<th style="text-align:left">Default</th>
+<th style="text-align:left">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>CC_PERCENT_SLIPPAGE</code></td>
+<td style="text-align:left">0.1</td>
+<td style="text-align:left">Simulated slippage per trade (%)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>CC_PERCENT_FEE</code></td>
+<td style="text-align:left">0.1</td>
+<td style="text-align:left">Trading fee per transaction (%)</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>CC_SCHEDULE_AWAIT_MINUTES</code></td>
+<td style="text-align:left">-</td>
+<td style="text-align:left">Max wait for pending signal activation</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>CC_MAX_SIGNAL_LIFETIME_MINUTES</code></td>
+<td style="text-align:left">1440</td>
+<td style="text-align:left">Hard timeout for any open position</td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#backtest-kit-framework"><span>backtest-<wbr/>kit <wbr/>Framework</span></a><ul><li><a href="#core-philosophy"><span>Core <wbr/>Philosophy</span></a></li><li><a href="#system-architecture-overview"><span>System <wbr/>Architecture <wbr/>Overview</span></a></li><li><a href="#backtesting--performance-reporting"><span>Backtesting &amp; <wbr/>Performance <wbr/>Reporting</span></a></li><li><a href="#signal-state-machine"><span>Signal <wbr/>State <wbr/>Machine</span></a></li><li><a href="#live-trading-mode"><span>Live <wbr/>Trading <wbr/>Mode</span></a></li><li><a href="#risk-management"><span>Risk <wbr/>Management</span></a></li><li><a href="#ai-strategy-optimization--walker"><span>AI <wbr/>Strategy <wbr/>Optimization &amp; <wbr/>Walker</span></a></li><li><a href="#global-configuration-parameters"><span>Global <wbr/>Configuration <wbr/>Parameters</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

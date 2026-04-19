@@ -1,0 +1,121 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/13_february_2026_case_study_performance | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_13_february_2026_case_study_performance.html">begin/13_february_2026_case_study_performance</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="february-2026-case-study--performance" class="tsd-anchor"></a><h1 class="tsd-anchor-link">February 2026 Case Study &amp; Performance<a href="#february-2026-case-study--performance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page analyzes the documented backtest results for the <code>feb_2026_strategy</code> during February 2026. The study evaluates the performance of the AI-driven sentiment engine in a high-volatility bear market characterized by significant macroeconomic shifts and geopolitical escalation.</p>
+<a id="case-study-overview" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Case Study Overview<a href="#case-study-overview" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The February 2026 period served as a stress test for the <code>news-sentiment-ai-trader</code>. During this month, Bitcoin (BTC) experienced a net move of <strong>−16.4%</strong>, falling from a monthly high of ~$79,424 to a low of ~$60,000. The strategy utilized the <code>feb_2026_frame</code> to define the temporal window and the <code>ccxt-exchange</code> adapter for market data.</p>
+<a id="performance-metrics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Performance Metrics<a href="#performance-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Total Trades</strong></td>
+<td>16</td>
+</tr>
+<tr>
+<td><strong>Net PNL</strong></td>
+<td>+16.99%</td>
+</tr>
+<tr>
+<td><strong>Win Rate</strong></td>
+<td>68.8% (11 / 16)</td>
+</tr>
+<tr>
+<td><strong>Profit Factor</strong></td>
+<td>2.25</td>
+</tr>
+<tr>
+<td><strong>Directional Bias</strong></td>
+<td>14 SHORT / 2 LONG</td>
+</tr>
+<tr>
+<td><strong>Max Drawdown (Trade-to-Trade)</strong></td>
+<td>-5.98% (Late month)</td>
+</tr>
+</tbody>
+</table>
+<a id="data-flow--implementation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Data Flow &amp; Implementation<a href="#data-flow--implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest execution follows a structured pipeline where news data is retrieved, processed by the LLM, and converted into actionable trading signals.</p>
+<a id="signal-generation-logic" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal Generation Logic<a href="#signal-generation-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>feb_2026_strategy</code> processes news every 24 hours (the <code>NEWS_WINDOW</code>) to prevent over-trading. It maps LLM sentiment labels to position directions:</p>
+<ul>
+<li><strong>Bearish/Bullish:</strong> Opens SHORT/LONG positions.</li>
+<li><strong>Wait/Neutral:</strong> Defers entry.</li>
+</ul>
+<a id="system-data-flow-news-to-trade" class="tsd-anchor"></a><h3 class="tsd-anchor-link">System Data Flow: News to Trade<a href="#system-data-flow-news-to-trade" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how the system transitions from &quot;Natural Language Space&quot; (News/Reasoning) to &quot;Code Entity Space&quot; (Signals/Positions).</p>
+<p><strong>Diagram: News-to-Execution Pipeline</strong>
+<img src="../media/13-february-2026-case-study-performance_0.svg" alt="Mermaid Diagram"></p>
+<a id="key-news-drivers--market-context" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Key News Drivers &amp; Market Context<a href="#key-news-drivers--market-context" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The strategy's success was largely due to its ability to identify and maintain a <strong>SHORT</strong> bias during several high-impact fundamental shifts:</p>
+<ol>
+<li><strong>The SaaSpocalypse &amp; AI Re-pricing:</strong> Amazon's $200B AI capex fears and Nasdaq's 4.5% drop on Feb 7.</li>
+<li><strong>Fed Policy Shocks:</strong> The nomination of Kevin Warsh and his subsequent hawkish pivot, signaling sustained high interest rates.</li>
+<li><strong>Institutional Outflows:</strong> Record Bitcoin ETF outflows totaling $4B over five weeks and MicroStrategy (MSTR) falling below cost basis.</li>
+<li><strong>Geopolitical Escalation:</strong> US-Iran tensions and the deployment of aircraft carriers on Feb 20, which spiked the VIX above 20.</li>
+<li><strong>Trade Policy:</strong> The announcement of Trump's 15% global tariffs on Feb 24.</li>
+</ol>
+<a id="allocation-model" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Allocation Model<a href="#allocation-model" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The performance calculation uses a <strong>non-compounding model</strong>.</p>
+<ul>
+<li><strong>Fixed Allocation:</strong> $100 per trade.</li>
+<li><strong>PNL Calculation:</strong> Additive (Cumulative PNL% is the sum of individual trade PNL percentages).</li>
+</ul>
+<a id="trade-execution-analysis" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Trade Execution Analysis<a href="#trade-execution-analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The strategy utilized three primary exit mechanisms to manage risk and lock in profits.</p>
+<table>
+<thead>
+<tr>
+<th>Exit Type</th>
+<th>Count</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Trailing Take-Profit</strong></td>
+<td>9</td>
+<td>Triggered when price retraced from peak after hitting profit thresholds.</td>
+</tr>
+<tr>
+<td><strong>Stop-Loss</strong></td>
+<td>4</td>
+<td>Hard exit at 3.0% - 3.4% to protect capital.</td>
+</tr>
+<tr>
+<td><strong>Sentiment Flip</strong></td>
+<td>3</td>
+<td>Immediate closure when the LLM produced a forecast opposing the current position.</td>
+</tr>
+</tbody>
+</table>
+<a id="notable-trades" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Notable Trades<a href="#notable-trades" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><ul>
+<li><strong>Trade #3 (Short):</strong> The most successful trade (+14.28%). Opened Feb 4 at $75,740 following news of institutional deleveraging and a hawkish Fed pivot; closed at $64,657.</li>
+<li><strong>Trade #11 (Long):</strong> A successful &quot;Sentiment Flip.&quot; The strategy correctly identified a recovery bounce on Feb 19 based on US industrial output data and the Meta-Nvidia deal.</li>
+</ul>
+<a id="execution-architecture" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Execution Architecture<a href="#execution-architecture" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The backtest is executed via the <code>Backtest.run()</code> engine within the <code>backtest-kit</code> framework.</p>
+<p><strong>Diagram: Backtest Execution Components</strong>
+<img src="../media/13-february-2026-case-study-performance_1.svg" alt="Mermaid Diagram"></p>
+<a id="running-the-case-study" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Running the Case Study<a href="#running-the-case-study" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>To replicate these results, the system must be executed with the specific strategy and frame configuration:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">BTCUSDT</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--strategy</span><span class="hl-1"> </span><span class="hl-2">feb_2026_strategy</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--exchange</span><span class="hl-1"> </span><span class="hl-2">ccxt-exchange</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--frame</span><span class="hl-1"> </span><span class="hl-2">feb_2026_frame</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/feb_2026.strategy/feb_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#february-2026-case-study--performance"><span>February 2026 <wbr/>Case <wbr/>Study &amp; <wbr/>Performance</span></a><ul><li><a href="#case-study-overview"><span>Case <wbr/>Study <wbr/>Overview</span></a></li><li><ul><li><a href="#performance-metrics"><span>Performance <wbr/>Metrics</span></a></li></ul></li><li><a href="#data-flow--implementation"><span>Data <wbr/>Flow &amp; <wbr/>Implementation</span></a></li><li><ul><li><a href="#signal-generation-logic"><span>Signal <wbr/>Generation <wbr/>Logic</span></a></li><li><a href="#system-data-flow-news-to-trade"><span>System <wbr/>Data <wbr/>Flow: <wbr/>News to <wbr/>Trade</span></a></li></ul></li><li><a href="#key-news-drivers--market-context"><span>Key <wbr/>News <wbr/>Drivers &amp; <wbr/>Market <wbr/>Context</span></a></li><li><ul><li><a href="#allocation-model"><span>Allocation <wbr/>Model</span></a></li></ul></li><li><a href="#trade-execution-analysis"><span>Trade <wbr/>Execution <wbr/>Analysis</span></a></li><li><ul><li><a href="#notable-trades"><span>Notable <wbr/>Trades</span></a></li></ul></li><li><a href="#execution-architecture"><span>Execution <wbr/>Architecture</span></a></li><li><a href="#running-the-case-study"><span>Running the <wbr/>Case <wbr/>Study</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

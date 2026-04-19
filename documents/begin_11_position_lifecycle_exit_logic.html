@@ -1,0 +1,112 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/11_position_lifecycle_exit_logic | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_11_position_lifecycle_exit_logic.html">begin/11_position_lifecycle_exit_logic</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="position-lifecycle--exit-logic" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Position Lifecycle &amp; Exit Logic<a href="#position-lifecycle--exit-logic" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page documents the lifecycle of trading positions within the <code>feb_2026_strategy</code>, covering the transition from signal generation to final closure. It details the three primary exit mechanisms: trailing take-profit, hard stop-loss, and sentiment-driven reversals.</p>
+<a id="position-initialization" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Position Initialization<a href="#position-initialization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Positions are initialized via the <code>getSignal</code> function within the strategy schema. The system uses a &quot;moonbag&quot; configuration which sets up a position with a defined stop-loss but relies on dynamic logic for profit taking.</p>
+<a id="the-moonbag-pattern" class="tsd-anchor"></a><h3 class="tsd-anchor-link">The Moonbag Pattern<a href="#the-moonbag-pattern" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>Position.moonbag</code> utility creates a signal with:</p>
+<ul>
+<li><strong>Position Direction</strong>: Derived from the <code>POSITION_LABEL_MAP</code>.</li>
+<li><strong>Hard Stop-Loss</strong>: Set by the <code>HARD_STOP</code> constant (default 3.0%).</li>
+<li><strong>Infinite Lifetime</strong>: The <code>minuteEstimatedTime</code> is set to <code>Infinity</code>, meaning the position will not expire due to time and must be closed by price action or logic.</li>
+</ul>
+<a id="metadata-and-notes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Metadata and Notes<a href="#metadata-and-notes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Every generated signal includes a <code>note</code> containing the LLM's reasoning and a link to the source news. This note is persisted with the trade record for auditability.</p>
+<ul>
+<li></li>
+</ul>
+<a id="exit-mechanisms" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Exit Mechanisms<a href="#exit-mechanisms" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The strategy monitors active positions through the <code>listenActivePing</code> hook, which executes on every price tick for currently open trades.</p>
+<a id="1-sentiment-flip-listenactiveping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Sentiment Flip (ListenActivePing)<a href="#1-sentiment-flip-listenactiveping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The system continuously re-evaluates the market sentiment. If the LLM forecast changes its sentiment (e.g., from <code>bullish</code> to <code>bearish</code>), the strategy triggers an immediate market close.</p>
+<ul>
+<li><strong>Logic</strong>: It resolves the current <code>forecastSource</code> and compares the new <code>position</code> recommendation against the <code>data.position</code> of the active trade.</li>
+<li><strong>Execution</strong>: If a mismatch is detected, <code>commitClosePending</code> is called.</li>
+<li><strong>Safety</strong>: If the new forecast is marked as <code>not_reliable</code>, the exit is suppressed.</li>
+</ul>
+<a id="2-trailing-take-profit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Trailing Take-Profit<a href="#2-trailing-take-profit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Instead of a fixed target price, the strategy uses a trailing mechanism to capture extended trends.</p>
+<ul>
+<li><strong>Trigger</strong>: The position must first be in profit (<code>currentProfit &gt; 0</code>).</li>
+<li><strong>Threshold</strong>: The <code>TRAILING_TAKE</code> is set to 2.5%.</li>
+<li><strong>Mechanism</strong>: The system calculates the distance from the highest profit peak reached during the trade's lifetime using <code>getPositionHighestProfitDistancePnlPercentage</code>. If the price retraces by more than the <code>TRAILING_TAKE</code> value from that peak, the position is closed.</li>
+</ul>
+<a id="3-hard-stop-loss" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Hard Stop-Loss<a href="#3-hard-stop-loss" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>A safety net handled by the <code>backtest-kit</code> core engine.</p>
+<ul>
+<li>
+<p><strong>Value</strong>: 3.0% distance from entry.</p>
+</li>
+<li>
+<p><strong>Priority</strong>: Stop-loss checks have priority over activation and other logic to ensure capital protection.</p>
+</li>
+<li></li>
+<li></li>
+</ul>
+<a id="technical-implementation-flow" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Technical Implementation Flow<a href="#technical-implementation-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The following diagram illustrates how the strategy logic interacts with the <code>backtest-kit</code> framework entities to manage the lifecycle.</p>
+<a id="logic-to-entity-mapping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Logic to Entity Mapping<a href="#logic-to-entity-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Title: Strategy Logic to Code Entity Mapping
+<img src="../media/11-position-lifecycle-exit-logic_0.svg" alt="Mermaid Diagram">
+*
+*</p>
+<a id="signal-state-transitions" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal State Transitions<a href="#signal-state-transitions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The lifecycle follows a strict state machine managed by the framework.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">State</th>
+<th style="text-align:left">Description</th>
+<th style="text-align:left">Transition Trigger</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Idle</strong></td>
+<td style="text-align:left">Waiting for signal</td>
+<td style="text-align:left"><code>getSignal()</code> returns non-null</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Opened</strong></td>
+<td style="text-align:left">Entry triggered</td>
+<td style="text-align:left">Automatic next-tick transition</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Active</strong></td>
+<td style="text-align:left">Monitoring exits</td>
+<td style="text-align:left">TP, SL, or <code>commitClosePending</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Closed</strong></td>
+<td style="text-align:left">Terminal state</td>
+<td style="text-align:left">Exit logic completed</td>
+</tr>
+</tbody>
+</table>
+<a id="exit-execution-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exit Execution Flow<a href="#exit-execution-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Title: Position Exit Execution Flow
+<img src="../media/11-position-lifecycle-exit-logic_1.svg" alt="Mermaid Diagram">
+*
+*</p>
+<a id="configuration-overrides" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration Overrides<a href="#configuration-overrides" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>In specific test scenarios (e.g., <code>feb_2026.test.ts</code>), the exit logic can be modified via global configuration:</p>
+<ul>
+<li>
+<p><strong>CC_MAX_STOPLOSS_DISTANCE_PERCENT</strong>: Set to 100 (effectively disabled) in some backtests to allow logic-only exits.</p>
+</li>
+<li>
+<p><strong>NEVER_HARD_STOP</strong>: A local constant used to simulate positions without stop-losses.</p>
+</li>
+<li></li>
+</ul>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#position-lifecycle--exit-logic"><span>Position <wbr/>Lifecycle &amp; <wbr/>Exit <wbr/>Logic</span></a><ul><li><a href="#position-initialization"><span>Position <wbr/>Initialization</span></a></li><li><ul><li><a href="#the-moonbag-pattern"><span>The <wbr/>Moonbag <wbr/>Pattern</span></a></li><li><a href="#metadata-and-notes"><span>Metadata and <wbr/>Notes</span></a></li></ul></li><li><a href="#exit-mechanisms"><span>Exit <wbr/>Mechanisms</span></a></li><li><ul><li><a href="#1-sentiment-flip-listenactiveping"><span>1. <wbr/>Sentiment <wbr/>Flip (<wbr/>Listen<wbr/>Active<wbr/>Ping)</span></a></li><li><a href="#2-trailing-take-profit"><span>2. <wbr/>Trailing <wbr/>Take-<wbr/>Profit</span></a></li><li><a href="#3-hard-stop-loss"><span>3. <wbr/>Hard <wbr/>Stop-<wbr/>Loss</span></a></li></ul></li><li><a href="#technical-implementation-flow"><span>Technical <wbr/>Implementation <wbr/>Flow</span></a></li><li><ul><li><a href="#logic-to-entity-mapping"><span>Logic to <wbr/>Entity <wbr/>Mapping</span></a></li></ul></li><li><a href="#signal-state-transitions"><span>Signal <wbr/>State <wbr/>Transitions</span></a></li><li><ul><li><a href="#exit-execution-flow"><span>Exit <wbr/>Execution <wbr/>Flow</span></a></li></ul></li><li><a href="#configuration-overrides"><span>Configuration <wbr/>Overrides</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

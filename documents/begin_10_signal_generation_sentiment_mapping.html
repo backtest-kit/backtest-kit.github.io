@@ -1,0 +1,92 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/10_signal_generation_sentiment_mapping | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_10_signal_generation_sentiment_mapping.html">begin/10_signal_generation_sentiment_mapping</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="signal-generation--sentiment-mapping" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Signal Generation &amp; Sentiment Mapping<a href="#signal-generation--sentiment-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>This page describes the implementation of signal generation within the <code>feb_2026_strategy</code>. It focuses on how the system translates high-level LLM forecasts into actionable trade signals using a graph-based data resolution pattern, sentiment mapping, and strict filtering rules.</p>
+<a id="sentiment-to-position-mapping" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Sentiment to Position Mapping<a href="#sentiment-to-position-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The core of the strategy is the translation of natural language sentiment labels produced by the LLM into discrete trading positions. This is governed by the <code>POSITION_LABEL_MAP</code> constant.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">LLM Sentiment</th>
+<th style="text-align:left">Trade Position</th>
+<th style="text-align:left">Strategy Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>bullish</code></td>
+<td style="text-align:left"><code>long</code></td>
+<td style="text-align:left">Open Buy position</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>bearish</code></td>
+<td style="text-align:left"><code>short</code></td>
+<td style="text-align:left">Open Sell position</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>neutral</code></td>
+<td style="text-align:left"><code>wait</code></td>
+<td style="text-align:left">No action / Ignore</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>sideways</code></td>
+<td style="text-align:left"><code>wait</code></td>
+<td style="text-align:left">No action / Ignore</td>
+</tr>
+</tbody>
+</table>
+<p>This mapping ensures that only clear directional biases result in market exposure. The <code>wait</code> status acts as a safety buffer for ambiguous market conditions.</p>
+<a id="graph-based-data-resolution" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Graph-Based Data Resolution<a href="#graph-based-data-resolution" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The strategy utilizes a graph-based pattern from <code>@backtest-kit/graph</code> to manage data dependencies. This separates the fetching of the forecast from the logic that determines the position.</p>
+<ul>
+<li><strong><code>forecastSource</code></strong>: A <code>sourceNode</code> that wraps the <code>forecast</code> function. It includes a <code>Cache.file</code> layer with a 1-day interval to prevent redundant LLM calls during backtesting.</li>
+<li><strong><code>positionOutput</code></strong>: An <code>outputNode</code> that depends on <code>forecastSource</code>. It applies the <code>POSITION_LABEL_MAP</code> to the sentiment returned by the LLM.</li>
+</ul>
+<a id="signal-generation-pipeline" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Signal Generation Pipeline<a href="#signal-generation-pipeline" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The <code>getSignal</code> function is the entry point for the strategy logic, registered via <code>addStrategySchema</code>. It follows a sequential validation pipeline before emitting a signal.</p>
+<a id="1-temporal-filtering-cooldown" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Temporal Filtering (Cooldown)<a href="#1-temporal-filtering-cooldown" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To prevent over-trading on the same news cycle, the strategy implements a <code>NEWS_WINDOW</code> of 24 hours (1440 minutes).</p>
+<ul>
+<li>The function <code>getMinutesSinceLatestSignalCreated</code> checks the time elapsed since the last signal for the specific symbol.</li>
+<li>If the elapsed time is less than <code>NEWS_WINDOW</code>, the strategy returns <code>null</code>, effectively enforcing a cooldown period.</li>
+</ul>
+<a id="2-forecast-resolution--confidence-filtering" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. Forecast Resolution &amp; Confidence Filtering<a href="#2-forecast-resolution--confidence-filtering" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The strategy resolves the graph nodes to obtain the latest AI insights.</p>
+<ul>
+<li><strong>Confidence Check</strong>: If <code>forecast.confidence</code> is marked as <code>not_reliable</code>, the signal is discarded.</li>
+<li><strong>Sentiment Check</strong>: Explicit checks for <code>neutral</code> or <code>sideways</code> sentiments provide a secondary layer of protection against non-directional signals.</li>
+</ul>
+<a id="3-signal-construction" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. Signal Construction<a href="#3-signal-construction" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>If all filters pass, a signal object is returned.</p>
+<ul>
+<li><strong>ID</strong>: Generated by combining the forecast ID with a random string to ensure uniqueness.</li>
+<li><strong>Moonbag Pattern</strong>: Uses <code>Position.moonbag</code> to set the position side and a hard stop-loss (defined by <code>HARD_STOP</code> at 3.0%).</li>
+<li><strong>Metadata</strong>: A formatted Markdown <code>note</code> is attached, containing the LLM's reasoning and a deep link to the news dump for auditability.</li>
+</ul>
+<a id="data-flow-diagram-forecast-to-signal" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Flow Diagram: Forecast to Signal<a href="#data-flow-diagram-forecast-to-signal" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates the transition from the LLM's natural language output to the structured signal used by the execution engine.</p>
+<p>Title: Signal Generation Logic Flow
+<img src="../media/10-signal-generation-sentiment-mapping_0.svg" alt="Mermaid Diagram"></p>
+<a id="sentiment-flip-detection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Sentiment Flip Detection<a href="#sentiment-flip-detection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The strategy does not just open positions; it actively monitors them for sentiment reversals via <code>listenActivePing</code>. This creates a dynamic link between the LLM's evolving view of the market and open trades.</p>
+<ol>
+<li><strong>Continuous Polling</strong>: Every &quot;ping&quot; (tick) of the active position triggers a re-resolution of <code>forecastSource</code> and <code>positionOutput</code>.</li>
+<li><strong>Comparison</strong>: The current LLM-suggested position is compared against the actual <code>data.position</code> of the open trade.</li>
+<li><strong>Flip Execution</strong>: If the sentiment has changed (e.g., from <code>long</code> to <code>short</code> or <code>wait</code>), and the new forecast is reliable, the strategy calls <code>commitClosePending</code> to exit the position immediately.</li>
+</ol>
+<a id="signal-state-mapping-diagram" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Signal State Mapping Diagram<a href="#signal-state-mapping-diagram" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Title: Code Entities and State Transitions
+<img src="../media/10-signal-generation-sentiment-mapping_1.svg" alt="Mermaid Diagram"></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#signal-generation--sentiment-mapping"><span>Signal <wbr/>Generation &amp; <wbr/>Sentiment <wbr/>Mapping</span></a><ul><li><a href="#sentiment-to-position-mapping"><span>Sentiment to <wbr/>Position <wbr/>Mapping</span></a></li><li><ul><li><a href="#graph-based-data-resolution"><span>Graph-<wbr/>Based <wbr/>Data <wbr/>Resolution</span></a></li></ul></li><li><a href="#signal-generation-pipeline"><span>Signal <wbr/>Generation <wbr/>Pipeline</span></a></li><li><ul><li><a href="#1-temporal-filtering-cooldown"><span>1. <wbr/>Temporal <wbr/>Filtering (<wbr/>Cooldown)</span></a></li><li><a href="#2-forecast-resolution--confidence-filtering"><span>2. <wbr/>Forecast <wbr/>Resolution &amp; <wbr/>Confidence <wbr/>Filtering</span></a></li><li><a href="#3-signal-construction"><span>3. <wbr/>Signal <wbr/>Construction</span></a></li><li><a href="#data-flow-diagram-forecast-to-signal"><span>Data <wbr/>Flow <wbr/>Diagram: <wbr/>Forecast to <wbr/>Signal</span></a></li></ul></li><li><a href="#sentiment-flip-detection"><span>Sentiment <wbr/>Flip <wbr/>Detection</span></a></li><li><ul><li><a href="#signal-state-mapping-diagram"><span>Signal <wbr/>State <wbr/>Mapping <wbr/>Diagram</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

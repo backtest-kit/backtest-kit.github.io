@@ -1,0 +1,85 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/06_advisors_news_market_data | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_06_advisors_news_market_data.html">begin/06_advisors_news_market_data</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="advisors-news--market-data" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Advisors: News &amp; Market Data<a href="#advisors-news--market-data" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The news-sentiment-ai-trader utilizes a set of <strong>Advisors</strong> to provide the LLM with the necessary context to generate market forecasts. These advisors are registered via the <code>agent-swarm-kit</code> and act as specialized data retrieval tools. They transform raw data from external APIs and internal market state into structured Markdown or JSON formats optimized for LLM consumption.</p>
+<p>The system implements three primary advisors defined in <code>logic/enum/AdvisorName.ts</code>:</p>
+<ol>
+<li><strong>TavilyNewsAdvisor</strong>: Retrieves filtered news and sentiment data.</li>
+<li><strong>StockData1mAdvisor</strong>: Provides high-resolution 1-minute price action.</li>
+<li><strong>StockData15mAdvisor</strong>: Provides medium-resolution 15-minute price action for trend analysis.</li>
+</ol>
+<a id="advisor-architecture--data-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Advisor Architecture &amp; Data Flow<a href="#advisor-architecture--data-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The advisors bridge the gap between the &quot;Code Entity Space&quot; (API calls, data processing) and the &quot;Natural Language Space&quot; (Markdown tables, JSON summaries).</p>
+<p><strong>System Entity Mapping</strong>
+Title: Advisor Component Mapping
+<img src="../media/06-advisors-news-market-data_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="tavilynewsadvisor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">TavilyNewsAdvisor<a href="#tavilynewsadvisor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>TavilyNewsAdvisor</code> is responsible for gathering qualitative data regarding market sentiment. It uses the <code>WebSearchRequestContract</code> which requires a <code>symbol</code> and a <code>resultId</code>.</p>
+<a id="implementation-details" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Implementation Details<a href="#implementation-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li><strong>Search Logic</strong>: It iterates through predefined <code>TOPIC_QUERIES</code>. Currently, it focuses on &quot;sentiment&quot; with queries targeting Bitcoin market sentiment (bullish, bearish, neutral, or sideways).</li>
+<li><strong>Deduplication</strong>: Uses a <code>Map</code> keyed by URL to ensure that if multiple queries return the same article, it is only included once in the final output.</li>
+<li><strong>Output</strong>: Returns a JSON string containing an array of objects with <code>title</code>, <code>content</code>, and <code>publishedDate</code>.</li>
+</ul>
+<hr>
+<a id="market-data-advisors" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Market Data Advisors<a href="#market-data-advisors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The market data advisors provide quantitative context. They share a similar implementation pattern but differ in their lookback windows and timeframes. Both utilize the <code>StockDataRequestContract</code>.</p>
+<a id="data-resolution-comparison" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Data Resolution Comparison<a href="#data-resolution-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><table>
+<thead>
+<tr>
+<th style="text-align:left">Advisor</th>
+<th style="text-align:left">Timeframe</th>
+<th style="text-align:left">Limit (Candles)</th>
+<th style="text-align:left">Total Duration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>StockData1mAdvisor</code></td>
+<td style="text-align:left">1m</td>
+<td style="text-align:left">240</td>
+<td style="text-align:left">4 Hours</td>
+</tr>
+<tr>
+<td style="text-align:left"><code>StockData15mAdvisor</code></td>
+<td style="text-align:left">15m</td>
+<td style="text-align:left">32</td>
+<td style="text-align:left">8 Hours</td>
+</tr>
+</tbody>
+</table>
+<a id="stockdata1madvisor" class="tsd-anchor"></a><h4 class="tsd-anchor-link">StockData1mAdvisor<a href="#stockdata1madvisor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Registered as <code>stock_data_1m_advisor</code>, this component fetches 240 candles of 1-minute data using the <code>getCandles</code> utility from <code>backtest-kit</code>. It calculates several technical metrics for each candle to assist the LLM in understanding volatility and price action:</p>
+<ul>
+<li><strong>Volatility %</strong>: <code>((high - low) / close) * 100</code>.</li>
+<li><strong>Body %</strong>: The size of the candle body relative to its total range.</li>
+<li><strong>Change %</strong>: The percentage difference between Open and Close.</li>
+</ul>
+<a id="stockdata15madvisor" class="tsd-anchor"></a><h4 class="tsd-anchor-link">StockData15mAdvisor<a href="#stockdata15madvisor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Registered as <code>stock_data_15m_advisor</code>, this component fetches 32 candles of 15-minute data. It uses the same formatting logic as the 1m advisor but provides a broader view of the market trend.</p>
+<a id="markdown-formatting" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Markdown Formatting<a href="#markdown-formatting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Both advisors format their data into a Markdown table for the LLM. The table includes:</p>
+<ul>
+<li><strong>Time</strong>: Formatted as <code>YYYY-MM-DD HH:mm UTC</code> using <code>dayjs</code>.</li>
+<li><strong>Price/Volume</strong>: Formatted using <code>formatPrice</code> and <code>formatQuantity</code> to ensure correct decimal precision for the specific symbol.</li>
+</ul>
+<hr>
+<a id="implementation-sequence" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Sequence<a href="#implementation-sequence" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how the <code>agent-swarm-kit</code> interacts with an advisor (e.g., <code>StockData1mAdvisor</code>) to produce data for the LLM.</p>
+<p>Title: Advisor Execution Flow
+<img src="../media/06-advisors-news-market-data_1.svg" alt="Mermaid Diagram"></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#advisors-news--market-data"><span>Advisors: <wbr/>News &amp; <wbr/>Market <wbr/>Data</span></a><ul><li><a href="#advisor-architecture--data-flow"><span>Advisor <wbr/>Architecture &amp; <wbr/>Data <wbr/>Flow</span></a></li><li><a href="#tavilynewsadvisor"><span>Tavily<wbr/>News<wbr/>Advisor</span></a></li><li><ul><li><a href="#implementation-details"><span>Implementation <wbr/>Details</span></a></li></ul></li><li><a href="#market-data-advisors"><span>Market <wbr/>Data <wbr/>Advisors</span></a></li><li><ul><li><a href="#data-resolution-comparison"><span>Data <wbr/>Resolution <wbr/>Comparison</span></a></li><li><a href="#stockdata1madvisor"><span>Stock<wbr/>Data1m<wbr/>Advisor</span></a></li><li><a href="#stockdata15madvisor"><span>Stock<wbr/>Data15m<wbr/>Advisor</span></a></li><li><a href="#markdown-formatting"><span>Markdown <wbr/>Formatting</span></a></li></ul></li><li><a href="#implementation-sequence"><span>Implementation <wbr/>Sequence</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,106 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/08_ollama_completions | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_08_ollama_completions.html">begin/08_ollama_completions</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="ollama-completions" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Ollama Completions<a href="#ollama-completions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The <code>news-sentiment-ai-trader</code> system utilizes Ollama-compatible models to perform structured sentiment analysis. The system implements two distinct completion strategies to ensure robust JSON output from LLMs: <code>OllamaOutlineToolCompletion</code> (function calling) and <code>OllamaOutlineFormatCompletion</code> (native JSON mode). Both implementations are built on top of the <code>agent-swarm-kit</code> and target the <code>minimax-m2.7:cloud</code> model.</p>
+<a id="model-configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Model Configuration<a href="#model-configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>All completions are routed through a central configuration that connects to an Ollama host.</p>
+<ul>
+<li><strong>Model Name</strong>: <code>minimax-m2.7:cloud</code>,]</li>
+<li><strong>Host</strong>: <code>https://ollama.com</code>]</li>
+<li><strong>Authentication</strong>: Uses the <code>OLLAMA_TOKEN</code> environment variable]</li>
+<li><strong>Singleton Pattern</strong>: The <code>getOllama</code> function uses <code>singleshot</code> to ensure only one instance of the Ollama client is created]</li>
+</ul>
+<a id="reliability-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Reliability Parameters<a href="#reliability-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Both completion types share identical retry and timeout logic to handle network instability or model hallucinations:</p>
+<ul>
+<li><strong>COMPLETION_MAX_ATTEMPTS</strong>: 3 (Internal loop for model corrections)]</li>
+<li><strong>COMPLETION_MAX_RETRIES</strong>: 5 (External <code>retry</code> wrapper for network/timeout errors)]</li>
+<li><strong>COMPLETION_RETRY_DELAY</strong>: 5,000ms]</li>
+<li><strong>COMPLETION_TIMEOUT</strong>: 300,000ms (5 minutes)]</li>
+</ul>
+<hr>
+<a id="implementation-strategies" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Implementation Strategies<a href="#implementation-strategies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="1-ollamaoutlinetoolcompletion" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. OllamaOutlineToolCompletion<a href="#1-ollamaoutlinetoolcompletion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>This implementation forces the model to use a specific function called <code>provide_answer</code>. It is registered under the name <code>ollama_outline_tool_completion</code>].</p>
+<p><strong>Mechanism:</strong></p>
+<ol>
+<li><strong>Tool Definition</strong>: A tool of type <code>function</code> is created with the name <code>provide_answer</code>. The JSON schema for the response is passed into the <code>parameters</code> field].</li>
+<li><strong>System Prompting</strong>: A system message is injected at the start of the conversation, explicitly commanding the model to use the tool and forbidding plain text responses].</li>
+<li><strong>Fallback/Correction</strong>: If the model fails to call the tool, the system appends a user message reminding the model to use <code>provide_answer</code> and increments the attempt counter].</li>
+<li><strong>Data Repair</strong>: The tool arguments are processed through <code>jsonrepair</code> before parsing to fix minor syntax errors in the LLM's JSON string].</li>
+</ol>
+<a id="2-ollamaoutlineformatcompletion" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. OllamaOutlineFormatCompletion<a href="#2-ollamaoutlineformatcompletion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>This implementation uses Ollama's native structured output capability. It is registered under the name <code>ollama_outline_format_completion</code>].</p>
+<p><strong>Mechanism:</strong></p>
+<ol>
+<li><strong>Schema Injection</strong>: The JSON schema is passed directly to the <code>format</code> parameter of the <code>ollama.chat</code> call].</li>
+<li><strong>Response Handling</strong>: The model's <code>message.content</code> is expected to be a raw JSON string.</li>
+<li><strong>Validation</strong>: The parsed JSON is validated against the schema using <code>validateToolArguments</code> from <code>agent-swarm-kit</code>].</li>
+</ol>
+<a id="completion-logic-flow" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Completion Logic Flow<a href="#completion-logic-flow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram illustrates how <code>fetchCompletion</code> handles the request lifecycle for both implementations.</p>
+<p><strong>Completion Request Lifecycle</strong>
+<img src="../media/08-ollama-completions_0.svg" alt="Mermaid Diagram"></p>
+<hr>
+<a id="technical-details" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Technical Details<a href="#technical-details" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="json-repair-and-validation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">JSON Repair and Validation<a href="#json-repair-and-validation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Because LLMs occasionally output invalid JSON (e.g., trailing commas, missing quotes), the system uses the <code>jsonrepair</code> library. This is applied to both tool arguments and format-mode content before <code>JSON.parse</code> is invoked,].</p>
+<a id="timeout-handling" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Timeout Handling<a href="#timeout-handling" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To prevent the trading pipeline from hanging indefinitely, a <code>Promise.race</code> is used between the Ollama request and a <code>sleep</code> timer]. If the timer wins, a <code>COMPLETION_TIMEOUT_SYMBOL</code> is returned, triggering a retry].</p>
+<a id="data-flow-from-request-to-ioutlinemessage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Data Flow: From Request to IOutlineMessage<a href="#data-flow-from-request-to-ioutlinemessage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The following diagram maps the transformation of data from the initial call to the final structured message.</p>
+<p><strong>Data Transformation Pipeline</strong>
+<img src="../media/08-ollama-completions_1.svg" alt="Mermaid Diagram"></p>
+<a id="shared-configuration-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Shared Configuration Table<a href="#shared-configuration-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th style="text-align:left">Feature</th>
+<th style="text-align:left"><code>OllamaOutlineToolCompletion</code></th>
+<th style="text-align:left"><code>OllamaOutlineFormatCompletion</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Registration Name</strong></td>
+<td style="text-align:left"><code>ollama_outline_tool_completion</code></td>
+<td style="text-align:left"><code>ollama_outline_format_completion</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Model</strong></td>
+<td style="text-align:left"><code>minimax-m2.7:cloud</code></td>
+<td style="text-align:left"><code>minimax-m2.7:cloud</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Primary Method</strong></td>
+<td style="text-align:left">Function calling (<code>provide_answer</code>)</td>
+<td style="text-align:left">Native JSON <code>format</code> schema</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Internal Retries</strong></td>
+<td style="text-align:left">3 attempts with system prompt injection</td>
+<td style="text-align:left">3 attempts with schema re-validation</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Global Retries</strong></td>
+<td style="text-align:left">5 retries (5s delay)</td>
+<td style="text-align:left">5 retries (5s delay)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Flags</strong></td>
+<td style="text-align:left">Russian Language, Reasoning: high</td>
+<td style="text-align:left">Russian Language, Reasoning: high</td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ollama-completions"><span>Ollama <wbr/>Completions</span></a><ul><li><a href="#model-configuration"><span>Model <wbr/>Configuration</span></a></li><li><ul><li><a href="#reliability-parameters"><span>Reliability <wbr/>Parameters</span></a></li></ul></li><li><a href="#implementation-strategies"><span>Implementation <wbr/>Strategies</span></a></li><li><ul><li><a href="#1-ollamaoutlinetoolcompletion"><span>1. <wbr/>Ollama<wbr/>Outline<wbr/>Tool<wbr/>Completion</span></a></li><li><a href="#2-ollamaoutlineformatcompletion"><span>2. <wbr/>Ollama<wbr/>Outline<wbr/>Format<wbr/>Completion</span></a></li><li><a href="#completion-logic-flow"><span>Completion <wbr/>Logic <wbr/>Flow</span></a></li></ul></li><li><a href="#technical-details"><span>Technical <wbr/>Details</span></a></li><li><ul><li><a href="#json-repair-and-validation"><span>JSON <wbr/>Repair and <wbr/>Validation</span></a></li><li><a href="#timeout-handling"><span>Timeout <wbr/>Handling</span></a></li><li><a href="#data-flow-from-request-to-ioutlinemessage"><span>Data <wbr/>Flow: <wbr/>From <wbr/>Request to IOutline<wbr/>Message</span></a></li><li><a href="#shared-configuration-table"><span>Shared <wbr/>Configuration <wbr/>Table</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

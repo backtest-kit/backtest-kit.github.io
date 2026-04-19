@@ -1,0 +1,105 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>begin/21_ccxt_exchange_adapter | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="begin_21_ccxt_exchange_adapter.html">begin/21_ccxt_exchange_adapter</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="ccxt-exchange-adapter" class="tsd-anchor"></a><h1 class="tsd-anchor-link">CCXT Exchange Adapter<a href="#ccxt-exchange-adapter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>The CCXT Exchange Adapter provides a standardized interface between the <code>backtest-kit</code> framework and the CCXT library, specifically configured for Binance. It implements a reusable <code>ccxt-exchange</code> schema that handles market data retrieval, order book fetching, and precision formatting for prices and quantities. This adapter is shared across data dumping, strategy optimization, and forecast testing modules.</p>
+<a id="singleton-exchange-initialization" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Singleton Exchange Initialization<a href="#singleton-exchange-initialization" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>To prevent redundant network connections and repeated market loading, the adapter utilizes a <code>singleshot</code> singleton pattern to initialize the Binance exchange instance.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Feature</th>
+<th style="text-align:left">Configuration</th>
+<th style="text-align:left">File Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Exchange</strong></td>
+<td style="text-align:left"><code>ccxt.binance</code></td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Market Type</strong></td>
+<td style="text-align:left"><code>spot</code></td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Time Sync</strong></td>
+<td style="text-align:left"><code>adjustForTimeDifference: true</code></td>
+<td style="text-align:left"></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Rate Limiting</strong></td>
+<td style="text-align:left"><code>enableRateLimit: true</code></td>
+<td style="text-align:left"></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>getExchange</code> function ensures that <code>exchange.loadMarkets()</code> is called exactly once before any trading or data fetching operations occur.</p>
+<a id="exchange-schema-implementation" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Exchange Schema Implementation<a href="#exchange-schema-implementation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The adapter is registered using <code>addExchangeSchema</code>, defining how the system interacts with the physical exchange.</p>
+<a id="ohlcv-data-mapping" class="tsd-anchor"></a><h4 class="tsd-anchor-link">OHLCV Data Mapping<a href="#ohlcv-data-mapping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>The <code>getCandles</code> function maps CCXT's <code>fetchOHLCV</code> output (an array of arrays) into the structured object format required by the <code>backtest-kit</code> engine.</p>
+<a id="order-book-with-backtest-guard" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Order Book with Backtest Guard<a href="#order-book-with-backtest-guard" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>The <code>getOrderBook</code> implementation includes a safety check to prevent execution during backtests, as historical order book data is not supported in the default schema. In live contexts, it fetches and formats asks and bids as string-based price/quantity pairs.</p>
+<a id="precision-and-tick-formatting" class="tsd-anchor"></a><h4 class="tsd-anchor-link">Precision and Tick Formatting<a href="#precision-and-tick-formatting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>To ensure orders are accepted by the exchange, the adapter provides <code>formatPrice</code> and <code>formatQuantity</code>. These functions retrieve <code>tickSize</code> and <code>stepSize</code> from the market metadata.</p>
+<ul>
+<li><strong>Priority 1:</strong> Uses <code>market.limits</code> or <code>market.precision</code> to find the minimum increment.</li>
+<li><strong>Priority 2:</strong> Applies <code>roundTicks</code> to align the value with the exchange's required increments.</li>
+<li><strong>Fallback:</strong> Uses CCXT's built-in <code>priceToPrecision</code> or <code>amountToPrecision</code> methods.</li>
+</ul>
+<a id="code-entity-mapping-exchange-integration" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Code Entity Mapping: Exchange Integration<a href="#code-entity-mapping-exchange-integration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>This diagram maps the natural language requirements of exchange interaction to the specific code entities and CCXT methods used in the implementation.</p>
+<p><strong>Exchange Data Flow</strong>
+<img src="../media/21-ccxt-exchange-adapter_0.svg" alt="Mermaid Diagram"></p>
+<a id="usage-in-forecast-testing" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Usage in Forecast Testing<a href="#usage-in-forecast-testing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The <code>run_forecast.ts</code> script utilizes the <code>ccxt-exchange</code> schema within a <code>runInMockContext</code> wrapper. This allows developers to test the LLM's forecasting logic against real-world historical data by mocking the execution environment (symbol and timestamp) while providing the actual exchange adapter for data resolution.</p>
+<p><strong>Forecast Mock Context Flow</strong>
+<img src="../media/21-ccxt-exchange-adapter_1.svg" alt="Mermaid Diagram"></p>
+<a id="implementation-summary-table" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Implementation Summary Table<a href="#implementation-summary-table" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th style="text-align:left">Module</th>
+<th style="text-align:left">Schema Role</th>
+<th style="text-align:left">Key Functions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><code>dump.module.ts</code></td>
+<td style="text-align:left">Data Extraction</td>
+<td style="text-align:left"><code>getCandles</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>walker.module.ts</code></td>
+<td style="text-align:left">Strategy Optimization</td>
+<td style="text-align:left"><code>getCandles</code>, <code>getOrderBook</code>, <code>formatPrice</code>, <code>formatQuantity</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>pine.module.ts</code></td>
+<td style="text-align:left">Signal Generation</td>
+<td style="text-align:left"><code>getCandles</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><code>run_forecast.ts</code></td>
+<td style="text-align:left">Logic Validation</td>
+<td style="text-align:left"><code>getCandles</code>, <code>formatPrice</code>, <code>formatQuantity</code></td>
+</tr>
+</tbody>
+</table>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ccxt-exchange-adapter"><span>CCXT <wbr/>Exchange <wbr/>Adapter</span></a><ul><li><a href="#singleton-exchange-initialization"><span>Singleton <wbr/>Exchange <wbr/>Initialization</span></a></li><li><a href="#exchange-schema-implementation"><span>Exchange <wbr/>Schema <wbr/>Implementation</span></a></li><li><ul><li><a href="#ohlcv-data-mapping"><span>OHLCV <wbr/>Data <wbr/>Mapping</span></a></li><li><a href="#order-book-with-backtest-guard"><span>Order <wbr/>Book with <wbr/>Backtest <wbr/>Guard</span></a></li><li><a href="#precision-and-tick-formatting"><span>Precision and <wbr/>Tick <wbr/>Formatting</span></a></li></ul></li><li><a href="#code-entity-mapping-exchange-integration"><span>Code <wbr/>Entity <wbr/>Mapping: <wbr/>Exchange <wbr/>Integration</span></a></li><li><a href="#usage-in-forecast-testing"><span>Usage in <wbr/>Forecast <wbr/>Testing</span></a></li><li><a href="#implementation-summary-table"><span>Implementation <wbr/>Summary <wbr/>Table</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
