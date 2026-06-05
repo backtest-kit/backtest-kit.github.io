@@ -1,0 +1,387 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>strategies/jan_2026 | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="strategies_jan_2026.html">strategies/jan_2026</a></li></ul></div><div class="tsd-panel tsd-typography"><img src="https://github.com/tripolskypetr/backtest-kit/raw/refs/heads/master/assets/square_compasses.svg" height="45px" align="right">
+<a id="📊-trxusdt-january-2026--liquidity-harvesting-backtest" class="tsd-anchor"></a><h1 class="tsd-anchor-link">📊 TRXUSDT January 2026 — Liquidity Harvesting Backtest<a href="#📊-trxusdt-january-2026--liquidity-harvesting-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
+<p>Backtest that proves Crypto Yoda Channel signals work better in reverse: SHORT signals are opened as LONG, direction determined by 4h range midpoint.</p>
+</blockquote>
+<p><img src="https://raw.githubusercontent.com/tripolskypetr/backtest-kit/HEAD/assets/screenshots/screenshot16.png" alt="screenshot"></p>
+<p><a href="https://deepwiki.com/tripolskypetr/backtest-kit"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+<a href="https://npmjs.org/package/backtest-kit"><img src="https://img.shields.io/npm/v/backtest-kit.svg?style=flat-square" alt="npm"></a>
+<a href=""><img src="https://img.shields.io/badge/TypeScript-5.0+-blue" alt="TypeScript"></a>
+<a href="https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml"><img src="https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml/badge.svg" alt="Build"></a></p>
+<p>The strategy takes published signals from a real Telegram crypto channel (Crypto Yoda), enters at the same price zone and timestamp, but <strong>inverts the direction</strong> based on the 4h candle range midpoint. Positions close on a trailing take-profit (1% drawdown from peak) or peak staleness (peak &gt;1% held for &gt;240 min).</p>
+<p><strong>Strategy:</strong> <code>jan_2026_strategy</code> | <strong>Exchange:</strong> <code>ccxt-exchange</code> | <strong>Frame:</strong> <code>jan_2026_frame</code></p>
+<a id="🚀-quick-start" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 Quick Start<a href="#🚀-quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><blockquote>
+<p>Link to <a href="https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/jan_2026.strategy">the source code</a></p>
+</blockquote>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">TRXUSDT</span><span class="hl-1"> </span><span class="hl-2">./content/jan_2026.strategy/jan_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🔍-methodology" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🔍 Methodology<a href="#🔍-methodology" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The channel publishes SHORT signals with average R:R of 0.375:1 and 106% deposit at risk at 25× leverage — mathematically guaranteed to lose. Fifteen minutes before each post a volume spike appears on the chart; the TP step multipliers and T5/SL ratio are identical across all signals, indicating an algorithm.</p>
+<p>All 8 SHORT signals on TRXUSDT in January 2026 moved sharply in the opposite direction within 45 minutes of publication. The strategy exploits this by entering <strong>against</strong> the published direction: if the 1m close is below the 4h range midpoint, open LONG; exit on a 1% trailing drawdown from peak or peak staleness after 240 minutes.</p>
+<p>Full statistical analysis of 416 signals and 17 documented SHORT→LONG pairs is in <a href="./assets/REPORT_EN.md"><code>assets/REPORT_EN.md</code></a>.</p>
+<a id="📉-price-context-january-2026" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📉 Price Context (January 2026)<a href="#📉-price-context-january-2026" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Period</td>
+<td>Jan 6 – Jan 30, 2026</td>
+</tr>
+<tr>
+<td>Ticker</td>
+<td>TRXUSDT</td>
+</tr>
+<tr>
+<td>Price range</td>
+<td>~$0.288 – ~$0.315</td>
+</tr>
+<tr>
+<td>Dominant move</td>
+<td>Range consolidation with upside breakout mid-January</td>
+</tr>
+</tbody>
+</table>
+<p>TRXUSDT spent most of January consolidating in a tight $0.288–$0.310 range. The channel repeatedly published SHORT signals near the range bottom, betting on a breakdown that never came. Mid-January the price broke above $0.305 and held, generating the profitable LONG window exploited by the inverted strategy.</p>
+<a id="✨-performance-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">✨ Performance Summary<a href="#✨-performance-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="before-original-signals-results_beforejson" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Before (original signals, results_before.json)<a href="#before-original-signals-results_beforejson" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total trades</td>
+<td>10</td>
+</tr>
+<tr>
+<td>Net PNL</td>
+<td><strong>−5.05%</strong></td>
+</tr>
+<tr>
+<td>Win rate</td>
+<td><strong>20%</strong> (2 / 10)</td>
+</tr>
+<tr>
+<td>Winners</td>
+<td>2 LONGs (channel's own LONG signals)</td>
+</tr>
+<tr>
+<td>Losers</td>
+<td>8 SHORTs (channel's SHORT signals)</td>
+</tr>
+<tr>
+<td>Exit method</td>
+<td>All by 4 h timeout</td>
+</tr>
+</tbody>
+</table>
+<a id="after-inverted-signals-results_afterjson" class="tsd-anchor"></a><h3 class="tsd-anchor-link">After (inverted signals, results_after.json)<a href="#after-inverted-signals-results_afterjson" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total trades</td>
+<td>8</td>
+</tr>
+<tr>
+<td>Net PNL</td>
+<td><strong>+8.58%</strong></td>
+</tr>
+<tr>
+<td>Win rate</td>
+<td><strong>87.5%</strong> (7 / 8)</td>
+</tr>
+<tr>
+<td>Avg win</td>
+<td>+1.17%</td>
+</tr>
+<tr>
+<td>Avg loss</td>
+<td>−0.70%</td>
+</tr>
+<tr>
+<td>Best trade</td>
+<td><strong>+2.54%</strong> (LONG Jan 22)</td>
+</tr>
+<tr>
+<td>Worst trade</td>
+<td>−0.70% (LONG Jan 26, SL hit)</td>
+</tr>
+<tr>
+<td>Closed by trailing take</td>
+<td>4</td>
+</tr>
+<tr>
+<td>Closed by peak staleness</td>
+<td>3</td>
+</tr>
+<tr>
+<td>Closed by stop-loss</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<a id="risk-adjusted-metrics" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Risk-Adjusted Metrics<a href="#risk-adjusted-metrics" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Individual trade PNL values (inverted strategy): <code>+0.99, +0.77, +0.83, +0.007, +1.62, +2.09, +2.54, −0.70, +1.18</code></p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mean trade PNL</td>
+<td>−0.505%</td>
+<td><strong>+1.036%</strong></td>
+</tr>
+<tr>
+<td>Std dev per trade</td>
+<td>0.810%</td>
+<td>0.942%</td>
+</tr>
+<tr>
+<td>Sharpe Ratio (per-trade)</td>
+<td><strong>−0.63</strong></td>
+<td><strong>+1.14</strong></td>
+</tr>
+<tr>
+<td>Max drawdown (single trade)</td>
+<td>−1.33%</td>
+<td>−0.70%</td>
+</tr>
+<tr>
+<td>Profit factor</td>
+<td>0.56</td>
+<td><strong>7.31</strong></td>
+</tr>
+<tr>
+<td>Expectancy per trade</td>
+<td>−$0.51</td>
+<td><strong>+$1.04</strong></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Sharpe Ratio</strong> = mean(PNL) / std(PNL), computed per-trade without risk-free rate adjustment (annualisation is not meaningful for a 25-day, 8-trade sample).</p>
+</blockquote>
+<blockquote>
+<p><strong>Profit factor</strong> = gross profit / gross loss. Before: $1.51 won / $2.70 lost = 0.56. After: $7.44 won / $0.70 lost = 7.31.</p>
+</blockquote>
+<p>The inverted strategy's Sharpe of <strong>1.14</strong> indicates the mean return comfortably exceeds one standard deviation of trade-level noise — a level conventionally considered acceptable for systematic strategies. The baseline Sharpe of −0.63 confirms the original signals have negative expected value regardless of execution quality.</p>
+<a id="📋-trade-log-after--inverted" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 Trade Log (After — Inverted)<a href="#📋-trade-log-after--inverted" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Signal date</th>
+<th>Original dir</th>
+<th>Actual dir</th>
+<th>Open</th>
+<th>Close</th>
+<th>PNL%</th>
+<th>Exit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Jan 6 10:16</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2915</td>
+<td>$0.2924</td>
+<td><strong>+0.99%</strong></td>
+<td>trailing take</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Jan 6 18:47</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2920</td>
+<td>$0.2931</td>
+<td><strong>+0.77%</strong> (est.)</td>
+<td>trailing take</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Jan 9 14:06</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2948</td>
+<td>$0.2985</td>
+<td><strong>+0.83%</strong></td>
+<td>peak staleness</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Jan 12 13:08</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2979</td>
+<td>$0.2981</td>
+<td><strong>+0.007%</strong></td>
+<td>trailing take</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Jan 15 12:10</td>
+<td>LONG</td>
+<td>LONG</td>
+<td>$0.3054</td>
+<td>$0.3116</td>
+<td><strong>+1.62%</strong></td>
+<td>peak staleness</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Jan 16 17:58</td>
+<td>LONG</td>
+<td>LONG</td>
+<td>$0.3081</td>
+<td>$0.3157</td>
+<td><strong>+2.09%</strong></td>
+<td>trailing take</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Jan 22 09:15</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2998</td>
+<td>$0.3086</td>
+<td><strong>+2.54%</strong></td>
+<td>trailing take</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Jan 26 10:50</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2956</td>
+<td>$0.2947</td>
+<td><strong>−0.70%</strong></td>
+<td>stop-loss</td>
+</tr>
+<tr>
+<td>—</td>
+<td>Jan 27 09:09</td>
+<td>SHORT</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>not triggered</td>
+</tr>
+<tr>
+<td>—</td>
+<td>Jan 30 12:18</td>
+<td>SHORT</td>
+<td>LONG</td>
+<td>$0.2894</td>
+<td>$0.2940</td>
+<td><strong>+1.18%</strong></td>
+<td>peak staleness</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Trades 8 and 10 differ in count because Jan 27 did not trigger (close price outside entry zone at signal time).</p>
+</blockquote>
+<a id="📈-equity-curve-after" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📈 Equity Curve (After)<a href="#📈-equity-curve-after" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>After trade</th>
+<th>Cumulative PNL%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Jan 6</td>
+<td>+0.99%</td>
+</tr>
+<tr>
+<td>2 — Jan 6</td>
+<td>+1.76%</td>
+</tr>
+<tr>
+<td>3 — Jan 9</td>
+<td>+2.59%</td>
+</tr>
+<tr>
+<td>4 — Jan 12</td>
+<td>+2.60%</td>
+</tr>
+<tr>
+<td>5 — Jan 15</td>
+<td>+4.22%</td>
+</tr>
+<tr>
+<td>6 — Jan 16</td>
+<td>+6.31%</td>
+</tr>
+<tr>
+<td>7 — Jan 22</td>
+<td><strong>+8.85%</strong> ← peak</td>
+</tr>
+<tr>
+<td>8 — Jan 26</td>
+<td>+8.15%</td>
+</tr>
+<tr>
+<td>… — Jan 30</td>
+<td><strong>+9.33%</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="🚀-how-to-run" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 How to Run<a href="#🚀-how-to-run" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">TRXUSDT</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--strategy</span><span class="hl-1"> </span><span class="hl-2">jan_2026_strategy</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--exchange</span><span class="hl-1"> </span><span class="hl-2">ccxt-exchange</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--frame</span><span class="hl-1"> </span><span class="hl-2">jan_2026_frame</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/jan_2026.strategy/jan_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Add <code>--ui</code> to open the web dashboard at <code>http://localhost:60050</code>:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">TRXUSDT</span><span class="hl-1"> </span><span class="hl-3">--ui</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/jan_2026.strategy/jan_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🌍-environment-variables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🌍 Environment Variables<a href="#🌍-environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Create a <code>.env</code> file in the project root (copy from <code>.env.example</code>):</p>
+<pre><code class="env"># Telegram notifications (optional)
+CC_TELEGRAM_TOKEN=your_bot_token_here
+CC_TELEGRAM_CHANNEL=-100123456789
+
+# Web UI server (optional, defaults shown)
+CC_WWWROOT_HOST=0.0.0.0
+CC_WWWROOT_PORT=60050
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#📊-trxusdt-january-2026--liquidity-harvesting-backtest"><span>📊 TRXUSDT <wbr/>January 2026 — <wbr/>Liquidity <wbr/>Harvesting <wbr/>Backtest</span></a><ul><li><a href="#🚀-quick-start"><span>🚀 <wbr/>Quick <wbr/>Start</span></a></li><li><a href="#🔍-methodology"><span>🔍 <wbr/>Methodology</span></a></li><li><a href="#📉-price-context-january-2026"><span>📉 <wbr/>Price <wbr/>Context (<wbr/>January 2026)</span></a></li><li><a href="#✨-performance-summary"><span>✨ <wbr/>Performance <wbr/>Summary</span></a></li><li><ul><li><a href="#before-original-signals-results_beforejson"><span>Before (original signals, results_<wbr/>before.json)</span></a></li><li><a href="#after-inverted-signals-results_afterjson"><span>After (inverted signals, results_<wbr/>after.json)</span></a></li><li><a href="#risk-adjusted-metrics"><span>Risk-<wbr/>Adjusted <wbr/>Metrics</span></a></li></ul></li><li><a href="#📋-trade-log-after--inverted"><span>📋 <wbr/>Trade <wbr/>Log (<wbr/>After — <wbr/>Inverted)</span></a></li><li><a href="#📈-equity-curve-after"><span>📈 <wbr/>Equity <wbr/>Curve (<wbr/>After)</span></a></li><li><a href="#🚀-how-to-run"><span>🚀 <wbr/>How to <wbr/>Run</span></a></li><li><a href="#🌍-environment-variables"><span>🌍 <wbr/>Environment <wbr/>Variables</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -1,0 +1,486 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>strategies/apr_2026 | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="strategies_apr_2026.html">strategies/apr_2026</a></li></ul></div><div class="tsd-panel tsd-typography"><img src="https://github.com/tripolskypetr/backtest-kit/raw/refs/heads/master/assets/square_compasses.svg" height="45px" align="right">
+<a id="📊-btcusdt-april-2026--dca-ladder-backtest" class="tsd-anchor"></a><h1 class="tsd-anchor-link">📊 BTCUSDT April 2026 — DCA Ladder Backtest<a href="#📊-btcusdt-april-2026--dca-ladder-backtest" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
+<p>Fixed-signal ladder strategy that opens a LONG on every new pending signal, then dollar-cost-averages down up to 10 steps while the position runs, closing at 3% portfolio profit.</p>
+</blockquote>
+<p><img src="https://raw.githubusercontent.com/tripolskypetr/backtest-kit/HEAD/assets/screenshots/screenshot16.png" alt="screenshot"></p>
+<p><a href="https://deepwiki.com/tripolskypetr/backtest-kit"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+<a href="https://npmjs.org/package/backtest-kit"><img src="https://img.shields.io/npm/v/backtest-kit.svg?style=flat-square" alt="npm"></a>
+<a href=""><img src="https://img.shields.io/badge/TypeScript-5.0+-blue" alt="TypeScript"></a>
+<a href="https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml"><img src="https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml/badge.svg" alt="Build"></a></p>
+<p>Each signal opens a $100 LONG via <code>Position.moonbag</code> (25% hard stop). While the position is active, <code>commitAverageBuy</code> fires whenever price moves outside a ±1–5% band around the last entry, adding another $100 rung up to 10 rungs total. The position closes as soon as portfolio PNL crosses +3%.</p>
+<p><strong>Strategy:</strong> <code>apr_2026_strategy</code> | <strong>Exchange:</strong> <code>ccxt-exchange</code> | <strong>Frame:</strong> <code>apr_2026_frame</code></p>
+<a id="🚀-quick-start" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 Quick Start<a href="#🚀-quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><blockquote>
+<p>Link to <a href="https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/apr_2026.strategy">the source code</a></p>
+</blockquote>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">BTCUSDT</span><span class="hl-1"> </span><span class="hl-2">./content/apr_2026.strategy/apr_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="📉-price-context-april-2026" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📉 Price Context (April 2026)<a href="#📉-price-context-april-2026" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Frame open</td>
+<td>~$68,282 (Apr 1)</td>
+</tr>
+<tr>
+<td>Frame close</td>
+<td>~$78,737 (Apr 27)</td>
+</tr>
+<tr>
+<td>Period high</td>
+<td>~$79,382</td>
+</tr>
+<tr>
+<td>Period low</td>
+<td>~$65,820</td>
+</tr>
+<tr>
+<td>Net move</td>
+<td><strong>+15.3%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>April 2026 was a recovery month for BTC after the Q1 tariff shock. Price ground upward from the mid-$60 k range, pulling every DCA position into profit within days of each entry.</p>
+<a id="✨-performance-summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">✨ Performance Summary<a href="#✨-performance-summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="without-dca-single-entry-beforejson" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Without DCA (single-entry, before.json)<a href="#without-dca-single-entry-beforejson" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total trades</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Entries per trade</td>
+<td>1 (fixed)</td>
+</tr>
+<tr>
+<td>Total deployed capital</td>
+<td>$500</td>
+</tr>
+<tr>
+<td>Net PNL ($)</td>
+<td><strong>+$12.45</strong></td>
+</tr>
+<tr>
+<td>Net PNL (%)</td>
+<td><strong>+12.45%</strong></td>
+</tr>
+<tr>
+<td>Win rate</td>
+<td>100% (5 / 5)</td>
+</tr>
+<tr>
+<td>Avg PNL per trade</td>
+<td>+$2.49</td>
+</tr>
+<tr>
+<td>Best trade</td>
+<td>+$3.20 (Apr 1, +3.20%)</td>
+</tr>
+<tr>
+<td>Worst trade</td>
+<td>+$0.19 (Apr 26, +0.19%)</td>
+</tr>
+<tr>
+<td>Worst drawdown (%)</td>
+<td><strong>−3.99%</strong> (single entry)</td>
+</tr>
+<tr>
+<td>Worst drawdown ($)</td>
+<td><strong>−$3.99</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="with-dca-ladder-up-to-10-entries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">With DCA (ladder up to 10 entries)<a href="#with-dca-ladder-up-to-10-entries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Total trades</td>
+<td>7</td>
+</tr>
+<tr>
+<td>Avg entries per trade</td>
+<td>2.4</td>
+</tr>
+<tr>
+<td>Max entries in one trade</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Total deployed capital</td>
+<td>$1,700</td>
+</tr>
+<tr>
+<td>Net PNL ($)</td>
+<td><strong>+$67.85</strong></td>
+</tr>
+<tr>
+<td>Net PNL (%)</td>
+<td><strong>+67.85% on capital deployed</strong></td>
+</tr>
+<tr>
+<td>Win rate</td>
+<td>100% (7 / 7)</td>
+</tr>
+<tr>
+<td>Avg PNL per trade</td>
+<td>+$9.69</td>
+</tr>
+<tr>
+<td>Best trade</td>
+<td>+$16.53 (5 entries, +3.31% blended)</td>
+</tr>
+<tr>
+<td>Worst trade</td>
+<td>+$1.56 (1 entry, +0.78%)</td>
+</tr>
+<tr>
+<td>Worst drawdown (%)</td>
+<td><strong>−2.59%</strong> (blended across entries)</td>
+</tr>
+<tr>
+<td>Worst drawdown ($)</td>
+<td><strong>−$12.64</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="📊-dca-vs-no-dca-comparison" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📊 DCA vs No-DCA Comparison<a href="#📊-dca-vs-no-dca-comparison" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>No DCA</th>
+<th>With DCA</th>
+<th>Delta</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Trades</td>
+<td>5</td>
+<td>7</td>
+<td>+2</td>
+</tr>
+<tr>
+<td>Total capital deployed ($)</td>
+<td>$500</td>
+<td>$1,700</td>
+<td>+$1,200</td>
+</tr>
+<tr>
+<td>Net PNL ($)</td>
+<td>$12.45</td>
+<td>$67.85</td>
+<td><strong>+$55.40</strong></td>
+</tr>
+<tr>
+<td>Net PNL on capital (%)</td>
+<td>+2.49% avg/trade</td>
+<td>+3.99% avg/trade</td>
+<td><strong>+1.50 pp</strong></td>
+</tr>
+<tr>
+<td>Worst drawdown (% per-entry)</td>
+<td>−3.99%</td>
+<td>−2.59%</td>
+<td><strong>−1.40 pp</strong></td>
+</tr>
+<tr>
+<td>Worst drawdown ($)</td>
+<td>−$3.99</td>
+<td>−$12.64</td>
+<td>+$8.65 in fiat</td>
+</tr>
+</tbody>
+</table>
+<p>DCA nearly triples gross dollar profit by deploying more capital into falling prices, while blended drawdown <strong>percentage</strong> actually improves (−2.59% vs −3.99%) because averaging down lowers the effective price. The trade-off is higher absolute fiat exposure: a worst-case drawdown of −$12.64 vs −$3.99.</p>
+<a id="📋-trade-log--without-dca" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 Trade Log — Without DCA<a href="#📋-trade-log--without-dca" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Open date</th>
+<th>Entries</th>
+<th>Open price</th>
+<th>Close price</th>
+<th>PNL%</th>
+<th>PNL$</th>
+<th>Max drawdown%</th>
+<th>Max drawdown$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Apr 1</td>
+<td>1</td>
+<td>$68,282</td>
+<td>$70,747</td>
+<td>+3.20%</td>
+<td>+$3.20</td>
+<td>−3.99%</td>
+<td>−$3.99</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Apr 9</td>
+<td>1</td>
+<td>$70,747</td>
+<td>$73,145</td>
+<td>+2.98%</td>
+<td>+$2.98</td>
+<td>−0.69%</td>
+<td>−$0.69</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Apr 14</td>
+<td>1</td>
+<td>$73,145</td>
+<td>$75,669</td>
+<td>+3.04%</td>
+<td>+$3.04</td>
+<td>−3.87%</td>
+<td>−$3.87</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Apr 22</td>
+<td>1</td>
+<td>$75,669</td>
+<td>$78,272</td>
+<td>+3.03%</td>
+<td>+$3.03</td>
+<td>−3.23%</td>
+<td>−$3.23</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Apr 26</td>
+<td>1</td>
+<td>$78,272</td>
+<td>$78,737</td>
+<td>+0.19%</td>
+<td>+$0.19</td>
+<td>−1.90%</td>
+<td>−$1.90</td>
+</tr>
+<tr>
+<td><strong>Σ</strong></td>
+<td></td>
+<td><strong>5</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>+$12.45</strong></td>
+<td><strong>−13.68%</strong></td>
+<td><strong>−$13.68</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="📋-trade-log--with-dca" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 Trade Log — With DCA<a href="#📋-trade-log--with-dca" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Open date</th>
+<th>Entries</th>
+<th>Blended open</th>
+<th>Close price</th>
+<th>PNL% (blended)</th>
+<th>PNL$</th>
+<th>Max drawdown%</th>
+<th>Max drawdown$</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Apr 1</td>
+<td>4</td>
+<td>$67,296</td>
+<td>$69,773</td>
+<td>+3.27%</td>
+<td>+$13.08</td>
+<td>−2.59%</td>
+<td>−$10.34</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Apr 9</td>
+<td>3</td>
+<td>$69,114</td>
+<td>$71,501</td>
+<td>+3.04%</td>
+<td>+$9.13</td>
+<td>−2.29%</td>
+<td>−$6.88</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Apr 14</td>
+<td>2</td>
+<td>$71,148</td>
+<td>$73,590</td>
+<td>+3.02%</td>
+<td>+$6.05</td>
+<td>−1.25%</td>
+<td>−$2.49</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Apr 15</td>
+<td>5</td>
+<td>$72,141</td>
+<td>$74,657</td>
+<td>+3.08%</td>
+<td>+$15.39</td>
+<td>−2.53%</td>
+<td>−$12.64</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Apr 20</td>
+<td>5</td>
+<td>$75,401</td>
+<td>$78,203</td>
+<td>+3.31%</td>
+<td>+$16.53</td>
+<td>−2.51%</td>
+<td>−$12.57</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Apr 23</td>
+<td>2</td>
+<td>$74,286</td>
+<td>$76,860</td>
+<td>+3.05%</td>
+<td>+$6.11</td>
+<td>−1.43%</td>
+<td>−$2.85</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Apr 26</td>
+<td>2</td>
+<td>$77,815</td>
+<td>$78,737</td>
+<td>+0.78%</td>
+<td>+$1.56</td>
+<td>−1.32%</td>
+<td>−$2.64</td>
+</tr>
+<tr>
+<td><strong>Σ</strong></td>
+<td></td>
+<td><strong>23</strong></td>
+<td></td>
+<td></td>
+<td></td>
+<td><strong>+$67.85</strong></td>
+<td><strong>−13.92%</strong></td>
+<td><strong>−$50.41</strong></td>
+</tr>
+</tbody>
+</table>
+<a id="⚠️-risk-analysis" class="tsd-anchor"></a><h2 class="tsd-anchor-link">⚠️ Risk Analysis<a href="#⚠️-risk-analysis" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="drawdown-by-percentage-per-position" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Drawdown by percentage (per-position)<a href="#drawdown-by-percentage-per-position" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>DCA <strong>lowers</strong> the percentage drawdown because averaging down into dips reduces the blended cost basis:</p>
+<ul>
+<li>No DCA worst: <strong>−3.99%</strong> (Apr 1 single entry at $68,282 before the dip to $65,820)</li>
+<li>DCA worst: <strong>−2.59%</strong> (4-entry blended basis ~$67,296, same dip)</li>
+</ul>
+<a id="drawdown-in-fiat-absolute-dollar-loss" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Drawdown in fiat (absolute dollar loss)<a href="#drawdown-in-fiat-absolute-dollar-loss" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>DCA <strong>increases</strong> the absolute dollar at risk because more capital is deployed per position:</p>
+<ul>
+<li>No DCA worst: <strong>−$3.99</strong> (1 × $100 entry)</li>
+<li>DCA worst: <strong>−$12.64</strong> (5 × $100 entries = $500 deployed in one position)</li>
+</ul>
+<a id="summary" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Risk metric</th>
+<th>No DCA</th>
+<th>With DCA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Max drawdown per position (%)</td>
+<td>−3.99%</td>
+<td>−2.59%</td>
+</tr>
+<tr>
+<td>Max drawdown per position ($)</td>
+<td>−$3.99</td>
+<td>−$12.64</td>
+</tr>
+<tr>
+<td>Capital at risk (worst position)</td>
+<td>$100</td>
+<td>$500</td>
+</tr>
+<tr>
+<td>Hard stop distance</td>
+<td>25%</td>
+<td>25%</td>
+</tr>
+<tr>
+<td>Max theoretical loss (worst, 10 rungs)</td>
+<td>−$250</td>
+<td>−$2,500</td>
+</tr>
+</tbody>
+</table>
+<p>The DCA ladder is <strong>percentage-safer</strong> but <strong>fiat-riskier</strong>. In a sustained downtrend that hits the 25% hard stop with all 10 rungs filled, the maximum single-position loss is $2,500 vs $250 for a single-entry approach.</p>
+<a id="🚀-how-to-run" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 How to Run<a href="#🚀-how-to-run" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-6"># With DCA ladder (current strategy)</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">BTCUSDT</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--strategy</span><span class="hl-1"> </span><span class="hl-2">apr_2026_strategy</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--exchange</span><span class="hl-1"> </span><span class="hl-2">ccxt-exchange</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--frame</span><span class="hl-1"> </span><span class="hl-2">apr_2026_frame</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/apr_2026.strategy/apr_2026.strategy.ts</span><br/><br/><span class="hl-6"># Without DCA (single-entry variant)</span><br/><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">BTCUSDT</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--strategy</span><span class="hl-1"> </span><span class="hl-2">apr_2026_strategy</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--exchange</span><span class="hl-1"> </span><span class="hl-2">ccxt-exchange</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-3">--frame</span><span class="hl-1"> </span><span class="hl-2">apr_2026_frame</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/apr_2026.strategy/apr_2026.test.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Add <code>--ui</code> to open the web dashboard at <code>http://localhost:60050</code>:</p>
+<pre><code class="bash"><span class="hl-0">npm</span><span class="hl-1"> </span><span class="hl-2">start</span><span class="hl-1"> </span><span class="hl-3">--</span><span class="hl-1"> </span><span class="hl-3">--backtest</span><span class="hl-1"> </span><span class="hl-3">--symbol</span><span class="hl-1"> </span><span class="hl-2">BTCUSDT</span><span class="hl-1"> </span><span class="hl-3">--ui</span><span class="hl-1"> </span><span class="hl-13">\</span><br/><span class="hl-1">  </span><span class="hl-2">./content/apr_2026.strategy/apr_2026.strategy.ts</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="🌍-environment-variables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🌍 Environment Variables<a href="#🌍-environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Create a <code>.env</code> file in the project root (copy from <code>.env.example</code>):</p>
+<pre><code class="env"># Telegram notifications (optional)
+CC_TELEGRAM_TOKEN=your_bot_token_here
+CC_TELEGRAM_CHANNEL=-100123456789
+
+# Web UI server (optional, defaults shown)
+CC_WWWROOT_HOST=0.0.0.0
+CC_WWWROOT_PORT=60050
+</code><button type="button">Copy</button></pre>
+
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#📊-btcusdt-april-2026--dca-ladder-backtest"><span>📊 BTCUSDT <wbr/>April 2026 — DCA <wbr/>Ladder <wbr/>Backtest</span></a><ul><li><a href="#🚀-quick-start"><span>🚀 <wbr/>Quick <wbr/>Start</span></a></li><li><a href="#📉-price-context-april-2026"><span>📉 <wbr/>Price <wbr/>Context (<wbr/>April 2026)</span></a></li><li><a href="#✨-performance-summary"><span>✨ <wbr/>Performance <wbr/>Summary</span></a></li><li><ul><li><a href="#without-dca-single-entry-beforejson"><span>Without DCA (single-<wbr/>entry, before.json)</span></a></li><li><a href="#with-dca-ladder-up-to-10-entries"><span>With DCA (ladder up to 10 entries)</span></a></li></ul></li><li><a href="#📊-dca-vs-no-dca-comparison"><span>📊 DCA vs <wbr/>No-<wbr/>DCA <wbr/>Comparison</span></a></li><li><a href="#📋-trade-log--without-dca"><span>📋 <wbr/>Trade <wbr/>Log — <wbr/>Without DCA</span></a></li><li><a href="#📋-trade-log--with-dca"><span>📋 <wbr/>Trade <wbr/>Log — <wbr/>With DCA</span></a></li><li><a href="#⚠️-risk-analysis"><span>⚠️ <wbr/>Risk <wbr/>Analysis</span></a></li><li><ul><li><a href="#drawdown-by-percentage-per-position"><span>Drawdown by percentage (per-<wbr/>position)</span></a></li><li><a href="#drawdown-in-fiat-absolute-dollar-loss"><span>Drawdown in fiat (absolute dollar loss)</span></a></li><li><a href="#summary"><span>Summary</span></a></li></ul></li><li><a href="#🚀-how-to-run"><span>🚀 <wbr/>How to <wbr/>Run</span></a></li><li><a href="#🌍-environment-variables"><span>🌍 <wbr/>Environment <wbr/>Variables</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
