@@ -37,12 +37,15 @@ the <code>:${symbol}</code> scope is present only in fan-out mode):</p>
 <li>Fire-once global: <code>${name}:once:g${generation}</code>.</li>
 <li>Fire-once fan-out: <code>${name}:once:${symbol}:g${generation}</code>.</li>
 </ul>
-<p>Value is the shared in-flight handler promise. Every parallel <code>tick</code> for
-the same slot key awaits this exact promise (mutex semantics) and is
-released together when it settles. <code>_inFlight</code> is owned exclusively by
-<code>_runEntry</code> — <code>clear()</code> does <strong>not</strong> touch it, so the singleshot promise
-survives concurrent <code>clear</code> calls and continues to coordinate parallel
-ticks until it settles.</p>
+<p>Value is the shared in-flight handler promise. It resolves to a <code>boolean</code>
+&quot;failed&quot; flag (<code>true</code> when the handler — or the runtime-info assembly —
+threw), which <code>_tick</code> uses to roll back the periodic watermark of the slot
+it opened so a failed boundary is retried. Every parallel <code>tick</code> for the
+same slot key awaits this exact promise (mutex semantics) and is released
+together when it settles. <code>_inFlight</code> is owned exclusively by <code>_runEntry</code> —
+<code>clear()</code> does <strong>not</strong> touch it, so the singleshot promise survives
+concurrent <code>clear</code> calls and continues to coordinate parallel ticks until
+it settles.</p>
 <a id="_firedonce" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_firedOnce<a href="#_firedonce" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_firedOnce</span><span class="hl-1">: </span><span class="hl-4">any</span>
 </code><button type="button">Copy</button></pre>
 
@@ -84,9 +87,12 @@ collapses multiple skipped boundaries into a single invocation at the
 latest one).</p>
 <p>Written synchronously in <code>_tick</code> at slot-open time (before the <code>await</code>),
 so a still-in-flight handler does not let a later tick re-open the same
-(or an already-passed) boundary. Fire-once entries never touch this map —
-they use <code>_firedOnce</code>. Pruned by <code>_clearBoundaryFor</code> on
-<code>register</code>/<code>unregister</code> and wiped by <code>dispose</code>.</p>
+(or an already-passed) boundary. If that handler then <strong>fails</strong>, the
+advance is rolled back after the slot settles — the prior value is restored
+(or the key deleted if there was none) — so the failed boundary is retried
+on the next tick, mirroring catch-up of a skipped boundary. Fire-once
+entries never touch this map — they use <code>_firedOnce</code>. Pruned by
+<code>_clearBoundaryFor</code> on <code>register</code>/<code>unregister</code> and wiped by <code>dispose</code>.</p>
 <a id="_clearboundaryfor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_clearBoundaryFor<a href="#_clearboundaryfor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_clearBoundaryFor</span><span class="hl-1">: </span><span class="hl-4">any</span>
 </code><button type="button">Copy</button></pre>
 
@@ -109,11 +115,21 @@ They just sit unused until they are GC'd here or wiped by <code>clear()</code>.<
 </code><button type="button">Copy</button></pre>
 
 <p>Build the singleshot promise for a single in-flight slot.</p>
-<p>Invokes <code>entry.handler(symbol, aligned, backtest)</code>, swallows and logs
-any error via <code>console.error</code>, and clears the <code>_inFlight</code> slot
-in <code>.finally()</code> so the next boundary produces a fresh promise. For
-fire-once entries <code>firedKey</code> is added to <code>_firedOnce</code> on success so
-subsequent ticks skip it.</p>
+<p>Assembles the <a href="../interfaces/types.IRuntimeInfo.html" class="tsd-kind-interface"> IRuntimeInfo</a> snapshot via
+<code>RuntimeMetaService.getRuntimeInfo(symbol, context, backtest)</code> and invokes
+<code>entry.handler(info)</code>. Logs any error via <code>console.error</code> and <strong>returns</strong> a
+<code>failed</code> boolean (<code>true</code> when the handler — or the runtime-info assembly —
+threw) so the caller (<code>_tick</code>) can roll back the periodic watermark of the
+slot it opened and retry that boundary. The error is <strong>not</strong> rethrown, so a
+failing handler never produces an unhandled rejection. Clears the
+<code>_inFlight</code> slot in <code>.finally()</code> so the next boundary produces a fresh
+promise. For fire-once entries <code>firedKey</code> is added to <code>_firedOnce</code> on
+success so subsequent ticks skip it.</p>
+<p><code>getRuntimeInfo</code> is the user-facing aggregator: its sub-fetches (range,
+info, price) are individually wrapped in <code>trycatch</code> with <code>null</code> fallbacks,
+so it almost never throws for missing data. Whatever does throw — the
+handler, or in rare cases <code>getRuntimeInfo</code> — is caught here and reported via
+the returned <code>failed</code> flag; the watermark rollback treats both identically.</p>
 <a id="register" class="tsd-anchor"></a><h3 class="tsd-anchor-link">register<a href="#register" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">register</span><span class="hl-1">: (</span><span class="hl-4">entry</span><span class="hl-1">: </span><span class="hl-11">CronEntry</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">CronHandle</span>
 </code><button type="button">Copy</button></pre>
 
@@ -190,7 +206,7 @@ never block the new entry.</li>
 <ul>
 <li>If the entry's fired-once key is already in <code>_firedOnce</code>, skip.</li>
 <li>Slot key: <code>${name}:once</code> (+ scope) (+ gen).</li>
-<li><code>aligned</code> = the 1-minute-aligned <code>when</code> from step 0.</li>
+<li><code>alignedMs</code> = the 1-minute-aligned <code>when</code> from step 0 (<code>ts</code>).</li>
 </ul>
 </li>
 <li><strong>Periodic</strong> (<code>entry.interval</code> set):
@@ -217,17 +233,25 @@ handler is still in flight.</li>
 </ul>
 </li>
 <li>Singleshot per slot key: look up the slot in <code>_inFlight</code>. If a promise
-already exists, <code>await</code> the same promise. Otherwise invoke
-<code>entry.handler</code>, store the promise, and <code>await</code> it. The slot is
-removed in <code>.finally()</code> so the next boundary creates a fresh promise;
-for fire-once entries the fired-once key is also added to
-<code>_firedOnce</code> on success so subsequent ticks skip it.</li>
+already exists, <code>await</code> the same promise. Otherwise open the slot via
+_runEntry — which assembles the <a href="../interfaces/types.IRuntimeInfo.html" class="tsd-kind-interface"> IRuntimeInfo</a> snapshot
+(from <code>symbol</code>, <code>context</code>, <code>backtest</code>) and invokes <code>entry.handler(info)</code>
+— store the promise, and <code>await</code> it. The slot is removed in <code>.finally()</code>
+so the next boundary creates a fresh promise; for fire-once entries the
+fired-once key is also added to <code>_firedOnce</code> on success so subsequent
+ticks skip it.</li>
+<li>After <code>await Promise.all</code>, roll back the watermark for every <strong>periodic</strong>
+slot this tick <em>opened</em> (not the ones whose in-flight promise it reused)
+whose handler reported failure, so the next tick re-opens and re-runs
+that boundary.</li>
 </ol>
 <p>Errors thrown by <code>handler</code> are caught, logged via <code>console.error</code>, and
 <strong>not</strong> rethrown — a failing handler must not break the per-symbol
 tick loop or unblock other parallel backtests with an unhandled
 rejection. A failed fire-once handler is <strong>not</strong> marked as fired and
-will retry on the next tick.</p>
+will retry on the next tick. A failed <strong>periodic</strong> handler likewise
+retries: the boundary watermark advanced at slot-open time is rolled back
+after the slot settles (step 7), so the next tick re-opens that boundary.</p>
 <p>Requires active method context and execution context.</p>
 <a id="enable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">enable<a href="#enable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">enable</span><span class="hl-1">: (() </span><span class="hl-3">=&gt;</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">any</span><span class="hl-1">) &amp; </span><span class="hl-4">ISingleshotClearable</span><span class="hl-1">&lt;() </span><span class="hl-3">=&gt;</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">any</span><span class="hl-1">&gt;</span>
 </code><button type="button">Copy</button></pre>
@@ -243,7 +267,11 @@ entries fire automatically — no manual wiring of <code>listenTickBacktest</cod
 <li><code>schedulePingSubject</code> — every tick while a scheduled signal is being monitored.</li>
 </ul>
 <p>All four subjects are subscribed to a single <code>singlerun</code>-wrapped
-handler that builds <code>_tick(event.symbol, new Date(event.timestamp), event.backtest)</code>. <code>singlerun</code> merges the four streams into one serial
+handler that builds <code>_tick(event.symbol, new Date(event.timestamp), event.backtest, { strategyName, exchangeName, frameName })</code>. The context
+object is read uniformly from the event — every contract carries
+<code>strategyName</code>, <code>exchangeName</code> and <code>frameName</code> at the top level (Active /
+Schedule contracts gained <code>frameName</code> for exactly this reason), so no
+per-event branching is needed. <code>singlerun</code> merges the four streams into one serial
 queue: at most one <code>_tick</code> runs at a time, the next waits. This matters
 because the engine can emit <code>beforeStart</code> and an immediate <code>idlePing</code>
 on the very same minute, and concurrent <code>_tick</code>s on the same
