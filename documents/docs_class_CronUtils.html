@@ -8,10 +8,10 @@ boundary concurrently, the handler is invoked exactly once. Every parallel
 together when the promise settles. After settlement the slot is cleared and
 the next boundary produces a fresh promise.</p>
 <p>Typical wiring:</p>
-<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-0">constructor</span><span class="hl-1">();</span>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">();</span>
 </code><button type="button">Copy</button></pre>
 
-<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="_entries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_entries<a href="#_entries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_entries</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="_entries" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_entries<a href="#_entries" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_entries</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Registered entries by <code>name</code>.</p>
@@ -21,11 +21,11 @@ generation participates in <code>firedKey</code> so writes from a still-in-fligh
 handler of a previous incarnation cannot poison <code>_firedOnce</code> for the
 current incarnation — their key has a different generation suffix and
 is simply ignored on lookup.</p>
-<a id="_generationcounter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_generationCounter<a href="#_generationcounter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_generationCounter</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_generationcounter" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_generationCounter<a href="#_generationcounter" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_generationCounter</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Monotonic counter used to mint new entry generations on <code>register</code>.</p>
-<a id="_inflight" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_inFlight<a href="#_inflight" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_inFlight</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_inflight" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_inFlight<a href="#_inflight" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_inFlight</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>In-flight handler slots.</p>
@@ -46,7 +46,7 @@ together when it settles. <code>_inFlight</code> is owned exclusively by <code>_
 <code>clear()</code> does <strong>not</strong> touch it, so the singleshot promise survives
 concurrent <code>clear</code> calls and continues to coordinate parallel ticks until
 it settles.</p>
-<a id="_firedonce" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_firedOnce<a href="#_firedonce" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_firedOnce</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_firedonce" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_firedOnce<a href="#_firedonce" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_firedOnce</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Keys of fire-once entries whose handler has already settled successfully.</p>
@@ -63,7 +63,7 @@ Stale entries are pruned by <code>_clearFiredOnceFor</code> on <code>register</c
 and wiped by <code>clear()</code>.</p>
 <p>Looked up by <code>_tick</code> to decide whether to skip; written by <code>_runEntry</code>
 on successful settle.</p>
-<a id="_lastboundary" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_lastBoundary<a href="#_lastboundary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_lastBoundary</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_lastboundary" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_lastBoundary<a href="#_lastboundary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_lastBoundary</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Last interval boundary already fired per periodic slot.</p>
@@ -93,7 +93,7 @@ advance is rolled back after the slot settles — the prior value is restored
 on the next tick, mirroring catch-up of a skipped boundary. Fire-once
 entries never touch this map — they use <code>_firedOnce</code>. Pruned by
 <code>_clearBoundaryFor</code> on <code>register</code>/<code>unregister</code> and wiped by <code>dispose</code>.</p>
-<a id="_clearboundaryfor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_clearBoundaryFor<a href="#_clearboundaryfor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_clearBoundaryFor</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_clearboundaryfor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_clearBoundaryFor<a href="#_clearboundaryfor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_clearBoundaryFor</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Garbage-collect every <code>_lastBoundary</code> key that belongs to the entry <code>name</code>
@@ -102,7 +102,7 @@ entries never touch this map — they use <code>_firedOnce</code>. Pruned by
 that helper this is memory hygiene, not correctness — the generation suffix
 already isolates re-registrations, so a stale watermark from an old
 generation can never gate a new entry.</p>
-<a id="_clearfiredoncefor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_clearFiredOnceFor<a href="#_clearfiredoncefor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_clearFiredOnceFor</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_clearfiredoncefor" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_clearFiredOnceFor<a href="#_clearfiredoncefor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_clearFiredOnceFor</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Garbage-collect every <code>_firedOnce</code> key that belongs to the entry <code>name</code>
@@ -111,7 +111,7 @@ generation can never gate a new entry.</p>
 for correctness — the generation suffix already isolates re-registrations,
 so leftover keys from old generations can never block a new entry.
 They just sit unused until they are GC'd here or wiped by <code>clear()</code>.</p>
-<a id="_runentry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_runEntry<a href="#_runentry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_runEntry</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_runentry" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_runEntry<a href="#_runentry" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_runEntry</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Build the singleshot promise for a single in-flight slot.</p>
@@ -130,7 +130,7 @@ info, price) are individually wrapped in <code>trycatch</code> with <code>null</
 so it almost never throws for missing data. Whatever does throw — the
 handler, or in rare cases <code>getRuntimeInfo</code> — is caught here and reported via
 the returned <code>failed</code> flag; the watermark rollback treats both identically.</p>
-<a id="register" class="tsd-anchor"></a><h3 class="tsd-anchor-link">register<a href="#register" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">register</span><span class="hl-1">: (</span><span class="hl-4">entry</span><span class="hl-1">: </span><span class="hl-11">CronEntry</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">CronHandle</span>
+<a id="register" class="tsd-anchor"></a><h3 class="tsd-anchor-link">register<a href="#register" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">register</span><span class="hl-2">: (</span><span class="hl-5">entry</span><span class="hl-2">: </span><span class="hl-10">CronEntry</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-5">CronHandle</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Register a periodic cron entry.</p>
@@ -138,13 +138,13 @@ the returned <code>failed</code> flag; the watermark rollback treats both identi
 entry (interval/symbols/handler can all change). Re-registration does
 <strong>not</strong> clear in-flight promises — entries still resolving complete with
 the previous handler.</p>
-<a id="unregister" class="tsd-anchor"></a><h3 class="tsd-anchor-link">unregister<a href="#unregister" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">unregister</span><span class="hl-1">: (</span><span class="hl-4">name</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="unregister" class="tsd-anchor"></a><h3 class="tsd-anchor-link">unregister<a href="#unregister" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">unregister</span><span class="hl-2">: (</span><span class="hl-5">name</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Remove a registered entry by name.</p>
 <p>Does not cancel handlers already in flight — those resolve on their own
 and clear their slot via <code>.finally()</code>.</p>
-<a id="clear" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear<a href="#clear" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">clear</span><span class="hl-1">: (</span><span class="hl-4">symbol</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="clear" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear<a href="#clear" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">clear</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">?: </span><span class="hl-10">string</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Clear fire-once marks so that fire-once entries can fire again.</p>
@@ -174,7 +174,7 @@ generation suffix in <code>firedKey</code> guarantees the stale mark cannot
 outlive a subsequent <code>register()</code> of the same name. If you need a hard
 re-arm, <code>unregister</code> + <code>register</code> bumps the generation and makes any
 late write a no-op.</p>
-<a id="_tick" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_tick<a href="#_tick" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_tick</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="_tick" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_tick<a href="#_tick" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_tick</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Process a virtual-time tick for <code>symbol</code> and fire any due cron entries.</p>
@@ -253,7 +253,7 @@ will retry on the next tick. A failed <strong>periodic</strong> handler likewise
 retries: the boundary watermark advanced at slot-open time is rolled back
 after the slot settles (step 7), so the next tick re-opens that boundary.</p>
 <p>Requires active method context and execution context.</p>
-<a id="enable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">enable<a href="#enable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">enable</span><span class="hl-1">: (() </span><span class="hl-3">=&gt;</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">any</span><span class="hl-1">) &amp; </span><span class="hl-4">ISingleshotClearable</span><span class="hl-1">&lt;() </span><span class="hl-3">=&gt;</span><span class="hl-1"> (...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-4">any</span><span class="hl-1">&gt;</span>
+<a id="enable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">enable<a href="#enable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">enable</span><span class="hl-2">: (() </span><span class="hl-4">=&gt;</span><span class="hl-2"> (...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-5">any</span><span class="hl-2">) &amp; </span><span class="hl-5">ISingleshotClearable</span><span class="hl-2">&lt;() </span><span class="hl-4">=&gt;</span><span class="hl-2"> (...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-5">any</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Subscribe <code>Cron</code> to the engine's strategy lifecycle subjects so registered
@@ -288,7 +288,7 @@ unsubscribes from every subject and resets the singleshot so a future
 <code>singlerun</code>-async handler; <code>_tick</code>'s returned promise is awaited inside
 <code>singlerun</code> to enforce ordering but not bubbled back to the subject.
 Errors are caught and logged inside <code>_runEntry</code>.</p>
-<a id="disable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">disable<a href="#disable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">disable</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="disable" class="tsd-anchor"></a><h3 class="tsd-anchor-link">disable<a href="#disable" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">disable</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Tear down the lifecycle subscriptions installed by  enable.</p>
@@ -296,7 +296,7 @@ Errors are caught and logged inside <code>_runEntry</code>.</p>
 are no-ops. Does <strong>not</strong> unregister entries, does <strong>not</strong> touch
 <code>_inFlight</code>, and does <strong>not</strong> wipe <code>_firedOnce</code> (use <code>unregister</code> or
 <code>clear()</code> for those).</p>
-<a id="dispose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dispose<a href="#dispose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">dispose</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="dispose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dispose<a href="#dispose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">dispose</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Hard-reset the entire <code>Cron</code> state.</p>

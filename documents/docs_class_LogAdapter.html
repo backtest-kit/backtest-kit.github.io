@@ -7,14 +7,14 @@
 <li>Alternative adapters: LogPersistUtils, LogDummyUtils</li>
 <li>Convenience methods: usePersist(), useMemory(), useDummy()</li>
 </ul>
-<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-0">constructor</span><span class="hl-1">();</span>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">();</span>
 </code><button type="button">Copy</button></pre>
 
-<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="_logfactory" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_logFactory<a href="#_logfactory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">_logFactory</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="_logfactory" class="tsd-anchor"></a><h3 class="tsd-anchor-link">_logFactory<a href="#_logfactory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">_logFactory</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Factory producing the active log utils instance</p>
-<a id="getinstance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getInstance<a href="#getinstance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">getInstance</span><span class="hl-1">: </span><span class="hl-4">any</span>
+<a id="getinstance" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getInstance<a href="#getinstance" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getInstance</span><span class="hl-2">: </span><span class="hl-5">any</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Lazily constructs the log utils from the registered factory and memoizes
@@ -22,58 +22,58 @@ the result via <code>singleshot</code>.</p>
 <p>The instance is built on the first call and cached for all subsequent calls.
 Reset via <code>clear()</code> so the next call rebuilds from the current factory
 (e.g. when <code>process.cwd()</code> changes between strategy iterations).</p>
-<a id="getlist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getList<a href="#getlist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">getList</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-11">Promise</span><span class="hl-1">&lt;</span><span class="hl-4">ILogEntry</span><span class="hl-1">[]&gt;</span>
+<a id="getlist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getList<a href="#getlist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getList</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">ILogEntry</span><span class="hl-2">[]&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Lists all stored log entries.
 Proxies call to the underlying log adapter.</p>
-<a id="log" class="tsd-anchor"></a><h3 class="tsd-anchor-link">log<a href="#log" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">log</span><span class="hl-1">: (</span><span class="hl-4">topic</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="log" class="tsd-anchor"></a><h3 class="tsd-anchor-link">log<a href="#log" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">log</span><span class="hl-2">: (</span><span class="hl-5">topic</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, ...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Logs a general-purpose message.
 Proxies call to the underlying log adapter.</p>
-<a id="debug" class="tsd-anchor"></a><h3 class="tsd-anchor-link">debug<a href="#debug" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">debug</span><span class="hl-1">: (</span><span class="hl-4">topic</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="debug" class="tsd-anchor"></a><h3 class="tsd-anchor-link">debug<a href="#debug" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">debug</span><span class="hl-2">: (</span><span class="hl-5">topic</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, ...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Logs a debug-level message.
 Proxies call to the underlying log adapter.</p>
-<a id="info" class="tsd-anchor"></a><h3 class="tsd-anchor-link">info<a href="#info" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">info</span><span class="hl-1">: (</span><span class="hl-4">topic</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="info" class="tsd-anchor"></a><h3 class="tsd-anchor-link">info<a href="#info" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">info</span><span class="hl-2">: (</span><span class="hl-5">topic</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, ...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Logs an info-level message.
 Proxies call to the underlying log adapter.</p>
-<a id="warn" class="tsd-anchor"></a><h3 class="tsd-anchor-link">warn<a href="#warn" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">warn</span><span class="hl-1">: (</span><span class="hl-4">topic</span><span class="hl-1">: </span><span class="hl-11">string</span><span class="hl-1">, ...</span><span class="hl-4">args</span><span class="hl-1">: </span><span class="hl-11">any</span><span class="hl-1">[]) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="warn" class="tsd-anchor"></a><h3 class="tsd-anchor-link">warn<a href="#warn" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">warn</span><span class="hl-2">: (</span><span class="hl-5">topic</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, ...</span><span class="hl-5">args</span><span class="hl-2">: </span><span class="hl-10">any</span><span class="hl-2">[]) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Logs a warning-level message.
 Proxies call to the underlying log adapter.</p>
-<a id="uselogger" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useLogger<a href="#uselogger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useLogger</span><span class="hl-1">: (</span><span class="hl-4">Ctor</span><span class="hl-1">: </span><span class="hl-11">TLogCtor</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="uselogger" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useLogger<a href="#uselogger" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">useLogger</span><span class="hl-2">: (</span><span class="hl-5">Ctor</span><span class="hl-2">: </span><span class="hl-10">TLogCtor</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Sets the log adapter constructor.
 All future log operations will use this adapter.</p>
-<a id="usepersist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">usePersist<a href="#usepersist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">usePersist</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="usepersist" class="tsd-anchor"></a><h3 class="tsd-anchor-link">usePersist<a href="#usepersist" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">usePersist</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Switches to persistent log adapter.
 Log entries will be persisted to disk.</p>
-<a id="usememory" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useMemory<a href="#usememory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useMemory</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="usememory" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useMemory<a href="#usememory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">useMemory</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Switches to in-memory log adapter (default).
 Log entries will be stored in memory only.</p>
-<a id="usedummy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useDummy<a href="#usedummy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useDummy</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="usedummy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useDummy<a href="#usedummy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">useDummy</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Switches to dummy log adapter.
 All future log writes will be no-ops.</p>
-<a id="usejsonl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useJsonl<a href="#usejsonl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">useJsonl</span><span class="hl-1">: (</span><span class="hl-4">fileName</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">, </span><span class="hl-4">dirName</span><span class="hl-1">?: </span><span class="hl-11">string</span><span class="hl-1">) </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="usejsonl" class="tsd-anchor"></a><h3 class="tsd-anchor-link">useJsonl<a href="#usejsonl" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">useJsonl</span><span class="hl-2">: (</span><span class="hl-5">fileName</span><span class="hl-2">?: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">dirName</span><span class="hl-2">?: </span><span class="hl-10">string</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Switches to JSONL file log adapter.
 Log entries will be appended to {dirName}/{fileName}.jsonl.
 Reads are performed by parsing all lines from the file.</p>
-<a id="clear" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear<a href="#clear" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-10">clear</span><span class="hl-1">: () </span><span class="hl-3">=&gt;</span><span class="hl-1"> </span><span class="hl-3">void</span>
+<a id="clear" class="tsd-anchor"></a><h3 class="tsd-anchor-link">clear<a href="#clear" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">clear</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Clears the memoized log instance.
