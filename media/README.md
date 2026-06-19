@@ -13,7 +13,7 @@
 
 Most trading bots don't die because the strategy was wrong. They die because the backtest quietly read tomorrow's candle, because the process crashed mid-fill and opened the position twice, because the exchange rejected an order and the bot kept trading a ghost. The strategy was never the hard part — the *plumbing* was.
 
-`backtest-kit` is that plumbing, closed off one failure at a time over a year of live trading, written hand-in-hand with Claude Code, and running real money in production at [TheOneTrade](https://theonetrade.github.io). This page walks the failures that kill bots and shows how each one is designed out of the default path — not "discouraged," not "documented," but structurally unavailable unless you go out of your way to defeat the engine. Every claim opens into **The Code / The Math / The Proof** so you (or the model reading this for you) can check the work instead of trusting the pitch.
+`backtest-kit` is that plumbing, closed off one failure at a time over a year of live trading and running real money in production at [TheOneTrade](https://theonetrade.github.io). This page walks the failures that kill bots and shows how each one is designed out of the default path — not "discouraged," not "documented," but structurally unavailable unless you go out of your way to defeat the engine. Every claim opens into **The Code / The Math / The Proof** so you (or the model reading this for you) can check the work instead of trusting the pitch.
 
 📚 **[API Reference](https://backtest-kit.github.io/documents/example_02_first_backtest.html)** · 🌟 **[Reference implementation](https://github.com/tripolskypetr/backtest-kit/tree/master/example)** · 📰 **[Article series](https://backtest-kit.github.io/documents/article_07_ai_news_trading_signals.html)**
 
@@ -776,6 +776,7 @@ Real, runnable templates — not slideware. And worth naming the concern directl
 - **[backtest-kit-redis-mongo-docker](https://github.com/backtest-kit/backtest-kit-redis-mongo-docker)** — production persistence: all 15 adapters on Mongo+Redis, atomic read-after-write, `docker-compose` one-command deploy.
 - **[backtest-kit-skills](https://github.com/backtest-kit/backtest-kit-skills)** — a Claude Code skill + Mintlify docs: describe a strategy in plain language, get working TypeScript with every schema registration wired. `npx skills add https://github.com/backtest-kit/backtest-kit-skills`
 - **[uzse-backtest-app](https://github.com/backtest-kit/uzse-backtest-app)** — Pine Script on regional exchanges that aren't on TradingView (UZSE, MSE, DSE…): download raw trades, build candles, feed them through a custom Mongo exchange adapter.
+- **[backtest-kit-docs](https://github.com/backtest-kit/backtest-kit-docs)** — Architecture handbook and knowledge base: explains the engine's design, AI workflows, production patterns, and quantitative trading concepts beyond the API.
 
 ---
 
@@ -799,7 +800,7 @@ Every claim above opens into **The Code / The Math / The Proof** precisely so yo
 
 ## 👨‍💼 Commercial support
 
-Built with Claude Code over a year of live trading and run in production at **[TheOneTrade](https://theonetrade.github.io)** — the commercial vendor behind the framework, offering paid support, custom strategy development, managed accounts, team training, and enterprise licensing for engagements outside the MIT scope.
+Built over a year of live trading and run in production at **[TheOneTrade](https://theonetrade.github.io)** — the commercial vendor behind the framework, offering paid support, custom strategy development, managed accounts, team training, and enterprise licensing for engagements outside the MIT scope.
 
 ## 📜 License
 

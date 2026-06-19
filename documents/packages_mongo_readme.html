@@ -1,63 +1,36 @@
 <!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>packages/mongo/readme | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="packages_mongo_readme.html">packages/mongo/readme</a></li></ul></div><div class="tsd-panel tsd-typography"><img src="https://github.com/tripolskypetr/backtest-kit/raw/refs/heads/master/assets/consciousness.svg" height="45px" align="right">
 <a id="💾-backtest-kitmongo" class="tsd-anchor"></a><h1 class="tsd-anchor-link">💾 @backtest-kit/mongo<a href="#💾-backtest-kitmongo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
-<p>MongoDB + Redis persistence adapter for backtest-kit. Swaps the default file-based storage for a production-grade backend — one <code>setup()</code> call, no changes to strategy code.</p>
+<p>MongoDB + Redis persistence for <a href="https://www.npmjs.com/package/backtest-kit">backtest-kit</a>. Swaps the default file storage for a production backend — durable, queryable, atomic, with O(1) cached reads — in <strong>one <code>setup()</code> call and zero strategy-code changes</strong>.</p>
 </blockquote>
 <p><img src="https://raw.githubusercontent.com/tripolskypetr/backtest-kit/HEAD/assets/screenshots/screenshot16.png" alt="screenshot"></p>
 <p><a href="https://deepwiki.com/tripolskypetr/backtest-kit"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
 <a href="https://npmjs.org/package/@backtest-kit/mongo"><img src="https://img.shields.io/npm/v/@backtest-kit/mongo.svg?style=flat-square" alt="npm"></a>
 <a href=""><img src="https://img.shields.io/badge/TypeScript-5.0+-blue" alt="TypeScript"></a></p>
-<p>📚 <strong><a href="https://backtest-kit.github.io/documents/article_07_ai_news_trading_signals.html">Backtest Kit Docs</a></strong> | 🌟 <strong><a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a></strong></p>
-<blockquote>
-<p><strong>New to backtest-kit?</strong> The fastest way to get a real, production-ready setup is to clone the <a href="https://github.com/tripolskypetr/backtest-kit/tree/master/example">reference implementation</a> — a fully working news-sentiment AI trading system with LLM forecasting, multi-timeframe data, and a documented February 2026 backtest. Start there instead of from scratch.</p>
-</blockquote>
-<a id="🚀-installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🚀 Installation<a href="#🚀-installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span><span class="hl-2"> </span><span class="hl-3">@backtest-kit/mongo</span><span class="hl-2"> </span><span class="hl-3">backtest-kit</span>
+<p>📚 <strong><a href="https://backtest-kit.github.io/documents/article_07_ai_news_trading_signals.html">Docs</a></strong> · 🌟 <strong><a href="https://github.com/tripolskypetr/backtest-kit/tree/master/example">Reference implementation</a></strong> · 🐙 <strong><a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a></strong></p>
+<pre><code class="bash"><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span><span class="hl-2"> </span><span class="hl-3">@backtest-kit/mongo</span><span class="hl-2"> </span><span class="hl-3">backtest-kit</span><span class="hl-2"> </span><span class="hl-3">mongoose</span><span class="hl-2"> </span><span class="hl-3">ioredis</span>
 </code><button type="button">Copy</button></pre>
 
-<a id="📖-usage" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📖 Usage<a href="#📖-usage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="quick-start" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Quick Start<a href="#quick-start" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">import</span><span class="hl-2"> { </span><span class="hl-5">setup</span><span class="hl-2"> } </span><span class="hl-6">from</span><span class="hl-2"> </span><span class="hl-3">&#39;@backtest-kit/mongo&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-0">// Reads connection settings from environment variables.</span><br/><span class="hl-0">// Call once before any trading operations.</span><br/><span class="hl-1">setup</span><span class="hl-2">();</span>
+<pre><code class="typescript"><span class="hl-6">import</span><span class="hl-2"> { </span><span class="hl-5">setup</span><span class="hl-2"> } </span><span class="hl-6">from</span><span class="hl-2"> </span><span class="hl-3">&#39;@backtest-kit/mongo&#39;</span><span class="hl-2">;</span><br/><span class="hl-1">setup</span><span class="hl-2">(); </span><span class="hl-0">// reads connection settings from env; call once before any trading operation</span>
 </code><button type="button">Copy</button></pre>
 
-<a id="explicit-connection-parameters" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Explicit connection parameters<a href="#explicit-connection-parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="typescript"><span class="hl-6">import</span><span class="hl-2"> { </span><span class="hl-5">setup</span><span class="hl-2"> } </span><span class="hl-6">from</span><span class="hl-2"> </span><span class="hl-3">&#39;@backtest-kit/mongo&#39;</span><span class="hl-2">;</span><br/><br/><span class="hl-1">setup</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-5">CC_MONGO_CONNECTION_STRING:</span><span class="hl-2"> </span><span class="hl-3">&#39;mongodb://mongo:27017/mydb&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">CC_REDIS_HOST:</span><span class="hl-2"> </span><span class="hl-3">&#39;redis&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">CC_REDIS_PORT:</span><span class="hl-2"> </span><span class="hl-8">6379</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">CC_REDIS_PASSWORD:</span><span class="hl-2"> </span><span class="hl-3">&#39;secret&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+<p>That single call reimplements all <strong>16</strong> of backtest-kit's <code>IPersist*Instance</code> contracts against MongoDB (source of truth) with a Redis O(1) read cache. Your strategy code does not change.</p>
+<hr>
+<a id="why" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Why<a href="#why" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>File storage is perfect on day one and a bottleneck the day you're doing thousands of context-keyed reads per second across parallel symbols. This package moves persistence to MongoDB without touching strategy logic: every read goes Redis-first for the Mongo <code>_id</code> (two O(1) hops), every write is one atomic <code>findOneAndUpdate</code> upsert (read-after-write guaranteed, concurrent duplicates rejected by the unique index), and adapters whose data drives decisions store the simulation timestamp so <strong>look-ahead protection is enforceable even inside the database</strong>.</p>
+<ul>
+<li>🗄️ <strong>MongoDB backend</strong> — all 16 <code>IPersist*Instance</code> contracts implemented with Mongoose.</li>
+<li>⚡ <strong>O(1) reads via Redis</strong> — one <code>GET</code> + one <code>findById</code>, no B-tree scans on the hot path.</li>
+<li>🔒 <strong>Atomic writes</strong> — <code>findOneAndUpdate({ upsert:true, new:true })</code> guarantees read-after-write with no race.</li>
+<li>🛡️ <strong>Look-ahead protection</strong> — decision-affecting adapters store the simulation <code>when</code>.</li>
+<li>🪦 <strong>Soft delete</strong> — Measure / Interval / Memory carry a <code>removed</code> flag instead of being deleted (audit trail).</li>
+<li>🔌 <strong>Zero strategy changes</strong> — drop <code>setup()</code> into your entry point; everything else stays the same.</li>
+</ul>
+<hr>
+<a id="configuration" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Configuration<a href="#configuration" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><details>
+<summary>Explicit parameters & environment variables</summary>
+<pre><code class="typescript"><span class="hl-6">import</span><span class="hl-2"> { </span><span class="hl-5">setup</span><span class="hl-2"> } </span><span class="hl-6">from</span><span class="hl-2"> </span><span class="hl-3">&#39;@backtest-kit/mongo&#39;</span><span class="hl-2">;</span><br/><span class="hl-1">setup</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-5">CC_MONGO_CONNECTION_STRING:</span><span class="hl-2"> </span><span class="hl-3">&#39;mongodb://mongo:27017/mydb&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">CC_REDIS_HOST:</span><span class="hl-2"> </span><span class="hl-3">&#39;redis&#39;</span><span class="hl-2">, </span><span class="hl-5">CC_REDIS_PORT:</span><span class="hl-2"> </span><span class="hl-8">6379</span><span class="hl-2">, </span><span class="hl-5">CC_REDIS_PASSWORD:</span><span class="hl-2"> </span><span class="hl-3">&#39;secret&#39;</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
 </code><button type="button">Copy</button></pre>
 
-<a id="📋-api-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📋 API Reference<a href="#📋-api-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
-<thead>
-<tr>
-<th>Export</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong><code>setup(config?)</code></strong></td>
-<td>Configure and register all 15 adapters in one call. Reads from env vars when <code>config</code> is omitted.</td>
-</tr>
-<tr>
-<td><strong><code>install()</code></strong></td>
-<td>Register adapters only — use when configuration was already applied via <code>setConfig</code> or env vars.</td>
-</tr>
-<tr>
-<td><strong><code>setConfig(config)</code></strong></td>
-<td>Override individual connection parameters at runtime.</td>
-</tr>
-<tr>
-<td><strong><code>getConfig()</code></strong></td>
-<td>Returns the current merged configuration (env vars + any <code>setConfig</code> overrides).</td>
-</tr>
-<tr>
-<td><strong><code>setLogger(logger)</code></strong></td>
-<td>Replace the internal logger with your own implementation.</td>
-</tr>
-<tr>
-<td><strong><code>getMongo()</code></strong></td>
-<td>Returns the connected Mongoose instance (lazy singleton).</td>
-</tr>
-<tr>
-<td><strong><code>getRedis()</code></strong></td>
-<td>Returns the connected ioredis instance (lazy singleton).</td>
-</tr>
-</tbody>
-</table>
-<a id="⚙️-environment-variables" class="tsd-anchor"></a><h2 class="tsd-anchor-link">⚙️ Environment Variables<a href="#⚙️-environment-variables" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<table>
 <thead>
 <tr>
 <th>Variable</th>
@@ -93,13 +66,54 @@
 </tr>
 </tbody>
 </table>
-<p>Values passed to <code>setup()</code> or <code>setConfig()</code> always take precedence over environment variables.</p>
-<a id="🗂️-adapters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🗂️ Adapters<a href="#🗂️-adapters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each adapter covers one persistence slot in backtest-kit. The table shows what it stores and which fields form its unique index in MongoDB:</p>
+<p>Values passed to <code>setup()</code> / <code>setConfig()</code> always take precedence over env vars. Within the CLI, put <code>setup()</code> in <code>config/setup.config.ts</code> — when present, the CLI skips its default file-adapter registration and your config owns persistence.</p>
+</details>
+<hr>
+<a id="api-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">API reference<a href="#api-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Export</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>setup(config?)</code></td>
+<td>Configure <strong>and</strong> register all 16 adapters in one call. Reads env when <code>config</code> omitted.</td>
+</tr>
+<tr>
+<td><code>install()</code></td>
+<td>Register adapters only — when config was already applied via <code>setConfig</code>/env.</td>
+</tr>
+<tr>
+<td><code>setConfig(config)</code></td>
+<td>Override individual connection parameters at runtime.</td>
+</tr>
+<tr>
+<td><code>getConfig()</code></td>
+<td>The current merged configuration (env + any <code>setConfig</code> overrides).</td>
+</tr>
+<tr>
+<td><code>setLogger(logger)</code></td>
+<td>Replace the internal logger with your own implementation.</td>
+</tr>
+<tr>
+<td><code>getMongo()</code></td>
+<td>The connected Mongoose instance (lazy singleton).</td>
+</tr>
+<tr>
+<td><code>getRedis()</code></td>
+<td>The connected ioredis instance (lazy singleton).</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<a id="the-16-adapters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The 16 adapters<a href="#the-16-adapters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Each adapter covers one persistence slot in backtest-kit. The unique index is the compound key MongoDB enforces at the storage engine.</p>
 <table>
 <thead>
 <tr>
 <th>Adapter</th>
-<th>MongoDB collection</th>
+<th>Collection</th>
 <th>Unique index</th>
 </tr>
 </thead>
@@ -112,6 +126,11 @@
 <tr>
 <td><strong>Signal</strong></td>
 <td><code>signal-items</code></td>
+<td><code>symbol + strategyName + exchangeName</code></td>
+</tr>
+<tr>
+<td><strong>Strategy</strong></td>
+<td><code>strategy-items</code></td>
 <td><code>symbol + strategyName + exchangeName</code></td>
 </tr>
 <tr>
@@ -181,32 +200,52 @@
 </tr>
 </tbody>
 </table>
-<p>Candle records are <strong>immutable</strong> — the first write wins, subsequent writes to the same <code>(symbol, interval, timestamp)</code> are silently ignored via <code>$setOnInsert</code>. All other adapters use <code>$set</code>, so each write replaces the previous value.</p>
-<p>Measure, Interval, and Memory support <strong>soft delete</strong> — calling <code>removeMeasureData</code> / <code>removeIntervalData</code> / <code>removeMemoryData</code> sets <code>removed: true</code> on the document instead of deleting it. Listing operations filter on <code>removed: false</code>.</p>
-<a id="✨-features" class="tsd-anchor"></a><h2 class="tsd-anchor-link">✨ Features<a href="#✨-features" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
-<li>🗄️ <strong>MongoDB backend</strong>: all 15 <code>IPersist*Instance</code> contracts from backtest-kit implemented with Mongoose</li>
-<li>⚡ <strong>O(1) reads via Redis</strong>: every context-key lookup goes through ioredis — one <code>GET</code> + one <code>findById</code>, no B-tree scans</li>
-<li>🔒 <strong>Atomic writes</strong>: <code>findOneAndUpdate</code> with <code>upsert: true</code> guarantees read-after-write correctness with no race conditions</li>
-<li>🛡️ <strong>Look-ahead bias protection</strong>: adapters that affect signal logic store the simulation timestamp so backtest-kit can enforce temporal correctness</li>
-<li>🪦 <strong>Soft delete</strong>: Measure, Interval, and Memory records are never physically removed — they carry a <code>removed</code> flag instead</li>
-<li>🔌 <strong>Zero strategy changes</strong>: drop <code>setup()</code> into your entry point, everything else stays the same</li>
+<details>
+<summary>Write semantics — immutable, mutable, soft-delete</summary>
+<ul>
+<li><strong>Candle is immutable</strong> — first write wins; subsequent writes to the same <code>(symbol, interval, timestamp)</code> are silently ignored via <code>$setOnInsert</code> (historical OHLCV never changes).</li>
+<li><strong>All others use <code>$set</code></strong> — each write replaces the previous value.</li>
+<li><strong>Measure / Interval / Memory soft-delete</strong> — <code>removeMeasureData</code> / <code>removeIntervalData</code> / <code>removeMemoryData</code> set <code>removed: true</code> rather than deleting; listings filter on <code>removed: false</code>, keeping a full audit trail.</li>
 </ul>
-<a id="⚡-how-o1-reads-work" class="tsd-anchor"></a><h2 class="tsd-anchor-link">⚡ How O(1) Reads Work<a href="#⚡-how-o1-reads-work" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Every domain has two layers: a <strong>DbService</strong> that talks to MongoDB and a <strong>CacheService</strong> that talks to Redis.</p>
-<p>When the strategy reads state for a given context key (e.g. <code>symbol + strategyName + exchangeName</code> for a signal), the DbService first asks Redis for the MongoDB <code>_id</code>. If it exists, the document is fetched directly by <code>_id</code> — two O(1) operations total. On a cache miss it falls back to a regular indexed MongoDB query, then writes the <code>_id</code> to Redis so the next call is instant.</p>
-<pre><code><span class="hl-5">read</span><span class="hl-2"> </span><span class="hl-5">signal</span><span class="hl-2"> </span><span class="hl-6">for</span><span class="hl-2"> (</span><span class="hl-7">BTCUSDT</span><span class="hl-2">, </span><span class="hl-5">my_strategy</span><span class="hl-2">, </span><span class="hl-5">binance</span><span class="hl-2">)</span><br/><span class="hl-2">  │</span><br/><span class="hl-2">  ├─ </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">GET</span><span class="hl-2">  → </span><span class="hl-5">hit</span><span class="hl-2">  → </span><span class="hl-5">Mongo</span><span class="hl-2"> </span><span class="hl-1">findById</span><span class="hl-2">(</span><span class="hl-5">_id</span><span class="hl-2">)   ← </span><span class="hl-1">O</span><span class="hl-2">(</span><span class="hl-8">1</span><span class="hl-2">) + </span><span class="hl-1">O</span><span class="hl-2">(</span><span class="hl-8">1</span><span class="hl-2">)</span><br/><span class="hl-2">  │</span><br/><span class="hl-2">  └─ </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">GET</span><span class="hl-2">  → </span><span class="hl-5">miss</span><span class="hl-2"> → </span><span class="hl-5">Mongo</span><span class="hl-2"> </span><span class="hl-1">findOne</span><span class="hl-2">(</span><span class="hl-5">filter</span><span class="hl-2">) → </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">SET</span><span class="hl-2"> → </span><span class="hl-6">return</span>
+</details>
+<hr>
+<a id="how-it-works" class="tsd-anchor"></a><h2 class="tsd-anchor-link">How it works<a href="#how-it-works" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><details>
+<summary>O(1) reads — DbService + CacheService per domain</summary>
+<p>Every domain is two layers: a <strong>DbService</strong> (MongoDB) and a <strong>CacheService</strong> (Redis). Reading state for a context key asks Redis for the Mongo <code>_id</code> first; a hit is two O(1) ops, a miss falls back to an indexed <code>findOne</code> and backfills Redis.</p>
+<pre><code><span class="hl-5">read</span><span class="hl-2"> </span><span class="hl-5">signal</span><span class="hl-2"> </span><span class="hl-6">for</span><span class="hl-2"> (</span><span class="hl-7">BTCUSDT</span><span class="hl-2">, </span><span class="hl-5">my_strategy</span><span class="hl-2">, </span><span class="hl-5">binance</span><span class="hl-2">)</span><br/><span class="hl-2">  ├─ </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">GET</span><span class="hl-2"> → </span><span class="hl-5">hit</span><span class="hl-2">  → </span><span class="hl-5">Mongo</span><span class="hl-2"> </span><span class="hl-1">findById</span><span class="hl-2">(</span><span class="hl-5">_id</span><span class="hl-2">)        ← </span><span class="hl-1">O</span><span class="hl-2">(</span><span class="hl-8">1</span><span class="hl-2">) + </span><span class="hl-1">O</span><span class="hl-2">(</span><span class="hl-8">1</span><span class="hl-2">)</span><br/><span class="hl-2">  └─ </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">GET</span><span class="hl-2"> → </span><span class="hl-5">miss</span><span class="hl-2"> → </span><span class="hl-5">Mongo</span><span class="hl-2"> </span><span class="hl-1">findOne</span><span class="hl-2">(</span><span class="hl-5">filter</span><span class="hl-2">) → </span><span class="hl-5">Redis</span><span class="hl-2"> </span><span class="hl-7">SET</span><span class="hl-2"> → </span><span class="hl-6">return</span>
 </code><button>Copy</button></pre>
 
-<p>After every write the Redis entry is updated in the same call, so a write followed immediately by a read always hits the cache.</p>
-<a id="🔒-atomic-writes" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🔒 Atomic Writes<a href="#🔒-atomic-writes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>backtest-kit</code> requires that once <code>write*Data()</code> returns, the very next <code>read*Data()</code> must see the new value. Every write is a single <code>findOneAndUpdate</code> round-trip to MongoDB:</p>
+<p>After every write the Redis entry is refreshed in the same call, so write-then-read always hits the cache.</p>
+</details>
+<details>
+<summary>Atomic writes — read-after-write with no race</summary>
+<p>backtest-kit requires that once <code>write*Data()</code> returns, the next <code>read*Data()</code> sees the new value. Every write is one <code>findOneAndUpdate</code> round-trip:</p>
 <pre><code class="typescript"><span class="hl-4">const</span><span class="hl-2"> </span><span class="hl-7">document</span><span class="hl-2"> = </span><span class="hl-6">await</span><span class="hl-2"> </span><span class="hl-5">SignalModel</span><span class="hl-2">.</span><span class="hl-1">findOneAndUpdate</span><span class="hl-2">(</span><br/><span class="hl-2">  { </span><span class="hl-5">symbol</span><span class="hl-2">, </span><span class="hl-5">strategyName</span><span class="hl-2">, </span><span class="hl-5">exchangeName</span><span class="hl-2"> },</span><br/><span class="hl-2">  { </span><span class="hl-5">$set:</span><span class="hl-2"> { </span><span class="hl-5">payload</span><span class="hl-2"> } },</span><br/><span class="hl-2">  { </span><span class="hl-5">upsert:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2">, </span><span class="hl-5">new:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2">, </span><span class="hl-5">setDefaultsOnInsert:</span><span class="hl-2"> </span><span class="hl-4">true</span><span class="hl-2"> },</span><br/><span class="hl-2">);</span><br/><span class="hl-6">await</span><span class="hl-2"> </span><span class="hl-5">signalCacheService</span><span class="hl-2">.</span><span class="hl-1">setSignalId</span><span class="hl-2">(</span><span class="hl-1">readTransform</span><span class="hl-2">(</span><span class="hl-5">document</span><span class="hl-2">.</span><span class="hl-1">toJSON</span><span class="hl-2">()));</span>
 </code><button type="button">Copy</button></pre>
 
-<p>The filter matches the unique compound index, so MongoDB rejects any concurrent duplicate insert at the storage-engine level. The returned document is immediately written to Redis, making the next read O(1) with the fresh data.</p>
-<a id="🛡️-look-ahead-bias-protection" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🛡️ Look-Ahead Bias Protection<a href="#🛡️-look-ahead-bias-protection" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Adapters whose data influences trading decisions (Risk, Partial, Breakeven, Recent, State, Session, Memory, Interval) store <code>when: Number</code> — the simulation timestamp in milliseconds — alongside the payload. This lets backtest-kit verify that no read returns data that was written at a future simulation time.</p>
-<p>Measure is exempt because it caches LLM and external API responses, where look-ahead bias is not meaningful.</p>
-<a id="🤝-contribute" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🤝 Contribute<a href="#🤝-contribute" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Fork/PR on <a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a>.</p>
+<p>The filter matches the unique compound index, so MongoDB rejects any concurrent duplicate insert at the storage engine; the returned document is written straight to Redis, making the next read O(1) on fresh data.</p>
+</details>
+<details>
+<summary>Look-ahead bias protection in the DB layer</summary>
+<p>Adapters whose data influences decisions (Risk, Partial, Breakeven, Recent, State, Session, Memory, Interval) store <code>when: Number</code> — the simulation timestamp in ms — alongside the payload, so backtest-kit can verify no read returns data written at a <em>future</em> simulation time. <strong>Measure is exempt</strong> because it caches LLM / external-API responses, where look-ahead bias is not meaningful.</p>
+</details>
+<hr>
+<a id="internal-architecture-complete-source-map" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Internal architecture (complete source map)<a href="#internal-architecture-complete-source-map" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><details>
+<summary>Layers & files</summary>
+<p><strong>Public surface</strong> — <code>functions/setup.ts</code> (<code>setup</code>/<code>install</code>/<code>setConfig</code>/<code>getConfig</code>/<code>setLogger</code>), <code>index.ts</code> re-exports + <code>getMongo</code>/<code>getRedis</code>.</p>
+<p><strong>Adapter classes</strong> (<code>classes/Persist*Instance.ts</code>, 16) — each implements one backtest-kit <code>IPersist*Instance</code> contract and delegates to its domain DbService: <code>PersistCandleInstance</code>, <code>PersistSignalInstance</code>, <code>PersistStrategyInstance</code>, <code>PersistScheduleInstance</code>, <code>PersistRiskInstance</code>, <code>PersistPartialInstance</code>, <code>PersistBreakevenInstance</code>, <code>PersistStorageInstance</code>, <code>PersistNotificationInstance</code>, <code>PersistLogInstance</code>, <code>PersistMeasureInstance</code>, <code>PersistIntervalInstance</code>, <code>PersistMemoryInstance</code>, <code>PersistRecentInstance</code>, <code>PersistStateInstance</code>, <code>PersistSessionInstance</code>.</p>
+<p><strong>Service layer</strong> (<code>lib/services/</code>):</p>
+<ul>
+<li><code>base/</code> — <code>MongoService</code> (lazy Mongoose connection), <code>RedisService</code> (lazy ioredis), <code>LoggerService</code>.</li>
+<li><code>db/</code> — one <code>*DbService</code> per domain: the Mongoose models, schemas, unique compound indexes, and <code>findOneAndUpdate</code> upsert logic.</li>
+<li><code>cache/</code> — one <code>*CacheService</code> per domain (<code>CandleCacheService</code>, <code>SignalCacheService</code>, <code>BreakevenCacheService</code>, <code>IntervalCacheService</code>, <code>LogCacheService</code>, <code>MeasureCacheService</code>, <code>MemoryCacheService</code>, <code>NotificationCacheService</code>, <code>PartialCacheService</code>, <code>RecentCacheService</code>, …): Redis <code>_id</code> mapping for O(1) lookups.</li>
+</ul>
+<p><strong>Shared primitives</strong> (<code>lib/common/</code>) — <code>BaseCRUD</code> (the upsert/read/remove pattern every DbService reuses) and <code>BaseMap</code> (the Redis key-mapping pattern every CacheService reuses).</p>
+<p><strong>DI &amp; config</strong> — <code>lib/core/{di,provide,types}.ts</code> (IoC container wiring Db/Cache/base services), <code>lib/index.ts</code> (container bootstrap), <code>config/{mongo,redis,params}.ts</code> (connection builders + merged params), <code>interfaces/Logger.interface.ts</code>.</p>
+</details>
+<a id="🤝-contribute" class="tsd-anchor"></a><h2 class="tsd-anchor-link">🤝 Contribute<a href="#🤝-contribute" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Fork / PR on <a href="https://github.com/tripolskypetr/backtest-kit">GitHub</a>.</p>
 <a id="📜-license" class="tsd-anchor"></a><h2 class="tsd-anchor-link">📜 License<a href="#📜-license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MIT © <a href="https://github.com/tripolskypetr">tripolskypetr</a></p>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#💾-backtest-kitmongo"><span>💾 @backtest-<wbr/>kit/mongo</span></a><ul><li><a href="#🚀-installation"><span>🚀 <wbr/>Installation</span></a></li><li><a href="#📖-usage"><span>📖 <wbr/>Usage</span></a></li><li><ul><li><a href="#quick-start"><span>Quick <wbr/>Start</span></a></li><li><a href="#explicit-connection-parameters"><span>Explicit connection parameters</span></a></li></ul></li><li><a href="#📋-api-reference"><span>📋 API <wbr/>Reference</span></a></li><li><a href="#⚙️-environment-variables"><span>⚙️ <wbr/>Environment <wbr/>Variables</span></a></li><li><a href="#🗂️-adapters"><span>🗂️ <wbr/>Adapters</span></a></li><li><a href="#✨-features"><span>✨ <wbr/>Features</span></a></li><li><a href="#⚡-how-o1-reads-work"><span>⚡ <wbr/>How <wbr/>O(1) <wbr/>Reads <wbr/>Work</span></a></li><li><a href="#🔒-atomic-writes"><span>🔒 <wbr/>Atomic <wbr/>Writes</span></a></li><li><a href="#🛡️-look-ahead-bias-protection"><span>🛡️ <wbr/>Look-<wbr/>Ahead <wbr/>Bias <wbr/>Protection</span></a></li><li><a href="#🤝-contribute"><span>🤝 <wbr/>Contribute</span></a></li><li><a href="#📜-license"><span>📜 <wbr/>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#💾-backtest-kitmongo"><span>💾 @backtest-<wbr/>kit/mongo</span></a><ul><li><a href="#why"><span>Why</span></a></li><li><a href="#configuration"><span>Configuration</span></a></li><li><a href="#api-reference"><span>API reference</span></a></li><li><a href="#the-16-adapters"><span>The 16 adapters</span></a></li><li><a href="#how-it-works"><span>How it works</span></a></li><li><a href="#internal-architecture-complete-source-map"><span>Internal architecture (complete source map)</span></a></li><li><a href="#🤝-contribute"><span>🤝 <wbr/>Contribute</span></a></li><li><a href="#📜-license"><span>📜 <wbr/>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">
