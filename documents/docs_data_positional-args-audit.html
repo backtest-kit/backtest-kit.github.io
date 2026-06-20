@@ -1,0 +1,202 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs\data\positional-args-audit | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_data_positional-args-audit.html">docs\data\positional-args-audit</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="positional-argument-swap-audit--src" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Positional-Argument Swap Audit — <code>./src</code><a href="#positional-argument-swap-audit--src" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p><strong>Date:</strong> 2026-06-16
+<strong>Scope:</strong> entire <code>./src</code> (~250 <code>.ts</code> files), all primitive types (number/number, string/string, boolean).
+<strong>Goal:</strong> find swapped positional arguments of the same primitive type — bugs TypeScript's structural typing cannot catch (<code>f(timestamp, price)</code> ≡ <code>f(price, timestamp)</code> when both are <code>number</code>).
+<strong>Method:</strong> signature → call-sites → compare each actual argument's variable name against the parameter name at that position. (Same method that found the one real bug in this session.)</p>
+<a id="summary" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Summary<a href="#summary" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Risky functions/signatures inventoried</td>
+<td>~40</td>
+</tr>
+<tr>
+<td>Call-sites verified</td>
+<td>120+</td>
+</tr>
+<tr>
+<td>❌ Bugs found (this audit)</td>
+<td><strong>0</strong></td>
+</tr>
+<tr>
+<td>❌ Bug found &amp; already fixed (commit <code>c7958a73</code>)</td>
+<td>1</td>
+</tr>
+<tr>
+<td>⚠️ Suspects needing human review</td>
+<td>0 (see notes)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Verdict: no swapped-argument bugs remain in <code>./src</code>.</strong> The single real bug of this class — <code>PROCESS_COMMIT_QUEUE_FN(currentTime, currentPrice)</code> instead of <code>(currentPrice, currentTime)</code> in <code>ClientStrategy.tick()</code> — was already fixed by commit <code>c7958a73</code> before this audit.</p>
+<a id="coverage-by-directory" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Coverage by directory<a href="#coverage-by-directory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
+<thead>
+<tr>
+<th>Directory</th>
+<th>Status</th>
+<th>What was checked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/math/</code></td>
+<td>✅ clean</td>
+<td>All number-only fns (<code>investedCostToPercent</code>, <code>percentToCloseCost</code>, <code>slPriceToPercentShift</code>, <code>tpPriceToPercentShift</code>, <code>slPercentShiftToPrice</code>, <code>tpPercentShiftToPrice</code>, <code>breakevenNew*Price</code>, <code>percentValue</code>, <code>percentDiff</code>) — 30+ call-sites across <code>function/strategy.ts</code>, <code>classes/Backtest.ts</code>, <code>classes/Live.ts</code>.</td>
+</tr>
+<tr>
+<td><code>src/interfaces/</code></td>
+<td>✅ clean</td>
+<td>System callback signatures vs their ClientStrategy call-sites: <code>onHighestProfit</code>/<code>onMaxDrawdown</code> (<code>signal, currentPrice, timestamp</code>), <code>onSchedulePing</code>/<code>onActivePing</code>/<code>onIdlePing</code> (system), <code>onInit</code>/<code>onDispose</code> (string-quad).</td>
+</tr>
+<tr>
+<td><code>src/client/</code></td>
+<td>✅ clean</td>
+<td><code>ClientStrategy.ts</code> fully audited during this session (all <code>CALL_*_FN</code>, <code>PARTIAL_*_FN</code>, sync, ping, breakeven groups). <code>ClientPartial/Breakeven/Risk/Exchange/Frame/Sizing/Action</code> — agent-checked clean.</td>
+</tr>
+<tr>
+<td><code>src/lib/services/markdown/</code></td>
+<td>✅ clean</td>
+<td><code>getStorage</code> memoize + <code>new ReportStorage(...)</code> string-quads in all 12 services + every <code>this.getStorage(...)</code> call-site — order <code>symbol, strategyName, exchangeName, frameName[, backtest]</code> correct everywhere.</td>
+</tr>
+<tr>
+<td><code>src/lib/services/core</code> + <code>connection</code></td>
+<td>✅ clean</td>
+<td><code>breakeven</code>/<code>trailingStop</code>/<code>trailingTake</code>/<code>partialProfit</code>/<code>partialLoss</code>/<code>averageBuy</code> end-to-end (Core→Connection→ClientStrategy), <code>getStrategy(...)</code> string-quad, <code>getTimestamp</code>/<code>getCurrentPrice(symbol, context, backtest)</code>.</td>
+</tr>
+<tr>
+<td><code>src/function/strategy.ts</code></td>
+<td>✅ clean</td>
+<td><code>commit*</code> forwarding to <code>strategyCoreService.*</code> — partial/averageBuy/breakeven/trailing all in correct order.</td>
+</tr>
+<tr>
+<td><code>src/classes/</code></td>
+<td>✅ clean</td>
+<td><code>Backtest</code>/<code>Live</code> <code>commit*</code> facades (breakeven/trailing with new <code>timestamp</code>), Persist adapter triples.</td>
+</tr>
+<tr>
+<td><code>src/helpers, validation, contract, model, utils, config</code></td>
+<td>✅ no risk patterns</td>
+<td>Spot-checked; no 2+ adjacent same-type positional bugs in hot paths.</td>
+</tr>
+</tbody>
+</table>
+<a id="the-fixed-bug-reference" class="tsd-anchor"></a><h2 class="tsd-anchor-link">The fixed bug (reference)<a href="#the-fixed-bug-reference" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p><code>src/client/ClientStrategy.ts</code> <code>tick()</code> — <code>PROCESS_COMMIT_QUEUE_FN(self, currentPrice, timestamp)</code>:</p>
+<ul>
+<li><strong>Was:</strong> <code>PROCESS_COMMIT_QUEUE_FN(this, currentTime, currentPrice)</code> — <code>currentTime</code> passed as <code>currentPrice</code>, <code>currentPrice</code> as <code>timestamp</code>.</li>
+<li><strong>Now (commit <code>c7958a73</code>):</strong> <code>PROCESS_COMMIT_QUEUE_FN(this, currentPrice, currentTime)</code>.</li>
+<li><strong>Why it was invisible:</strong> both args are <code>number</code>; structural typing accepts either order.</li>
+</ul>
+<a id="inventory-of-fragile-signatures-forward-looking-risk-map" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Inventory of fragile signatures (forward-looking risk map)<a href="#inventory-of-fragile-signatures-forward-looking-risk-map" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>These compile-safely accept swapped args — guard future edits here. All are currently correct.</p>
+<a id="numbernumber-adjacent--no-type-separator-highest-risk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">number/number adjacent — NO type separator (highest risk)<a href="#numbernumber-adjacent--no-type-separator-highest-risk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>File</th>
+<th>Adjacent same-type params</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>onHighestProfit</code> / <code>onMaxDrawdown</code></td>
+<td><code>interfaces/Strategy.interface.ts</code></td>
+<td><code>currentPrice, timestamp</code></td>
+</tr>
+<tr>
+<td><code>PROCESS_COMMIT_QUEUE_FN</code></td>
+<td><code>client/ClientStrategy.ts</code></td>
+<td><code>currentPrice, timestamp</code> ← was the bug</td>
+</tr>
+<tr>
+<td><code>PARTIAL_PROFIT_FN</code> / <code>PARTIAL_LOSS_FN</code></td>
+<td><code>client/ClientStrategy.ts</code></td>
+<td><code>percentToClose, currentPrice, timestamp</code> (3 in a row)</td>
+</tr>
+<tr>
+<td><code>AVERAGE_BUY_FN</code></td>
+<td><code>client/ClientStrategy.ts</code></td>
+<td><code>currentPrice, timestamp, cost</code> (3 in a row)</td>
+</tr>
+<tr>
+<td><code>slPriceToPercentShift</code> / <code>tpPriceToPercentShift</code></td>
+<td><code>math/</code></td>
+<td><code>newPrice, originalPrice, effectivePriceOpen</code> (3 in a row)</td>
+</tr>
+<tr>
+<td><code>investedCostToPercent</code> / <code>percentToCloseCost</code></td>
+<td><code>math/</code></td>
+<td><code>dollarAmount/percentToClose, investedCost</code> — swap = 40–400× error</td>
+</tr>
+<tr>
+<td><code>readCandlesData</code></td>
+<td><code>classes/Persist.ts</code> (iface)</td>
+<td><code>limit, sinceTimestamp, untilTimestamp</code></td>
+</tr>
+</tbody>
+</table>
+<a id="stringstringstringstring--context-triplesquads-path--cache-risk" class="tsd-anchor"></a><h3 class="tsd-anchor-link">string/string/string(/string) — context triples/quads (path &amp; cache risk)<a href="#stringstringstringstring--context-triplesquads-path--cache-risk" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><table>
+<thead>
+<tr>
+<th>Function</th>
+<th>File</th>
+<th>Adjacent strings</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>getStorage</code> / <code>new ReportStorage</code></td>
+<td>all <code>lib/services/markdown/*.ts</code></td>
+<td><code>symbol, strategyName, exchangeName, frameName</code></td>
+</tr>
+<tr>
+<td><code>getStrategy</code></td>
+<td><code>lib/services/connection/StrategyConnectionService.ts</code></td>
+<td><code>symbol, strategyName, exchangeName, frameName</code></td>
+</tr>
+<tr>
+<td><code>Persist*Instance</code> constructors</td>
+<td><code>classes/Persist.ts</code></td>
+<td><code>symbol, strategyName, exchangeName</code></td>
+</tr>
+<tr>
+<td><code>onInit</code> / <code>onDispose</code></td>
+<td><code>interfaces/Strategy.interface.ts</code></td>
+<td><code>symbol, strategyName, exchangeName, frameName</code></td>
+</tr>
+</tbody>
+</table>
+<a id="protected-by-a-type-separator-lower-risk--ts-catches-a-swap" class="tsd-anchor"></a><h3 class="tsd-anchor-link">Protected by a type separator (lower risk — TS catches a swap)<a href="#protected-by-a-type-separator-lower-risk--ts-catches-a-swap" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Where a <code>string</code> discriminant (e.g. <code>closeReason</code>) or a <code>boolean</code> (<code>backtest</code>) sits between two <code>number</code>s, TypeScript <em>does</em> reject a swap. Examples: <code>CLOSE_*_IN_BACKTEST_FN(..., averagePrice, closeReason, closeTimestamp)</code>, the ping callbacks <code>(..., currentPrice, backtest, timestamp)</code>. These were verified but are self-defending.</p>
+<a id="notes-on-agent-flagged-false-positives" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Notes on agent-flagged false positives<a href="#notes-on-agent-flagged-false-positives" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>An exploratory pass flagged 10 markdown <code>getStorage</code> factories as &quot;cache-collision bugs&quot; because the memoize <strong>key</strong> includes <code>backtest</code> while the <code>ReportStorage</code> <strong>constructor</strong> receives only 4 args (no <code>backtest</code>). This was reviewed and is <strong>not a bug and not in scope</strong>: <code>ReportStorage</code> legitimately doesn't need <code>backtest</code> (it isn't stored; each event carries its own <code>backtest</code>), and including <code>backtest</code> in the memo key correctly <em>separates</em> live vs backtest instances (the opposite of a collision). The string order <code>symbol, strategyName, exchangeName, frameName</code> — the only thing relevant to <em>this</em> audit — is correct in all 12 services.</p>
+<a id="recommendation-out-of-scope-for-this-audit-for-follow-up" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Recommendation (out of scope for this audit, for follow-up)<a href="#recommendation-out-of-scope-for-this-audit-for-follow-up" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The codebase has <code>strict: false</code>, no ESLint, no branded types — so this class of bug is undetectable at compile time. To prevent recurrence:</p>
+<ol>
+<li>Branded primitives: <code>type Timestamp = number &amp; { readonly __t: 'ms' }</code>, <code>type Price = number &amp; { readonly __t: 'price' }</code>, <code>type Percent = ...</code> — would make <code>onHighestProfit</code>/<code>PROCESS_COMMIT_QUEUE_FN</code>/<code>investedCostToPercent</code> swaps a compile error.</li>
+<li>Replace positional <code>(symbol, strategyName, exchangeName, frameName)</code> quads with the existing <code>context</code> object pattern (already used in Core/Connection) at the markdown/persist layers.</li>
+</ol>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#positional-argument-swap-audit--src"><span>Positional-<wbr/>Argument <wbr/>Swap <wbr/>Audit — ./src</span></a><ul><li><a href="#summary"><span>Summary</span></a></li><li><a href="#coverage-by-directory"><span>Coverage by directory</span></a></li><li><a href="#the-fixed-bug-reference"><span>The fixed bug (reference)</span></a></li><li><a href="#inventory-of-fragile-signatures-forward-looking-risk-map"><span>Inventory of fragile signatures (forward-<wbr/>looking risk map)</span></a></li><li><ul><li><a href="#numbernumber-adjacent--no-type-separator-highest-risk"><span>number/number adjacent — NO type separator (highest risk)</span></a></li><li><a href="#stringstringstringstring--context-triplesquads-path--cache-risk"><span>string/string/string(/string) — context triples/quads (path &amp; cache risk)</span></a></li><li><a href="#protected-by-a-type-separator-lower-risk--ts-catches-a-swap"><span>Protected by a type separator (lower risk — TS catches a swap)</span></a></li></ul></li><li><a href="#notes-on-agent-flagged-false-positives"><span>Notes on agent-<wbr/>flagged false positives</span></a></li><li><a href="#recommendation-out-of-scope-for-this-audit-for-follow-up"><span>Recommendation (out of scope for this audit, for follow-<wbr/>up)</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

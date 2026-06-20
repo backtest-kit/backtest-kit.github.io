@@ -11,12 +11,31 @@ never receives backtest traffic.</p>
 <a id="onsignalclosecommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalCloseCommit<a href="#onsignalclosecommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalCloseCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalClosePayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Called when a new signal is closed (take-profit, stop-loss, or manual close).</p>
+<p>Called when a signal is being closed (take-profit, stop-loss, or manual close). Emitted via
+syncSubject BEFORE the framework mutates strategy state, so it is also the close <strong>gate</strong>.</p>
+<p>MANUAL WIRING — EXCEPTION-BASED: place the real exit order here (tag/look up by <code>payload.signalId</code>)
+and record final PnL. This is the confirmed-close commit; like <code>onSignalSync</code> (signal-close) it
+shares the gate semantics — a THROW means &quot;the exchange did not close the position&quot; and the
+framework SKIPS the close, leaving the position open and retrying on the next tick. Return
+normally to let the close proceed. Backtest short-circuits this (no live exchange), so the gate is
+live-only.</p>
+<p>This differs from <code>onSignalPendingClose</code>, which is the informational lifecycle hook that fires
+AFTER the close is committed (and cannot veto it).</p>
 <a id="onsignalopencommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalOpenCommit<a href="#onsignalopencommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalOpenCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalOpenPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Called when a new signal is opened (position entry confirmed).</p>
-<a id="onorderping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderPing<a href="#onorderping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderPing</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalPendingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+<p>Called when a signal is being opened (position entry). Emitted via syncSubject BEFORE the
+framework mutates strategy state, so it is also the open <strong>gate</strong>.</p>
+<p>MANUAL WIRING — EXCEPTION-BASED: place the real entry order here (tag the exchange order with
+<code>payload.signalId</code> so later <code>onOrderCheck</code> / <code>onSignalActivePing</code> can find it). Like <code>onSignalSync</code>
+(signal-open) it shares the gate semantics — a THROW means &quot;the exchange did not fill the entry&quot;
+(e.g. limit order rejected) and the framework ROLLS BACK the open: the pending signal returns to
+idle (a scheduled activation is cancelled) and is retried on the next tick. Return normally to let
+the open proceed. Also the point where a scheduled signal's activation surfaces. Backtest
+short-circuits this, so the gate is live-only.</p>
+<p>This differs from <code>onSignalPendingOpen</code>, which is the informational lifecycle hook that fires
+AFTER the open is committed (and cannot veto it).</p>
+<a id="onordercheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderCheck<a href="#onordercheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderCheck</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalPendingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Called on every live tick while a pending signal is monitored, BEFORE TP/SL/time evaluation.
@@ -26,6 +45,98 @@ monitoring.</p>
 <p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
 normally instead of throwing, otherwise a connectivity blip would wrongly close an open
 position. Throw exclusively on a confirmed &quot;order not found by id&quot; result.</p>
+<p>Manual wiring — EXCEPTION-BASED VARIANT</p>
+<p>This is the throw-driven <strong>alternative</strong> to the imperative commit-function wiring in
+<code>onSignalActivePing</code>:</p>
+<ul>
+<li><strong>Exception-based (here):</strong> THROW → framework closes the position with closeReason &quot;closed&quot;.
+One binary gate, no reason distinction. Good when &quot;order gone&quot; is the only condition you handle.</li>
+<li><strong>Imperative (<code>onSignalActivePing</code> + <code>src/function/strategy.ts</code>):</strong> call
+<code>commitClosePending</code> / <code>commitCreateTakeProfit</code> / <code>commitCreateStopLoss</code> to close with the
+correct reason and handle TP vs SL vs no-counterparty separately.</li>
+</ul>
+<p>Pick ONE per condition — do not both throw here AND <code>commitClosePending</code> in the active-ping for
+the same &quot;order gone&quot; event.</p>
+<a id="onsignalactiveping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalActivePing<a href="#onsignalactiveping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalActivePing</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerActivePingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called on every live tick while a pending (open) signal is monitored.
+Purely informational mirror of the active-ping lifecycle — a throw here does NOT close the
+position (unlike <code>onOrderCheck</code>).</p>
+<p>Manual wiring — EVENT-BASED (driving an open position from real exchange state)</p>
+<p>Primary per-tick <strong>event-based</strong> hook for an open position (a throw does NOT close it — react to
+the event and decide imperatively). This is where you reconcile the framework's VWAP view with
+real fills: catch a <strong>SL that gapped through</strong> the level, or a <strong>TP that filled before VWAP</strong>
+reached it. Poll your real order and translate its state into strategy state via the
+commit-functions from <code>src/function/strategy.ts</code> (callable here because the ping is emitted inside
+the strategy tick; effects are deferred to the next tick):</p>
+<ul>
+<li><code>commitCreateTakeProfit(symbol, { id })</code> — real TP order filled (possibly before VWAP reached
+the level) → force close, reason &quot;take_profit&quot;.</li>
+<li><code>commitCreateStopLoss(symbol, { id })</code> — real SL order filled (e.g. price gapped through SL) →
+force close, reason &quot;stop_loss&quot;.</li>
+<li><code>commitClosePending(symbol, { id })</code> — no counterparty (no buyer/seller, liquidity gap) → close
+now with reason &quot;closed&quot;, instead of throwing.</li>
+</ul>
+<a id="onsignalscheduleping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalSchedulePing<a href="#onsignalscheduleping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalSchedulePing</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSchedulePingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called on every live tick while a scheduled signal is monitored (waiting for priceOpen
+activation). Purely informational.</p>
+<p>Manual wiring — EVENT-BASED (driving the scheduled phase from real exchange state)</p>
+<p>Per-tick <strong>event-based</strong> hook (a throw does NOT veto anything — react and decide imperatively).
+Poll your real resting/limit order and translate it via the commit-functions from
+<code>src/function/strategy.ts</code> (deferred to the next tick):</p>
+<ul>
+<li><code>commitActivateScheduled(symbol, { id })</code> — resting order filled/resolved → activate now,
+without waiting for VWAP to reach priceOpen (surfaces as <code>onSignalOpenCommit</code> next tick).</li>
+<li><code>commitCancelScheduled(symbol, { id })</code> — resting order cancelled/rejected externally → drop it.</li>
+</ul>
+<a id="onsignalidleping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalIdlePing<a href="#onsignalidleping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalIdlePing</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerIdlePingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called on every live tick while the strategy is idle (no pending or scheduled signal).
+Purely informational.</p>
+<p>MANUAL WIRING — EVENT-BASED: no signal is active, so there is nothing to commit; use it for idle
+heartbeats / housekeeping. A throw does not affect strategy state.</p>
+<a id="onsignalscheduleopen" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalScheduleOpen<a href="#onsignalscheduleopen" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalScheduleOpen</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerScheduleOpenPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called when a new scheduled signal is created and starts waiting for priceOpen activation.
+The scheduled -&gt; active transition is reported via <code>onSignalOpenCommit</code>, not here.</p>
+<p>Manual wiring — EVENT-BASED (placing the resting order)</p>
+<p>Fires ONCE at creation — place the real resting/limit order (tag it with <code>payload.signalId</code> so
+<code>onSignalSchedulePing</code> can poll it later). If it resolves immediately, promote it with
+<code>commitActivateScheduled(symbol, { id })</code>; if rejected, drop it with
+<code>commitCancelScheduled(symbol, { id })</code>. Use <code>onSignalSchedulePing</code> for ongoing polling.</p>
+<a id="onsignalschedulecancelled" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalScheduleCancelled<a href="#onsignalschedulecancelled" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalScheduleCancelled</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerScheduleCancelledPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called when a scheduled signal is cancelled before it ever activated
+(reason: timeout / price_reject / user).</p>
+<p>Manual wiring — EVENT-BASED (tearing down the resting order)</p>
+<p>Outbound side — the framework has already dropped the scheduled signal, so there is nothing to
+<code>commitCancelScheduled</code> here; instead cancel the real resting order you placed in
+<code>onSignalScheduleOpen</code> (look it up by <code>payload.signalId</code>). <code>payload.reason</code> tells you why.</p>
+<a id="onsignalpendingopen" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalPendingOpen<a href="#onsignalpendingopen" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalPendingOpen</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerPendingOpenPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called when a pending position is opened (new signal / immediate / scheduled or user
+activation). Purely informational lifecycle hook for the active phase of a signal.</p>
+<p>Manual wiring — EVENT-BASED (placing entry + protective orders)</p>
+<p>Fires ONCE at open — place the real entry confirmation and protective TP/SL orders (tag them with
+<code>payload.signalId</code>). Drive the rest per-tick from <code>onSignalActivePing</code>. This hook does not gate
+the position; for a true entry gate use <code>onSignalSync</code> (signal-open).</p>
+<a id="onsignalpendingclose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalPendingClose<a href="#onsignalpendingclose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalPendingClose</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerPendingClosePayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Called when a pending position is closed
+(reason: take_profit / stop_loss / time_expired / closed).</p>
+<p>Manual wiring — EVENT-BASED (tearing down the position)</p>
+<p>Outbound side — the framework has already removed the pending signal, so there is nothing to
+<code>commitClosePending</code> here; instead flatten the real position and cancel leftover TP/SL orders by
+<code>payload.signalId</code>, and record final PnL. <code>payload.closeReason</code> says which path closed it. If you
+need to FORCE the close yourself (e.g. no counterparty), do it earlier in <code>onSignalActivePing</code>.</p>
 <a id="onpartialprofitcommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onPartialProfitCommit<a href="#onpartialprofitcommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onPartialProfitCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerPartialProfitPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
@@ -50,7 +161,7 @@ position. Throw exclusively on a confirmed &quot;order not found by id&quot; res
 </code><button type="button">Copy</button></pre>
 
 <p>Called when a DCA (average-buy) entry is committed.</p>
-</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ibroker"><span>IBroker</span></a><ul><li><a href="#methods"><span>Methods</span></a></li><li><ul><li><a href="#waitforinit"><span>wait<wbr/>For<wbr/>Init</span></a></li><li><a href="#onsignalclosecommit"><span>on<wbr/>Signal<wbr/>Close<wbr/>Commit</span></a></li><li><a href="#onsignalopencommit"><span>on<wbr/>Signal<wbr/>Open<wbr/>Commit</span></a></li><li><a href="#onorderping"><span>on<wbr/>Order<wbr/>Ping</span></a></li><li><a href="#onpartialprofitcommit"><span>on<wbr/>Partial<wbr/>Profit<wbr/>Commit</span></a></li><li><a href="#onpartiallosscommit"><span>on<wbr/>Partial<wbr/>Loss<wbr/>Commit</span></a></li><li><a href="#ontrailingstopcommit"><span>on<wbr/>Trailing<wbr/>Stop<wbr/>Commit</span></a></li><li><a href="#ontrailingtakecommit"><span>on<wbr/>Trailing<wbr/>Take<wbr/>Commit</span></a></li><li><a href="#onbreakevencommit"><span>on<wbr/>Breakeven<wbr/>Commit</span></a></li><li><a href="#onaveragebuycommit"><span>on<wbr/>Average<wbr/>Buy<wbr/>Commit</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ibroker"><span>IBroker</span></a><ul><li><a href="#methods"><span>Methods</span></a></li><li><ul><li><a href="#waitforinit"><span>wait<wbr/>For<wbr/>Init</span></a></li><li><a href="#onsignalclosecommit"><span>on<wbr/>Signal<wbr/>Close<wbr/>Commit</span></a></li><li><a href="#onsignalopencommit"><span>on<wbr/>Signal<wbr/>Open<wbr/>Commit</span></a></li><li><a href="#onordercheck"><span>on<wbr/>Order<wbr/>Check</span></a></li><li><a href="#onsignalactiveping"><span>on<wbr/>Signal<wbr/>Active<wbr/>Ping</span></a></li><li><a href="#onsignalscheduleping"><span>on<wbr/>Signal<wbr/>Schedule<wbr/>Ping</span></a></li><li><a href="#onsignalidleping"><span>on<wbr/>Signal<wbr/>Idle<wbr/>Ping</span></a></li><li><a href="#onsignalscheduleopen"><span>on<wbr/>Signal<wbr/>Schedule<wbr/>Open</span></a></li><li><a href="#onsignalschedulecancelled"><span>on<wbr/>Signal<wbr/>Schedule<wbr/>Cancelled</span></a></li><li><a href="#onsignalpendingopen"><span>on<wbr/>Signal<wbr/>Pending<wbr/>Open</span></a></li><li><a href="#onsignalpendingclose"><span>on<wbr/>Signal<wbr/>Pending<wbr/>Close</span></a></li><li><a href="#onpartialprofitcommit"><span>on<wbr/>Partial<wbr/>Profit<wbr/>Commit</span></a></li><li><a href="#onpartiallosscommit"><span>on<wbr/>Partial<wbr/>Loss<wbr/>Commit</span></a></li><li><a href="#ontrailingstopcommit"><span>on<wbr/>Trailing<wbr/>Stop<wbr/>Commit</span></a></li><li><a href="#ontrailingtakecommit"><span>on<wbr/>Trailing<wbr/>Take<wbr/>Commit</span></a></li><li><a href="#onbreakevencommit"><span>on<wbr/>Breakeven<wbr/>Commit</span></a></li><li><a href="#onaveragebuycommit"><span>on<wbr/>Average<wbr/>Buy<wbr/>Commit</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
 
 <!-- Yandex.Metrika counter -->
 <script type="text/javascript">

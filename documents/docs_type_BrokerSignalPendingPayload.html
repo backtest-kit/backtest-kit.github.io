@@ -4,7 +4,7 @@
 <p>Payload for the pending-order synchronization broker event.</p>
 <p>Emitted automatically via syncPendingSubject on every live tick while a pending signal is
 monitored, BEFORE the framework evaluates TP/SL/time. Forwarded to the registered IBroker
-adapter via <code>onOrderPing</code>.</p>
+adapter via <code>onOrderCheck</code>.</p>
 <p>The adapter should query the exchange by <code>signalId</code> and THROW ONLY when the order is
 definitively NOT FOUND by that id (filled, cancelled, or liquidated externally). A throw
 propagates to CREATE_SYNC_PENDING_FN, which makes the framework close the pending signal with
