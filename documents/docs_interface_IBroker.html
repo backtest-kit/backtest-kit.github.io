@@ -14,7 +14,7 @@ never receives backtest traffic.</p>
 <p>Called when a signal is being closed (take-profit, stop-loss, or manual close). Emitted via
 syncSubject BEFORE the framework mutates strategy state, so it is also the close <strong>gate</strong>.</p>
 <p>MANUAL WIRING — EXCEPTION-BASED: place the real exit order here (tag/look up by <code>payload.signalId</code>)
-and record final PnL. This is the confirmed-close commit; like <code>onSignalSync</code> (signal-close) it
+and record final PnL. This is the confirmed-close commit; like <code>onOrderSync</code> (signal-close) it
 shares the gate semantics — a THROW means &quot;the exchange did not close the position&quot; and the
 framework SKIPS the close, leaving the position open and retrying on the next tick. Return
 normally to let the close proceed. Backtest short-circuits this (no live exchange), so the gate is
@@ -24,24 +24,35 @@ AFTER the close is committed (and cannot veto it).</p>
 <a id="onsignalopencommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalOpenCommit<a href="#onsignalopencommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalOpenCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalOpenPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Called when a signal is being opened (position entry). Emitted via syncSubject BEFORE the
-framework mutates strategy state, so it is also the open <strong>gate</strong>.</p>
-<p>MANUAL WIRING — EXCEPTION-BASED: place the real entry order here (tag the exchange order with
-<code>payload.signalId</code> so later <code>onOrderCheck</code> / <code>onSignalActivePing</code> can find it). Like <code>onSignalSync</code>
-(signal-open) it shares the gate semantics — a THROW means &quot;the exchange did not fill the entry&quot;
-(e.g. limit order rejected) and the framework ROLLS BACK the open: the pending signal returns to
-idle (a scheduled activation is cancelled) and is retried on the next tick. Return normally to let
-the open proceed. Also the point where a scheduled signal's activation surfaces. Backtest
-short-circuits this, so the gate is live-only.</p>
+<p>Called when an order is being opened. Emitted via syncSubject BEFORE the framework mutates
+strategy state, so it is also the open <strong>gate</strong>. Discriminated by <code>payload.type</code>:</p>
+<ul>
+<li>&quot;active&quot; — position entry (immediate open or activation fill of the resting order);</li>
+<li>&quot;schedule&quot; — PLACEMENT of the resting entry order at scheduled-signal creation.</li>
+</ul>
+<p>MANUAL WIRING — EXCEPTION-BASED: place the real order here (tag the exchange order with
+<code>payload.signalId</code> so later <code>onOrderCheck</code> / <code>onSignalActivePing</code> can find it). Like <code>onOrderSync</code>
+(signal-open) it shares the gate semantics — a THROW means &quot;the exchange did not accept/fill the
+order&quot; and the framework ROLLS BACK: for type &quot;active&quot; the pending signal returns to idle (a
+scheduled activation is cancelled); for type &quot;schedule&quot; the scheduled signal is NOT registered
+and the risk reservation is released. Both retry on the next tick. Return normally to let the
+open proceed. Backtest short-circuits this, so the gate is live-only.</p>
 <p>This differs from <code>onSignalPendingOpen</code>, which is the informational lifecycle hook that fires
 AFTER the open is committed (and cannot veto it).</p>
 <a id="onordercheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderCheck<a href="#onordercheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderCheck</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerSignalPendingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
-<p>Called on every live tick while a pending signal is monitored, BEFORE TP/SL/time evaluation.
-Query the exchange by <code>payload.signalId</code> and THROW ONLY when the order is NOT FOUND by that id
-— the framework will then close the position with closeReason &quot;closed&quot;. Return normally to keep
-monitoring.</p>
+<p>Called on every live tick while a signal is monitored, BEFORE completion evaluation.
+Fires for both monitored states, discriminated by <code>payload.type</code>:</p>
+<ul>
+<li>&quot;active&quot; — pending signal (open position), before TP/SL/time evaluation;</li>
+<li>&quot;schedule&quot; — scheduled signal (resting entry order), before timeout/price-activation.</li>
+</ul>
+<p>Query the exchange by <code>payload.signalId</code> and THROW ONLY when the order is NOT FOUND by that id
+— the framework will then close the position with closeReason &quot;closed&quot; (type &quot;active&quot;) or
+cancel the scheduled signal with reason &quot;user&quot; (type &quot;schedule&quot;). Return normally to keep
+monitoring. For type &quot;schedule&quot;: a filled resting order must be confirmed via
+<code>commitActivateScheduled</code>, not by throwing here (a throw is a terminal cancel).</p>
 <p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
 normally instead of throwing, otherwise a connectivity blip would wrongly close an open
 position. Throw exclusively on a confirmed &quot;order not found by id&quot; result.</p>
@@ -126,7 +137,7 @@ activation). Purely informational lifecycle hook for the active phase of a signa
 <p>Manual wiring — EVENT-BASED (placing entry + protective orders)</p>
 <p>Fires ONCE at open — place the real entry confirmation and protective TP/SL orders (tag them with
 <code>payload.signalId</code>). Drive the rest per-tick from <code>onSignalActivePing</code>. This hook does not gate
-the position; for a true entry gate use <code>onSignalSync</code> (signal-open).</p>
+the position; for a true entry gate use <code>onOrderSync</code> (signal-open).</p>
 <a id="onsignalpendingclose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalPendingClose<a href="#onsignalpendingclose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onSignalPendingClose</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerPendingClosePayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 

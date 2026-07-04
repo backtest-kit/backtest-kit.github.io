@@ -54,7 +54,7 @@ Use to place the actual entry order on the exchange.</p>
 <p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state, so a THROW here
 (e.g. limit order rejected) rolls back the open — the pending signal returns to idle and retries
 next tick; return normally to let it open. Live-only (backtest short-circuits). See
-<a href="../interfaces/types.IBroker.html#onsignalopencommit" class="tsd-kind-method"> IBroker.onSignalOpenCommit</a> for the full semantics.</p>
+IBroker.onSignalOpenCommit for the full semantics.</p>
 <a id="onordercheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderCheck<a href="#onordercheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onOrderCheck</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerSignalPendingPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
 
@@ -67,7 +67,7 @@ normally, which keeps the position under normal TP/SL monitoring.</p>
 normally instead of throwing. A thrown network error would wrongly close an open position; only
 a confirmed &quot;order not found by id&quot; response is a valid reason to throw.</p>
 <p>Manual wiring — EXCEPTION-BASED VARIANT: the throw-driven alternative to the imperative
-commit-function wiring in <code>onSignalActivePing</code>. See <a href="../interfaces/types.IBroker.html#onordercheck" class="tsd-kind-method"> IBroker.onOrderCheck</a> for the full
+commit-function wiring in <code>onSignalActivePing</code>. See  IBroker.onOrderCheck for the full
 comparison and example.</p>
 <a id="onsignalactiveping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onSignalActivePing<a href="#onsignalactiveping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onSignalActivePing</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerActivePingPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
@@ -134,7 +134,7 @@ Use to place the exit order and record final PnL.</p>
 <p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state, so a THROW here
 (e.g. exit order failed) SKIPS the close — the position stays open and the close retries next
 tick; return normally to let it close. Live-only (backtest short-circuits). See
-<a href="../interfaces/types.IBroker.html#onsignalclosecommit" class="tsd-kind-method"> IBroker.onSignalCloseCommit</a> for the full semantics.</p>
+IBroker.onSignalCloseCommit for the full semantics.</p>
 <a id="onpartialprofitcommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onPartialProfitCommit<a href="#onpartialprofitcommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onPartialProfitCommit</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerPartialProfitPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
 
