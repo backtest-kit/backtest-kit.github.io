@@ -117,9 +117,17 @@ They just sit unused until they are GC'd here or wiped by <code>clear()</code>.<
 <p>Build the singleshot promise for a single in-flight slot.</p>
 <p>Assembles the <a href="../interfaces/types.IRuntimeInfo.html" class="tsd-kind-interface"> IRuntimeInfo</a> snapshot via
 <code>RuntimeMetaService.getRuntimeInfo(symbol, context, backtest)</code> and invokes
-<code>entry.handler(info)</code>. Logs any error via <code>console.error</code> and <strong>returns</strong> a
-<code>failed</code> boolean (<code>true</code> when the handler — or the runtime-info assembly —
-threw) so the caller (<code>_tick</code>) can roll back the periodic watermark of the
+<code>entry.handler(info)</code>, racing both against the
+CRON_HANDLER_TIMEOUT  watchdog — a slot that does not settle in time
+rejects into the same <code>catch</code> as any other error, so a hung handler (or a
+hung price fetch inside <code>getRuntimeInfo</code>) can never hold the <code>_inFlight</code>
+slot forever and stall the serialised tick pipeline. A slot still running
+at  CRON_HANDLER_WARN_TIMEOUT  logs an observational warning first,
+so a slow handler is visible in the logs well before the watchdog forcibly
+fails it. Logs any error via
+<code>console.error</code> and <strong>returns</strong> a <code>failed</code> boolean (<code>true</code> when the
+handler — or the runtime-info assembly — threw or timed out) so the caller
+(<code>_tick</code>) can roll back the periodic watermark of the
 slot it opened and retry that boundary. The error is <strong>not</strong> rethrown, so a
 failing handler never produces an unhandled rejection. Clears the
 <code>_inFlight</code> slot in <code>.finally()</code> so the next boundary produces a fresh

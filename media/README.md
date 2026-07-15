@@ -747,6 +747,18 @@ MongoDB source-of-truth + Redis O(1) cache. All 15 persistence contracts, atomic
 npm install @backtest-kit/mongo backtest-kit mongoose ioredis
 ```
 
+### `@backtest-kit/pg` — [npm](https://www.npmjs.com/package/@backtest-kit/pg)
+PostgreSQL + Redis O(1) cache via TypeORM. All 15 persistence contracts, atomic upserts, soft delete, look-ahead-safe `when`. Tuned for Pgpool-II so read fan-out scales across replicas: up to ~4× faster
+```bash
+npm install @backtest-kit/pg backtest-kit typeorm pg ioredis reflect-metadata
+```
+
+### `@backtest-kit/minio` — [npm](https://www.npmjs.com/package/@backtest-kit/minio)
+MinIO (S3) source-of-truth + Redis time-ordered index. Listings in O(limit), zero schema management. Zero strategy changes.
+```bash
+npm install @backtest-kit/minio backtest-kit minio ioredis
+```
+
 ### `@backtest-kit/ollama` — [npm](https://www.npmjs.com/package/@backtest-kit/ollama)
 Universal LLM adapter: 10+ providers, structured output, token rotation, fallback chains, trading-context injection.
 ```bash
@@ -767,13 +779,15 @@ npx -y @backtest-kit/sidekick my-trading-bot && cd my-trading-bot && npm start
 
 ---
 
-## 👪 Community
+## 👨‍👩‍👦 Community
 
 Real, runnable templates — not slideware. And worth naming the concern directly: yes, this is one author's ecosystem, which is exactly what makes it *coherent* — but coherent is not captive. Everything is **MIT and open-source**, the core engine has **zero hard dependency** on any `@backtest-kit/*` add-on (you can run `getSignal` + `listen*` against a bare `addExchangeSchema` and nothing else), and each repo below is an independent reference you're meant to **fork and own**. The lock-in you'd normally fear — a closed runtime, a proprietary data format, a cloud you can't leave — none of it applies; the persistence is plain files or your own Mongo, the signals are your code, and the exit cost is a `git clone`.
 
 - **[backtest-monorepo-parallel](https://github.com/backtest-kit/backtest-monorepo-parallel)** — 9 symbols in parallel in one Node process on shared Mongo+Redis, ~6,300× real-time, self-enforcement runtime exposing the workspace DI container to `./content/` strategy files. The scaling recipe: +1 service = +1 file, +1 provider, +1 ioc entry.
 - **[backtest-ollama-crontab](https://github.com/backtest-kit/backtest-ollama-crontab)** — a local Ollama (`gpt-oss` quantized) as a per-signal risk gate plus a 15-minute crontab ingesting any public Telegram channel; the *same code* re-polls live and bulk-prepares in backtest. Documented result: **+52.22% → +68.90%** with the LLM gate on.
 - **[backtest-kit-redis-mongo-docker](https://github.com/backtest-kit/backtest-kit-redis-mongo-docker)** — production persistence: all 15 adapters on Mongo+Redis, atomic read-after-write, `docker-compose` one-command deploy.
+- **[backtest-kit-redis-postgres-pgpool-docker](https://github.com/backtest-kit/backtest-kit-redis-postgres-pgpool-docker)** — backtest-kit persistence on PostgreSQL (Pgpool-II) + Redis cache, with atomic upserts and a replica cluster.
+- **[backtest-kit-minio-s3-docker](https://github.com/backtest-kit/backtest-kit-minio-s3-docker)** — persistence on MinIO (S3) with deterministic keys, S3-grade durability
 - **[backtest-kit-skills](https://github.com/backtest-kit/backtest-kit-skills)** — a Claude Code skill + Mintlify docs: describe a strategy in plain language, get working TypeScript with every schema registration wired. `npx skills add https://github.com/backtest-kit/backtest-kit-skills`
 - **[uzse-backtest-app](https://github.com/backtest-kit/uzse-backtest-app)** — Pine Script on regional exchanges that aren't on TradingView (UZSE, MSE, DSE…): download raw trades, build candles, feed them through a custom Mongo exchange adapter.
 - **[backtest-kit-docs](https://github.com/backtest-kit/backtest-kit-docs)** — Architecture handbook and knowledge base: explains the engine's design, AI workflows, production patterns, and quantitative trading concepts beyond the API.
@@ -790,9 +804,35 @@ Zero-dependency TypeScript ports of the quant math behind [vectorbt](https://git
 
 ---
 
+## 🌐 Internationalization
+
+The `@backtest-kit/ui` dashboard ships in **7 languages**: English, Русский, Türkçe, 中文, हिन्दी, Español, Português. Switch via the language picker in the header
+
+<details>
+<summary>Locales</summary>
+
+
+- 🇬🇧 **English** — ~1.5B speakers. Backtest Kit is a TypeScript engine where the strategy you test on history is byte-for-byte the one that trades live — only the clock changes. It removes the failure modes that kill bots (look-ahead bias, crash corruption, silent order rejects, averaging up) at the API level, then adds first-class DCA, partial closes, portfolio risk, and AI/Pine signals on top.
+
+- 🇨🇳 **中文** — ~1.1B speakers. Backtest Kit 是一个 TypeScript 引擎：在历史数据上回测的策略代码，与实盘运行的代码逐字节一致，唯一区别只是时钟来源。它在 API 层面消除了让交易机器人崩溃的隐患（未来函数、崩溃损坏、静默拒单、越买越亏），并内置分批建仓、部分平仓、组合风控以及 AI/Pine 信号。
+
+- 🇮🇳 **हिन्दी** — ~600M speakers. Backtest Kit एक TypeScript इंजन है जिसमें इतिहास पर परखा गया कोड ही बिना बदलाव के लाइव ट्रेड करता है — केवल घड़ी बदलती है। यह बॉट को बर्बाद करने वाली गलतियाँ (लुक-अहेड बायस, क्रैश करप्शन, चुपचाप ऑर्डर रिजेक्ट, ऊपर औसत करना) API स्तर पर ही रोकता है, और ऊपर से DCA, आंशिक क्लोज़, पोर्टफोलियो जोखिम व AI/Pine सिग्नल देता है।
+
+- 🇪🇸 **Español** — ~560M speakers. Backtest Kit es un motor TypeScript donde la estrategia que pruebas con datos históricos es, byte a byte, la que opera en vivo — solo cambia el reloj. Elimina en la propia API los fallos que arruinan bots (sesgo look-ahead, corrupción por caídas, rechazos silenciosos de órdenes, promediar al alza) y suma DCA, cierres parciales, riesgo de cartera y señales de IA/Pine.
+
+- 🇧🇷 **Português** — ~260M speakers. Backtest Kit é um motor TypeScript em que a estratégia testada no histórico é, byte a byte, a mesma que opera ao vivo — só o relógio muda. Ele elimina no próprio API os erros que matam bots (viés look-ahead, corrupção por falha, rejeição silenciosa de ordens, preço médio para cima) e ainda oferece DCA, fechamentos parciais, risco de carteira e sinais de IA/Pine.
+
+- 🇷🇺 **Русский** — ~255M speakers. Backtest Kit — TypeScript-движок, где стратегия, проверенная на истории, побайтово совпадает с той, что торгует вживую: меняются только часы. Он устраняет на уровне API ошибки, губящие ботов (заглядывание в будущее, порча состояния при сбое, тихий отказ ордера, усреднение вверх), и добавляет полноценный DCA, частичные закрытия, портфельный риск и сигналы от AI/Pine.
+
+- 🇹🇷 **Türkçe** — ~90M speakers. Backtest Kit, geçmiş veride test ettiğiniz stratejinin canlıda bayt bayt aynısını çalıştıran bir TypeScript motorudur — yalnızca saat değişir. Botları çökerten hataları (look-ahead yanlılığı, çökme bozulması, sessiz emir reddi, yukarı ortalama) API düzeyinde ortadan kaldırır; üstüne DCA, kısmi kapanışlar, portföy riski ve AI/Pine sinyalleri ekler.
+
+</details>
+
+---
+
 ## 💯 Tested
 
-910+ unit and integration tests cover exchange helpers, the event-listener system, signal validation (valid long/short, inverted TP/SL, negative prices, future timestamps), PnL accuracy with 0.1% fees + 0.1% slippage, the full lifecycle and every close reason, strategy callbacks, and report generation. Tests use unique schema names per case (no cross-contamination), a forward-progressing mock candle generator, and event-driven completion detection.
+950+ unit and integration tests cover exchange helpers, the event-listener system, signal validation (valid long/short, inverted TP/SL, negative prices, future timestamps), PnL accuracy with 0.1% fees + 0.1% slippage, the full lifecycle and every close reason, strategy callbacks, and report generation. Tests use unique schema names per case (no cross-contamination), a forward-progressing mock candle generator, and event-driven completion detection.
 
 <details>
 <summary>Core test axes</summary>
