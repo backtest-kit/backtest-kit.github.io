@@ -42,9 +42,11 @@ Skipped silently in backtest mode or when no adapter is registered.</p>
 while a pending signal (payload.type &quot;active&quot;) or a scheduled signal (payload.type
 &quot;schedule&quot;) is monitored — routed to <code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code>
 respectively. Skipped silently in backtest mode or when no adapter is registered.
-Exceptions are NOT swallowed: a throw from the adapter propagates up to
-syncPendingSubject.next() → CREATE_SYNC_PENDING_FN, which closes the position with &quot;closed&quot;
-(type &quot;active&quot;) or cancels the scheduled signal with reason &quot;user&quot; (type &quot;schedule&quot;).</p>
+Exceptions are NOT swallowed: a throw propagates up to syncPendingSubject.next() →
+CREATE_SYNC_PENDING_FN and resolves into an IBrokerOrderVerdict — OrderDeletedError acts
+terminally at once (close &quot;closed&quot; / cancel &quot;user&quot;), any other throw (incl.
+OrderTransientError) is tolerated up to CC_ORDER_CHECK_RETRY_ATTEMPTS consecutive
+failures before the terminal action fires.</p>
 <a id="commitactiveping" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitActivePing<a href="#commitactiveping" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitActivePing</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerActivePingPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 

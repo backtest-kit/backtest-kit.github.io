@@ -8,17 +8,40 @@ never receives backtest traffic.</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Called once before first use. Connect to exchange, load credentials, etc.</p>
+<p>RECOMMENDED: run an ORPHAN SWEEP here. After a fatal exit (transient-budget
+exhaustion — see OrderTransientError) the exchange may hold artifacts the engine
+has already forgotten: a FILLED entry order under <code>clientOrderId = signalId</code>
+whose open was never confirmed (dropped signal), or a still-open position the
+engine force-closed on its side. <code>waitForInit</code> runs before the first event of a
+fresh process — the one moment to reconcile: list open orders/positions, match
+clientOrderIds against the engine state (<code>getStrategyStatus</code> / <code>getPendingSignal</code>),
+then either flatten the orphans on the exchange or re-adopt a live position via
+<code>commitCreateSignal</code> so it comes back under TP/SL management. Skipping the sweep
+risks trading a fresh signal ON TOP of an unmanaged orphan position.</p>
 <a id="onorderclosecommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderCloseCommit<a href="#onorderclosecommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderCloseCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerOrderClosePayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Called when a signal is being closed (take-profit, stop-loss, or manual close). Emitted via
 syncSubject BEFORE the framework mutates strategy state, so it is also the close <strong>gate</strong>.</p>
 <p>MANUAL WIRING — EXCEPTION-BASED: place the real exit order here (tag/look up by <code>payload.signalId</code>)
-and record final PnL. This is the confirmed-close commit; like <code>onOrderSync</code> (signal-close) it
-shares the gate semantics — a THROW means &quot;the exchange did not close the position&quot; and the
-framework SKIPS the close, leaving the position open and retrying on the next tick. Return
-normally to let the close proceed. Backtest short-circuits this (no live exchange), so the gate is
-live-only.</p>
+and record final PnL. Return normally to let the close proceed. THROW semantics
+(resolved into IBrokerOrderVerdict):</p>
+<ul>
+<li>plain Error or OrderTransientError (&quot;the network/exchange failed temporarily&quot;) →
+&quot;transient&quot;: the close is SKIPPED, the position stays open and the close retries on
+the next tick with <code>payload.attempt</code> incremented, up to CC_ORDER_CLOSE_RETRY_ATTEMPTS
+consecutive rejections. On exhaustion the engine FORCE-CLOSES its own state with the
+ORIGINAL closeReason and signals a fatal exit (exitEmitter) — the real exchange
+position must then be reconciled by the adapter/operator (the close lifecycle event
+still reaches <code>onSignalPendingClose</code>). With the config at 0 the cap is disabled and
+a rejected close retries forever (legacy).</li>
+<li>OrderRejectedError (&quot;no counterparty, retrying is pointless&quot;) → &quot;rejected&quot;,
+TERMINAL: the engine force-closes immediately, bypassing the retry counter. No fatal
+exit (business outcome, not a network failure).</li>
+<li>OrderDeletedError here is a userspace protocol violation (it belongs to the check
+hooks) and intentionally degrades to &quot;transient&quot;.
+Backtest short-circuits this (no live exchange), so the gate is live-only.</li>
+</ul>
 <p>This differs from <code>onSignalPendingClose</code>, which is the informational lifecycle hook that fires
 AFTER the close is committed (and cannot veto it).</p>
 <a id="onorderopencommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderOpenCommit<a href="#onorderopencommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderOpenCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerOrderOpenPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
@@ -31,12 +54,30 @@ strategy state, so it is also the open <strong>gate</strong>. Discriminated by <
 <li>&quot;schedule&quot; — PLACEMENT of the resting entry order at scheduled-signal creation.</li>
 </ul>
 <p>MANUAL WIRING — EXCEPTION-BASED: place the real order here (tag the exchange order with
-<code>payload.signalId</code> so later <code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code> / <code>onSignalActivePing</code> can find it). Like <code>onOrderSync</code>
-(signal-open) it shares the gate semantics — a THROW means &quot;the exchange did not accept/fill the
-order&quot; and the framework ROLLS BACK: for type &quot;active&quot; the pending signal returns to idle (a
-scheduled activation is cancelled); for type &quot;schedule&quot; the scheduled signal is NOT registered
-and the risk reservation is released. Both retry on the next tick. Return normally to let the
-open proceed. Backtest short-circuits this, so the gate is live-only.</p>
+<code>clientOrderId = payload.signalId</code> so later <code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code> /
+<code>onSignalActivePing</code> can find it). Return normally to let the open proceed. THROW
+semantics (resolved into IBrokerOrderVerdict):</p>
+<ul>
+<li>plain Error or OrderTransientError (&quot;the network/exchange failed temporarily, outcome
+unknown&quot;) → &quot;transient&quot;: the framework ROLLS BACK (type &quot;active&quot;: pending returns to
+idle; type &quot;schedule&quot;: scheduled not registered, risk reservation released) and
+retries IDENTITY-STABLY — the SAME signal row with the SAME signalId is re-submitted
+on the next tick with <code>payload.attempt</code> incremented, up to
+CC_ORDER_OPEN_RETRY_ATTEMPTS. The attempt is PRE-ARMED (persisted before this hook
+runs), so even a crash mid-attempt resumes with <code>attempt &amp;gt;= 1</code>. Because the id is
+stable, the adapter MUST reconcile at <code>attempt &amp;gt; 0</code>: query the prior order by
+clientOrderId BEFORE re-sending and confirm the open if it filled. Do NOT rely on
+catching a &quot;duplicate&quot; error on re-send — on Binance the duplicate-clientOrderId
+guard only covers OPEN orders, an instantly-filled market order will not dup.
+Exhaustion drops the signal and signals a fatal exit (exitEmitter).
+With the config at 0 the retry slot is disabled: the next tick regenerates a FRESH id.</li>
+<li>OrderRejectedError (&quot;the exchange definitively refused, retrying is pointless&quot;) →
+&quot;rejected&quot;, TERMINAL: the open is dropped at once, no retry armed, an already-armed
+retry for this id is wiped. No fatal exit (business outcome).</li>
+<li>OrderDeletedError here is a userspace protocol violation (it belongs to the check
+hooks) and intentionally degrades to &quot;transient&quot;.
+Backtest short-circuits this, so the gate is live-only.</li>
+</ul>
 <p>This differs from <code>onSignalPendingOpen</code>, which is the informational lifecycle hook that fires
 AFTER the open is committed (and cannot veto it).</p>
 <a id="onorderactivecheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderActiveCheck<a href="#onorderactivecheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderActiveCheck</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerOrderCheckPayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
@@ -44,12 +85,21 @@ AFTER the open is committed (and cannot veto it).</p>
 
 <p>Called on every live tick while a pending signal (open position) is monitored,
 BEFORE TP/SL/time evaluation (<code>payload.type</code> is always &quot;active&quot;).</p>
-<p>Query the exchange by <code>payload.signalId</code> and THROW ONLY when the order is NOT FOUND by that id
-— the framework will then close the position with closeReason &quot;closed&quot;. Return normally to
-keep monitoring.</p>
-<p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
-normally instead of throwing, otherwise a connectivity blip would wrongly close an open
-position. Throw exclusively on a confirmed &quot;order not found by id&quot; result.</p>
+<p>Query the exchange by <code>payload.signalId</code>. Return normally to keep monitoring.
+THROW semantics (resolved into IBrokerOrderVerdict):</p>
+<ul>
+<li>OrderDeletedError — the CONFIRMED &quot;order not found by id&quot;: the framework closes the
+position with closeReason &quot;closed&quot; AT ONCE, bypassing the tolerance counter.</li>
+<li>plain Error or OrderTransientError (timeout, 5xx, rate limit, disconnect) →
+&quot;transient&quot;: the failed check is TOLERATED — the order is assumed still open,
+monitoring continues and the next ping carries <code>payload.attempt</code> incremented, up to
+CC_ORDER_CHECK_RETRY_ATTEMPTS CONSECUTIVE failures (a successful check resets the
+streak to 0). A connectivity blip no longer closes a live position on the spot.
+Exhaustion acts terminally (close &quot;closed&quot;) and signals a fatal exit (exitEmitter).
+With the config at 0 any failure is terminal immediately (legacy).</li>
+<li>OrderRejectedError here is a userspace protocol violation (it belongs to the
+open/close gates) and intentionally degrades to &quot;transient&quot;.</li>
+</ul>
 <p>Manual wiring — EXCEPTION-BASED VARIANT</p>
 <p>This is the throw-driven <strong>alternative</strong> to the imperative commit-function wiring in
 <code>onSignalActivePing</code>:</p>
@@ -67,14 +117,23 @@ the same &quot;order gone&quot; event.</p>
 
 <p>Called on every live tick while a scheduled signal (resting entry order) is monitored,
 BEFORE timeout/price-activation evaluation (<code>payload.type</code> is always &quot;schedule&quot;).</p>
-<p>Query the exchange by <code>payload.signalId</code> and THROW ONLY when the resting order is NOT FOUND
-by that id — the framework will then cancel the scheduled signal with reason &quot;user&quot;. Return
-normally to keep monitoring. A FILLED resting order must be confirmed via
-<code>commitActivateScheduled</code>, not by throwing here (a throw is a terminal cancel, not an
-activation).</p>
-<p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
-normally instead of throwing, otherwise a connectivity blip would wrongly cancel the resting
-order. Throw exclusively on a confirmed &quot;order not found by id&quot; result.</p>
+<p>Query the exchange by <code>payload.signalId</code>. Return normally to keep monitoring.
+THROW semantics (resolved into IBrokerOrderVerdict):</p>
+<ul>
+<li>OrderDeletedError — the CONFIRMED &quot;resting order not found by id&quot;: the framework
+cancels the scheduled signal with reason &quot;user&quot; AT ONCE, bypassing the tolerance
+counter. A FILLED resting order is NOT a deleted order — confirm the fill via
+<code>commitActivateScheduled</code> instead (a throw here is a terminal cancel, not an
+activation).</li>
+<li>plain Error or OrderTransientError (timeout, 5xx, rate limit, disconnect) →
+&quot;transient&quot;: the failed check is TOLERATED — the resting order is assumed still
+open, the next ping carries <code>payload.attempt</code> incremented, up to
+CC_ORDER_CHECK_RETRY_ATTEMPTS CONSECUTIVE failures (a successful check resets the
+streak). Exhaustion cancels the scheduled signal (reason &quot;user&quot;) and signals a fatal
+exit (exitEmitter). With the config at 0 any failure is terminal immediately (legacy).</li>
+<li>OrderRejectedError here is a userspace protocol violation (it belongs to the
+open/close gates) and intentionally degrades to &quot;transient&quot;.</li>
+</ul>
 <p>Manual wiring — EXCEPTION-BASED VARIANT: the throw-driven alternative to the imperative
 commit-function wiring in <code>onSignalSchedulePing</code> (<code>commitActivateScheduled</code> /
 <code>commitCancelScheduled</code>). Pick ONE per condition.</p>

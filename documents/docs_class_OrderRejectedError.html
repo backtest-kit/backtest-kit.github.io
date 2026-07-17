@@ -1,0 +1,97 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/class/OrderRejectedError | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_class_OrderRejectedError.html">docs/class/OrderRejectedError</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="orderrejectederror" class="tsd-anchor"></a><h1 class="tsd-anchor-link">OrderRejectedError<a href="#orderrejectederror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Extends <code>Error</code></p>
+<p>TERMINAL business rejection of an order operation — &quot;the exchange definitively
+refused this order and retrying is pointless&quot;.</p>
+<a id="where-to-throw-it" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Where to throw it<a href="#where-to-throw-it" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Only from the ORDER GATES (the <code>onOrderSync</code> channel), i.e. any of:</p>
+<ul>
+<li><code>Broker.useBrokerAdapter</code> → <code>onOrderOpenCommit</code> / <code>onOrderCloseCommit</code>;</li>
+<li>action schema <code>callbacks.onOrderSync</code> / handler <code>IAction.orderSync</code> (deprecated channel);</li>
+<li>a <code>listenSync</code> listener.</li>
+</ul>
+<a id="what-the-framework-does" class="tsd-anchor"></a><h2 class="tsd-anchor-link">What the framework does<a href="#what-the-framework-does" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The throw propagates UNWRAPPED through every layer (none of them re-wrap errors —
+the runtime brand survives) and resolves into the <code>IBrokerOrderVerdict</code>
+<code>{ reason: &quot;rejected&quot; }</code> (see interfaces/Broker.interface). Consequences:</p>
+<ul>
+<li><strong>signal-open</strong> (type &quot;active&quot; or &quot;schedule&quot;): the open is DROPPED immediately.
+The identity-stable retry (CC_ORDER_OPEN_RETRY_ATTEMPTS) is NOT armed, and an
+already-armed retry slot for this signalId is wiped from memory and persistence —
+the trade attempt will not resurrect on the next tick or after a restart. The
+interval throttle is rolled back, so the strategy may generate a FRESH signal
+(new id) on the very next tick.</li>
+<li><strong>signal-close</strong>: the engine FORCE-CLOSES its own position state immediately with
+the ORIGINAL closeReason (take_profit / stop_loss / time_expired / closed),
+bypassing the CC_ORDER_CLOSE_RETRY_ATTEMPTS retry loop. The standard signal-close
+lifecycle event still fires and reaches the broker adapter
+(<code>onSignalPendingClose</code>) — the REAL exchange position may still exist, and its
+reconciliation is the adapter's/operator's responsibility.</li>
+</ul>
+<p>Loudness: <code>errorEmitter</code> fires (warn + console on every layer). <code>exitEmitter</code> does
+NOT fire — a business rejection is a normal (if unhappy) outcome, not a fatal
+network condition; the process keeps running. Compare with transient exhaustion,
+which DOES signal a fatal exit.</p>
+<a id="when-it-is-appropriate" class="tsd-anchor"></a><h2 class="tsd-anchor-link">When it is appropriate<a href="#when-it-is-appropriate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Throw only on a CONFIRMED business impossibility reported by the exchange:
+no counterparty / no liquidity, symbol delisted or trading halted, min-notional /
+lot-size violation, account restriction — anything where repeating the same
+request can never succeed. Do NOT throw it on network trouble (timeout, 5xx,
+rate limit, lost response): throw a plain Error or <a href="../classes/types.OrderTransientError.html" class="tsd-kind-class"> OrderTransientError</a>
+instead so the bounded retry machinery gets its chance.</p>
+<a id="nuances" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Nuances<a href="#nuances" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>Context-specific.</strong> This error belongs to the GATES. Throwing it from the CHECK
+channel (<code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code> / <code>callbacks.onOrderCheck</code>
+/ <code>listenCheck</code>) is a userspace protocol violation: it is INTENTIONALLY degraded
+to the &quot;transient&quot; verdict (counted toward CC_ORDER_CHECK_RETRY_ATTEMPTS) instead
+of being honored as terminal.</li>
+<li><strong>Nominal runtime identification.</strong> The framework recognizes the error by the
+<code>__type__ === Symbol.for(&quot;OrderRejectedError&quot;)</code> brand via the static guard —
+never by <code>instanceof</code>, so it survives duplicated module instances across bundles.
+Any subclass or foreign copy carrying the same global symbol is recognized too.</li>
+<li><strong>Live-only in production wiring.</strong> In backtest the gates short-circuit to
+&quot;confirmed&quot; before any listener runs, so the error can only matter in live mode
+(or in tests that mock <code>params.onOrderSync</code> directly — the client-side guard
+handles that path identically).</li>
+<li>The <code>message</code> is optional and purely informational (it ends up in warn logs and
+the errorEmitter payload); routing depends only on the brand.</li>
+</ul>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">(</span><span class="hl-5">message</span><span class="hl-2">: </span><span class="hl-5">string</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="type" class="tsd-anchor"></a><h3 class="tsd-anchor-link"><strong>type</strong><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">__type__</span><span class="hl-2">: </span><span class="hl-5">symbol</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Runtime brand (Symbol.for — survives duplicated module instances)</p>
+<a id="methods" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="isorderrejectederror" class="tsd-anchor"></a><h3 class="tsd-anchor-link">isOrderRejectedError<a href="#isorderrejectederror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-5">static</span><span class="hl-2"> </span><span class="hl-1">isOrderRejectedError</span><span class="hl-2">(</span><span class="hl-5">error</span><span class="hl-2">: </span><span class="hl-5">object</span><span class="hl-2">): </span><span class="hl-5">boolean</span><span class="hl-2">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Nominal type guard by the runtime brand. Use this instead of <code>instanceof</code>:
+the check is based on <code>Symbol.for</code>, so it recognizes instances created by a
+DIFFERENT copy of this module (duplicated bundles, linked packages).</p>
+<a id="fromerror" class="tsd-anchor"></a><h3 class="tsd-anchor-link">fromError<a href="#fromerror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-5">static</span><span class="hl-2"> </span><span class="hl-1">fromError</span><span class="hl-2">(</span><span class="hl-5">error</span><span class="hl-2">: </span><span class="hl-5">object</span><span class="hl-2">): </span><span class="hl-5">OrderRejectedError</span><span class="hl-2">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Nominal constructor for a new OrderRejectedError from any thrown object. Use this
+instead of <code>instanceof</code> to recognize instances created by a DIFFERENT copy of
+this module (duplicated bundles, linked packages).</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#orderrejectederror"><span>Order<wbr/>Rejected<wbr/>Error</span></a><ul><li><a href="#where-to-throw-it"><span>Where to throw it</span></a></li><li><a href="#what-the-framework-does"><span>What the framework does</span></a></li><li><a href="#when-it-is-appropriate"><span>When it is appropriate</span></a></li><li><a href="#nuances"><span>Nuances</span></a></li><li><a href="#constructor"><span>Constructor</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#type"><span>type</span></a></li></ul></li><li><a href="#methods"><span>Methods</span></a></li><li><ul><li><a href="#isorderrejectederror"><span>is<wbr/>Order<wbr/>Rejected<wbr/>Error</span></a></li><li><a href="#fromerror"><span>from<wbr/>Error</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

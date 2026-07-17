@@ -43,6 +43,12 @@ Extend this class to implement a real exchange adapter for:</p>
 <p>Performs async initialization before the broker starts receiving events.</p>
 <p>Called once by BrokerProxy via <code>waitForInit()</code> (singleshot) before the first event.
 Override to establish exchange connections, authenticate API clients, load configuration.</p>
+<p>RECOMMENDED: run an ORPHAN SWEEP here (see <a href="../interfaces/types.IBroker.html#waitforinit" class="tsd-kind-method"> IBroker.waitForInit</a>). A prior
+run that died on transient-budget exhaustion may have left a filled-but-unconfirmed
+entry order (the engine dropped the signal) or a real position the engine already
+force-closed. Reconcile before the first tick: cancel/flatten orphans, or re-adopt
+a live position via <code>commitCreateSignal</code> to bring it back under TP/SL management —
+otherwise a fresh signal may open ON TOP of an unmanaged orphan.</p>
 <p>Default implementation: Logs initialization event.</p>
 <a id="onorderopencommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderOpenCommit<a href="#onorderopencommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onOrderOpenCommit</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerOrderOpenPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
@@ -51,22 +57,29 @@ Override to establish exchange connections, authenticate API clients, load confi
 <p>Triggered automatically via syncSubject when a scheduled signal's priceOpen is hit.
 Use to place the actual entry order on the exchange.</p>
 <p>Default implementation: Logs signal-open event.</p>
-<p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state, so a THROW here
-(e.g. limit order rejected) rolls back the open — the pending signal returns to idle and retries
-next tick; return normally to let it open. Live-only (backtest short-circuits). See
+<p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state.
+Throw semantics: a plain Error / OrderTransientError rolls back the open and retries
+identity-stably (same signalId, <code>payload.attempt</code> increments, pre-armed so a crash
+mid-attempt still counts) up to CC_ORDER_OPEN_RETRY_ATTEMPTS; OrderRejectedError
+drops the open terminally without arming the retry. Return normally to let it open.
+Tag orders with <code>clientOrderId = payload.signalId</code> and RECONCILE at <code>attempt &amp;gt; 0</code>
+(query the prior order BEFORE re-sending — Binance's duplicate guard does not cover
+instantly-filled orders). Live-only (backtest short-circuits). See
 <a href="../interfaces/types.IBroker.html#onorderopencommit" class="tsd-kind-method"> IBroker.onOrderOpenCommit</a> for the full semantics.</p>
 <a id="onorderactivecheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderActiveCheck<a href="#onorderactivecheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onOrderActiveCheck</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerOrderCheckPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Called on every live tick while a pending signal (open position) is monitored, BEFORE
 TP/SL/time evaluation.</p>
-<p>Override to query the exchange for the order by <code>payload.signalId</code> and THROW ONLY when it is
-definitively NOT FOUND by that id (filled, cancelled, or liquidated externally) — the framework
-then closes the position with closeReason &quot;closed&quot;. The default implementation logs and returns
-normally, which keeps the position under normal TP/SL monitoring.</p>
-<p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
-normally instead of throwing. A thrown network error would wrongly close an open position; only
-a confirmed &quot;order not found by id&quot; response is a valid reason to throw.</p>
+<p>Override to query the exchange for the order by <code>payload.signalId</code>. The default
+implementation logs and returns normally, which keeps the position under normal TP/SL
+monitoring. Throw semantics: OrderDeletedError = confirmed &quot;order not found by id&quot;
+(filled, cancelled, or liquidated externally) — the framework closes the position with
+closeReason &quot;closed&quot; at once; a plain Error / OrderTransientError (timeout, 5xx, rate
+limit, disconnect) is TOLERATED as a transient failure up to
+CC_ORDER_CHECK_RETRY_ATTEMPTS consecutive times (<code>payload.attempt</code> increments, a
+successful check resets it) before the framework acts terminally — a connectivity blip
+no longer closes a live position on the spot.</p>
 <p>Manual wiring — EXCEPTION-BASED VARIANT: the throw-driven alternative to the imperative
 commit-function wiring in <code>onSignalActivePing</code>. See <a href="../interfaces/types.IBroker.html#onorderactivecheck" class="tsd-kind-method"> IBroker.onOrderActiveCheck</a> for the
 full comparison and example.</p>
@@ -75,13 +88,14 @@ full comparison and example.</p>
 
 <p>Called on every live tick while a scheduled signal (resting entry order) is monitored, BEFORE
 timeout/price-activation evaluation.</p>
-<p>Override to query the exchange for the resting order by <code>payload.signalId</code> and THROW ONLY when
-it is definitively NOT FOUND by that id — the framework then cancels the scheduled signal with
-reason &quot;user&quot;. The default implementation logs and returns normally. A FILLED resting order
-must be confirmed via <code>commitActivateScheduled</code>, not by throwing here.</p>
-<p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
-normally instead of throwing; only a confirmed &quot;order not found by id&quot; response is a valid
-reason to throw.</p>
+<p>Override to query the exchange for the resting order by <code>payload.signalId</code>. The default
+implementation logs and returns normally. Throw semantics: OrderDeletedError =
+confirmed &quot;order not found by id&quot; — the framework cancels the scheduled signal with
+reason &quot;user&quot; at once (a FILLED resting order must be confirmed via
+<code>commitActivateScheduled</code>, not by throwing); a plain Error / OrderTransientError
+(timeout, 5xx, rate limit, disconnect) is TOLERATED as a transient failure up to
+CC_ORDER_CHECK_RETRY_ATTEMPTS consecutive times (<code>payload.attempt</code> increments, a
+successful check resets it) before the framework acts terminally.</p>
 <p>Manual wiring — EXCEPTION-BASED VARIANT: the throw-driven alternative to the imperative
 commit-function wiring in <code>onSignalSchedulePing</code>. See <a href="../interfaces/types.IBroker.html#onorderschedulecheck" class="tsd-kind-method"> IBroker.onOrderScheduleCheck</a> for
 the full comparison and example.</p>
@@ -147,9 +161,12 @@ position and cancel leftover TP/SL orders by <code>payload.signalId</code>. See
 <p>Triggered automatically via syncSubject when a pending signal is closed.
 Use to place the exit order and record final PnL.</p>
 <p>Default implementation: Logs signal-close event.</p>
-<p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state, so a THROW here
-(e.g. exit order failed) SKIPS the close — the position stays open and the close retries next
-tick; return normally to let it close. Live-only (backtest short-circuits). See
+<p>Manual wiring — EXCEPTION-BASED GATE: emitted BEFORE the framework mutates state.
+Throw semantics: a plain Error / OrderTransientError SKIPS the close — the position
+stays open and the close retries next tick (<code>payload.attempt</code> increments) up to
+CC_ORDER_CLOSE_RETRY_ATTEMPTS, then the engine force-closes its state with the
+original closeReason; OrderRejectedError force-closes terminally at once. Return
+normally to let it close. Live-only (backtest short-circuits). See
 <a href="../interfaces/types.IBroker.html#onorderclosecommit" class="tsd-kind-method"> IBroker.onOrderCloseCommit</a> for the full semantics.</p>
 <a id="onpartialprofitcommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onPartialProfitCommit<a href="#onpartialprofitcommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onPartialProfitCommit</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerPartialProfitPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>

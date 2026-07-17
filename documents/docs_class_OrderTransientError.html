@@ -1,0 +1,111 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/class/OrderTransientError | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_class_OrderTransientError.html">docs/class/OrderTransientError</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="ordertransienterror" class="tsd-anchor"></a><h1 class="tsd-anchor-link">OrderTransientError<a href="#ordertransienterror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Extends <code>Error</code></p>
+<p>EXPLICIT transient failure marker — &quot;the operation failed for a temporary /
+unknown reason (network blip, lost response, exchange 5xx, rate limit); retry me&quot;.</p>
+<a id="purpose-declarative-sugar-not-routing" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose: declarative sugar, not routing<a href="#purpose-declarative-sugar-not-routing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The framework treats EVERY non-typed throw from the order gates and checks as the
+&quot;transient&quot; verdict already — this class adds NO special handling and is NOT
+pattern-matched anywhere in the framework by design. A plain <code>throw new Error(...)</code>
+behaves identically. The class exists purely so application code states its intent
+explicitly: a reader of the adapter sees &quot;transient&quot; spelled out instead of having
+to know that unbranded throws default to it. Use it as the third leg of the triad:</p>
+<ul>
+<li><a href="../classes/types.OrderRejectedError.html" class="tsd-kind-class"> OrderRejectedError</a> — terminal business rejection (GATES);</li>
+<li><a href="../classes/types.OrderDeletedError.html" class="tsd-kind-class"> OrderDeletedError</a> — confirmed order-not-found (CHECKS);</li>
+<li>OrderTransientError — everything temporary, in EITHER context.</li>
+</ul>
+<a id="what-the-transient-verdict-means-per-channel" class="tsd-anchor"></a><h2 class="tsd-anchor-link">What the &quot;transient&quot; verdict means per channel<a href="#what-the-transient-verdict-means-per-channel" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Resolved as <code>IBrokerOrderVerdict</code> <code>{ reason: &quot;transient&quot; }</code>
+(see interfaces/Broker.interface):</p>
+<ul>
+<li><strong>Open gate</strong> (<code>onOrderOpenCommit</code> type &quot;active&quot;/&quot;schedule&quot;,
+<code>callbacks.onOrderSync</code>, <code>listenSync</code>): the open is retried IDENTITY-STABLY —
+the same signal row with the SAME signalId is re-submitted on the next tick
+(<code>event.attempt</code> increments; the attempt is PRE-ARMED — persisted before the gate
+call, so even a crash mid-attempt resumes with attempt &gt;= 1), up to
+CC_ORDER_OPEN_RETRY_ATTEMPTS. Tag exchange orders with <code>clientOrderId = signalId</code>
+and RECONCILE at attempt &gt; 0: query the prior order by that id BEFORE re-sending
+and confirm the open if it filled. Do NOT rely on catching &quot;duplicate&quot; on re-send —
+Binance's duplicate-clientOrderId guard only covers OPEN orders; an
+instantly-filled market order will not dup.
+Exhaustion drops the signal loudly AND signals <code>exitEmitter</code> (fatal: the network
+would not let the engine work). With the config at 0 the retry slot is disabled:
+a rejected open is dropped at once and the next tick regenerates a FRESH id.</li>
+<li><strong>Close gate</strong> (<code>onOrderCloseCommit</code>, same listeners): the position stays open
+and the close is re-attempted on the next tick/candle (<code>event.attempt</code>
+increments), up to CC_ORDER_CLOSE_RETRY_ATTEMPTS. Exhaustion FORCE-CLOSES the
+engine state with the ORIGINAL closeReason + <code>errorEmitter</code> + <code>exitEmitter</code>
+(the real exchange position must be reconciled by the adapter/operator).
+With the config at 0 the cap is disabled: the close retries forever (legacy).</li>
+<li><strong>Checks</strong> (<code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code>,
+<code>callbacks.onOrderCheck</code>, <code>listenCheck</code>): the failed ping is TOLERATED — the
+order is assumed still open and monitoring continues (<code>event.attempt</code>
+increments), up to CC_ORDER_CHECK_RETRY_ATTEMPTS CONSECUTIVE failures; a single
+successful check resets the streak to 0. Exhaustion acts terminally (close
+&quot;closed&quot; / cancel &quot;user&quot;) + <code>exitEmitter</code>. With the config at 0 any failure is
+terminal on the spot (legacy).</li>
+</ul>
+<a id="nuances" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Nuances<a href="#nuances" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><ul>
+<li><strong>Counted per consecutive failures, not per elapsed ticks.</strong> For checks the ping
+fires every live tick, so &quot;consecutive&quot; is literal; for the close gate the
+counter advances only when a close actually triggers and gets rejected — gaps
+where no close condition holds do not touch it (only a confirmed gate or a
+position transition resets it).</li>
+<li><strong>Exhaustion of transient failures is FATAL</strong> (<code>exitEmitter</code> after the
+<code>errorEmitter</code> log) — unlike the typed terminal errors above, which are business
+outcomes and never signal a process exit.</li>
+<li><strong>Open and close counters are persisted (pre-armed before each gate call);</strong> the
+check counter is in-memory (a restart resets the tolerance window in the safe
+direction). For open/close, <code>attempt &amp;gt; 0</code> is therefore a HARD invariant even
+across crashes: a prior order MAY have reached the exchange — reconcile first.
+On restore the persisted counters are CLAMPED to 1: the reconcile bit survives,
+the streak resets — a pre-crash outage never exhausts the budget on the first
+post-restart attempt.</li>
+<li><strong>Nominal brand for symmetry.</strong> <code>__type__ === Symbol.for(&quot;OrderTransientError&quot;)</code>
+and the static guard exist for consistency with the other two errors (useful in
+the application's own logging/metrics); the framework itself never checks it.</li>
+<li><strong>Live-only in production wiring.</strong> Backtest short-circuits gates and never
+fires checks.</li>
+</ul>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">(</span><span class="hl-5">message</span><span class="hl-2">: </span><span class="hl-5">string</span><span class="hl-2">);</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="type" class="tsd-anchor"></a><h3 class="tsd-anchor-link"><strong>type</strong><a href="#type" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">__type__</span><span class="hl-2">: </span><span class="hl-5">symbol</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Runtime brand (Symbol.for — survives duplicated module instances)</p>
+<a id="methods" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="isordertransienterror" class="tsd-anchor"></a><h3 class="tsd-anchor-link">isOrderTransientError<a href="#isordertransienterror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-5">static</span><span class="hl-2"> </span><span class="hl-1">isOrderTransientError</span><span class="hl-2">(</span><span class="hl-5">error</span><span class="hl-2">: </span><span class="hl-5">object</span><span class="hl-2">): </span><span class="hl-5">boolean</span><span class="hl-2">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Nominal type guard by the runtime brand. Provided for symmetry with
+OrderRejectedError / OrderDeletedError (e.g. for application-side logging) —
+the framework itself does not branch on it: transient is the default verdict
+for ANY non-typed throw.</p>
+<a id="fromerror" class="tsd-anchor"></a><h3 class="tsd-anchor-link">fromError<a href="#fromerror" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-5">static</span><span class="hl-2"> </span><span class="hl-1">fromError</span><span class="hl-2">(</span><span class="hl-5">error</span><span class="hl-2">: </span><span class="hl-5">object</span><span class="hl-2">): </span><span class="hl-5">OrderTransientError</span><span class="hl-2">;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Nominal constructor for a new OrderTransientError from any thrown object. Use this
+instead of <code>instanceof</code> to recognize instances created by a DIFFERENT copy of
+this module (duplicated bundles, linked packages).</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#ordertransienterror"><span>Order<wbr/>Transient<wbr/>Error</span></a><ul><li><a href="#purpose-declarative-sugar-not-routing"><span>Purpose: declarative sugar, not routing</span></a></li><li><a href="#what-the-transient-verdict-means-per-channel"><span>What the &quot;transient&quot; verdict means per channel</span></a></li><li><a href="#nuances"><span>Nuances</span></a></li><li><a href="#constructor"><span>Constructor</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#type"><span>type</span></a></li></ul></li><li><a href="#methods"><span>Methods</span></a></li><li><ul><li><a href="#isordertransienterror"><span>is<wbr/>Order<wbr/>Transient<wbr/>Error</span></a></li><li><a href="#fromerror"><span>from<wbr/>Error</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

@@ -103,30 +103,35 @@ Frequency: Only when signal is rejected (not emitted for allowed signals)</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Called when framework attempts to open or close a position via limit order.
-Throw to reject — framework will retry on next tick.</p>
-<p>NOTE: Exceptions are NOT swallowed here — they propagate to CREATE_SYNC_FN.</p>
+Throw to reject (the return value is IGNORED).</p>
+<p>NOTE: Exceptions are NOT swallowed here — they propagate to CREATE_SYNC_FN and resolve
+into an IBrokerOrderVerdict: non-typed throw or OrderTransientError = &quot;transient&quot; (bounded retry — opens
+identity-stably up to CC_ORDER_OPEN_RETRY_ATTEMPTS, closes up to
+CC_ORDER_CLOSE_RETRY_ATTEMPTS with force-close on exhaustion); throw
+OrderRejectedError = &quot;rejected&quot;, terminal at once (open dropped / close force-closed).</p>
 <p>MANUAL WIRING — EXCEPTION-BASED GATE: action-side equivalent of the Broker
-<code>onOrderOpenCommit</code> / <code>onOrderCloseCommit</code>. Throw on &quot;signal-open&quot; → open rolls back to idle
-(scheduled activation cancelled); throw on &quot;signal-close&quot; → close skipped, position stays open;
-retried next tick. Same <code>syncSubject</code> emission as the Broker commit hooks (collapsed to false by
-CREATE_SYNC_FN). Live-only. Implement via the  IActionCallbacks.onOrderSync callback.</p>
+<code>onOrderOpenCommit</code> / <code>onOrderCloseCommit</code>. Same <code>syncSubject</code> emission as the Broker
+commit hooks — identical verdict semantics. <code>event.attempt</code> = prior STARTED attempts
+(pre-armed into persistence before the gate fires, holds across a crash mid-attempt —
+at attempt &gt; 0 reconcile with the exchange BEFORE re-sending). Live-only. Implement
+via the  IActionCallbacks.onOrderSync callback.</p>
 <a id="ordercheck" class="tsd-anchor"></a><h3 class="tsd-anchor-link">orderCheck<a href="#ordercheck" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">orderCheck</span><span class="hl-2">: (</span><span class="hl-5">event</span><span class="hl-2">: </span><span class="hl-10">OrderCheckContract</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span><span class="hl-2"> | </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Called on every live tick while a pending signal is monitored, BEFORE TP/SL/time evaluation,
 to confirm the order is still pending (open) on the exchange.</p>
-<p>Query the exchange by <code>event.signalId</code> and THROW ONLY when the order is NOT FOUND by that id
-(filled, cancelled, or liquidated externally) — the framework then closes the position with
-closeReason &quot;closed&quot;.</p>
-<p>CRITICAL: swallow transient/network errors (timeout, 5xx, rate limit, disconnect) — return
-normally instead of throwing, otherwise a connectivity blip would wrongly close an open
-position. Throw exclusively on a confirmed &quot;order not found by id&quot; result.</p>
-<p>NOTE: Exceptions are NOT swallowed here — they propagate to CREATE_SYNC_PENDING_FN.</p>
-<p>MANUAL WIRING — EXCEPTION-BASED GATE: action-side equivalent of the Broker <code>onOrderCheck</code>. A
-throw on a confirmed &quot;order not found by id&quot; closes the position with closeReason &quot;closed&quot;
-(retried via CREATE_SYNC_PENDING_FN). Throw-driven alternative to the imperative
-<code>commitClosePending</code> (call it from <code>pingActive</code>) — pick one, not both. Live-only. Implement via
-the  IActionCallbacks.onOrderCheck callback.</p>
+<p>NOTE: Exceptions are NOT swallowed here — they propagate to CREATE_SYNC_PENDING_FN and
+resolve into an IBrokerOrderVerdict: non-typed throw or OrderTransientError = &quot;transient&quot; (tolerated, order
+assumed still open, up to CC_ORDER_CHECK_RETRY_ATTEMPTS consecutive failures — then the
+terminal action fires); throw OrderDeletedError = &quot;deleted&quot;, terminal AT ONCE, bypassing
+the tolerance counter — the CONFIRMED &quot;order not found by <code>event.signalId</code>&quot; (filled,
+cancelled, or liquidated externally). Terminal action: close with closeReason &quot;closed&quot;
+(event.type &quot;active&quot;) or cancel with reason &quot;user&quot; (event.type &quot;schedule&quot;).
+<code>event.attempt</code> = consecutive prior failed checks; a successful check resets it to 0.</p>
+<p>MANUAL WIRING — EXCEPTION-BASED GATE: action-side equivalent of the Broker
+<code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code> — identical verdict semantics. Throw-driven
+alternative to the imperative <code>commitClosePending</code> (call it from <code>pingActive</code>) — pick one,
+not both. Live-only. Implement via the  IActionCallbacks.onOrderCheck callback.</p>
 <a id="dispose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">dispose<a href="#dispose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">dispose</span><span class="hl-2">: () </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-4">void</span><span class="hl-2"> | </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 

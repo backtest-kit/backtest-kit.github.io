@@ -2,8 +2,22 @@
 </code><button type="button">Copy</button></pre>
 
 <p>Subscribes to signal synchronization events with queued async processing.
-If throws position is not being opened/closed until the async function completes. Useful for synchronizing with external systems.</p>
+This is an order GATE: a throw from the listener rejects the open/close.</p>
 <p>Emits when signals are being synchronized (e.g. pending signal being opened/closed).</p>
+<p>Throw semantics (resolved into IBrokerOrderVerdict, identical to the Broker
+<code>onOrderOpenCommit</code> / <code>onOrderCloseCommit</code> channel):</p>
+<ul>
+<li>plain Error or <a href="../classes/types.OrderTransientError.html" class="tsd-kind-class"> OrderTransientError</a> → &quot;transient&quot;: the open retries
+identity-stably (same signalId, <code>event.attempt</code> increments) up to
+CC_ORDER_OPEN_RETRY_ATTEMPTS; the close retries up to
+CC_ORDER_CLOSE_RETRY_ATTEMPTS, then the engine FORCE-CLOSES its state with the
+original closeReason. Exhaustion of either signals a fatal exit (exitEmitter).</li>
+<li><a href="../classes/types.OrderRejectedError.html" class="tsd-kind-class"> OrderRejectedError</a> → &quot;rejected&quot;, TERMINAL at once: the open is dropped
+without arming the retry; the close is force-closed immediately. No exit signal
+(business outcome).</li>
+<li><a href="../classes/types.OrderDeletedError.html" class="tsd-kind-class"> OrderDeletedError</a> here is a userspace protocol violation (it belongs to
+the CHECK channel) and intentionally degrades to &quot;transient&quot;.</li>
+</ul>
 <a id="parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameters<a href="#parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
 <thead>
 <tr>

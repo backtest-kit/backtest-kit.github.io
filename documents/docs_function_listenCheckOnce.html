@@ -2,8 +2,11 @@
 </code><button type="button">Copy</button></pre>
 
 <p>Subscribes to filtered order-check ping events with one-time execution.
-If throws, the order behind the monitored signal is treated as no longer open on the
-exchange until the async function completes. Useful for synchronizing with external systems.</p>
+This is the order CHECK channel — see <a href="../functions/types.listenCheck.html" class="tsd-kind-function"> listenCheck</a> for the full throw
+semantics (plain Error / <a href="../classes/types.OrderTransientError.html" class="tsd-kind-class"> OrderTransientError</a> = tolerated &quot;transient&quot;
+failure bounded by CC_ORDER_CHECK_RETRY_ATTEMPTS, <a href="../classes/types.OrderDeletedError.html" class="tsd-kind-class"> OrderDeletedError</a> =
+confirmed not-found terminal at once, <a href="../classes/types.OrderRejectedError.html" class="tsd-kind-class"> OrderRejectedError</a> = protocol
+violation → transient).</p>
 <a id="parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameters<a href="#parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
 <thead>
 <tr>

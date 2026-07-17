@@ -16,6 +16,11 @@ Extend this class to implement custom action handlers for:</p>
 <li>Access to strategy context (strategyName, frameName, actionName)</li>
 <li>Implements full IPublicAction interface</li>
 </ul>
+<p>NOTE: the deprecated order gates (orderSync / orderCheck) deliberately have NO
+default implementation here — ActionProxy fires its loud warning only when a user
+handler defines them explicitly. Their throw semantics follow IBrokerOrderVerdict:
+non-typed throw = &quot;transient&quot; (bounded retry / tolerance), OrderRejectedError
+(gates) / OrderDeletedError (checks) = terminal. Prefer Broker.useBrokerAdapter.</p>
 <p>Lifecycle:</p>
 <ol>
 <li>Constructor called with (strategyName, frameName, actionName)</li>

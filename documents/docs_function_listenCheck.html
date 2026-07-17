@@ -2,11 +2,27 @@
 </code><button type="button">Copy</button></pre>
 
 <p>Subscribes to order-check ping events with queued async processing.
-If throws, the order behind the monitored signal is treated as no longer open on the
-exchange until the async function completes. Useful for synchronizing with external systems.</p>
+This is the order CHECK channel: it decides whether the order behind the monitored
+signal is still open on the exchange.</p>
 <p>Emits on every live tick while a signal is monitored, BEFORE completion evaluation,
 discriminated by <code>event.type</code>: &quot;active&quot; — pending signal (open position), &quot;schedule&quot; —
 scheduled signal (resting entry order). Backtest never emits this event.</p>
+<p>Throw semantics (resolved into IBrokerOrderVerdict, identical to the Broker
+<code>onOrderActiveCheck</code> / <code>onOrderScheduleCheck</code> channel):</p>
+<ul>
+<li>plain Error or <a href="../classes/types.OrderTransientError.html" class="tsd-kind-class"> OrderTransientError</a> → &quot;transient&quot;: the failed check is
+TOLERATED (order assumed still open, monitoring continues, <code>event.attempt</code>
+increments) up to CC_ORDER_CHECK_RETRY_ATTEMPTS CONSECUTIVE failures — a network
+blip no longer kills a live position; a successful check resets the streak.
+Exhaustion acts terminally (close &quot;closed&quot; / cancel &quot;user&quot;) and signals a fatal
+exit (exitEmitter).</li>
+<li><a href="../classes/types.OrderDeletedError.html" class="tsd-kind-class"> OrderDeletedError</a> → &quot;deleted&quot;, TERMINAL at once, bypassing the tolerance:
+the CONFIRMED &quot;order not found by <code>event.signalId</code>&quot;. A FILLED resting order is
+NOT a deleted order — confirm fills via commitActivateScheduled /
+commitCreateTakeProfit / commitCreateStopLoss instead.</li>
+<li><a href="../classes/types.OrderRejectedError.html" class="tsd-kind-class"> OrderRejectedError</a> here is a userspace protocol violation (it belongs to
+the GATE channel) and intentionally degrades to &quot;transient&quot;.</li>
+</ul>
 <a id="parameters" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Parameters<a href="#parameters" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><table>
 <thead>
 <tr>
