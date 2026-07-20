@@ -18,6 +18,18 @@ clientOrderIds against the engine state (<code>getStrategyStatus</code> / <code>
 then either flatten the orphans on the exchange or re-adopt a live position via
 <code>commitCreateSignal</code> so it comes back under TP/SL management. Skipping the sweep
 risks trading a fresh signal ON TOP of an unmanaged orphan position.</p>
+<p>TIMING CAVEATS for the re-adoption branch (<code>commitCreateSignal</code>):</p>
+<ul>
+<li><code>waitForInit</code> is LAZY — it is awaited before the FIRST proxied hook call, not at
+<code>enable()</code>. If the strategy emits a signal on its very first tick, that first call
+is the open gate with the retry slot already PRE-ARMED, and <code>commitCreateSignal</code>
+throws &quot;a rejected open is awaiting retry&quot;.</li>
+<li>an idle tick does NOT mean the engine is empty: rejected opens (armed retry slot)
+and rejected user-close drains (position still live) also return idle. Always
+check <code>getStrategyStatus</code> first — adopt only when <code>pendingSignalId</code>,
+<code>retryOpenSignal</code>, <code>closedSignal</code> and <code>createdSignal</code> are all clear; otherwise
+restrict the sweep to flattening exchange-side orphans.</li>
+</ul>
 <a id="onorderclosecommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderCloseCommit<a href="#onorderclosecommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">onOrderCloseCommit</span><span class="hl-2">: (</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-10">BrokerOrderClosePayload</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 

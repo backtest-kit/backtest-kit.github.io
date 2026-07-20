@@ -49,6 +49,14 @@ entry order (the engine dropped the signal) or a real position the engine alread
 force-closed. Reconcile before the first tick: cancel/flatten orphans, or re-adopt
 a live position via <code>commitCreateSignal</code> to bring it back under TP/SL management —
 otherwise a fresh signal may open ON TOP of an unmanaged orphan.</p>
+<p>TIMING CAVEATS for re-adoption: <code>waitForInit</code> is LAZY (awaited before the first
+proxied hook call, not at <code>enable()</code>) — when the strategy trades on its first tick,
+the sweep runs INSIDE the open gate with the retry slot already pre-armed, and
+<code>commitCreateSignal</code> throws &quot;a rejected open is awaiting retry&quot;. An idle tick is
+no guarantee either: rejected opens and rejected user-close drains also emit idle
+pings while state is live. Check <code>getStrategyStatus</code> and adopt ONLY when
+<code>pendingSignalId</code> / <code>retryOpenSignal</code> / <code>closedSignal</code> / <code>createdSignal</code> are all
+clear; otherwise limit the sweep to exchange-side cleanup.</p>
 <p>Default implementation: Logs initialization event.</p>
 <a id="onorderopencommit" class="tsd-anchor"></a><h3 class="tsd-anchor-link">onOrderOpenCommit<a href="#onorderopencommit" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-1">onOrderOpenCommit</span><span class="hl-2">(</span><span class="hl-5">payload</span><span class="hl-2">: </span><span class="hl-5">BrokerOrderOpenPayload</span><span class="hl-2">): </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;;</span>
 </code><button type="button">Copy</button></pre>
