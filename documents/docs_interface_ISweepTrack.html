@@ -1,0 +1,91 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/interface/ISweepTrack | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_interface_ISweepTrack.html">docs/interface/ISweepTrack</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="isweeptrack" class="tsd-anchor"></a><h1 class="tsd-anchor-link">ISweepTrack<a href="#isweeptrack" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>One author's TRACK under ONE grading rule (rule = the point's
+hold x lock x stop x trailing, the four levels the single
+profit-before-stop outcome depends on). The raw continuous
+evidence — ideas, hits, hitRate — over the whole simulated range.
+There is NO ban verdict and NO threshold: the engine grades, and
+userspace decides who to trust (that is the whole point of cutting
+the minAuthorTrack/minAuthorHitRate step — it turned a continuous
+track into a 0/1 flag and lost information). One line per
+(rule x author), self-contained for grep/jq.</p>
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="holdminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">holdMinutes<a href="#holdminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">holdMinutes</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Grading window of the rule — the point's holdMinutes. The track
+depends on it: the same author has different hits in different
+windows. On every track line so a grep by author shows the rule.</p>
+<a id="profitlockpercent" class="tsd-anchor"></a><h3 class="tsd-anchor-link">profitLockPercent<a href="#profitlockpercent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">profitLockPercent</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Grading lock level of the rule, percent (0 = lock off, fixation is
+the trailing arm alone). Part of the rule identity — the hit
+depends on it — so it is on the line. NO thresholds: a track is
+continuous trust, not a 0/1 flag.</p>
+<a id="hardstoppercent" class="tsd-anchor"></a><h3 class="tsd-anchor-link">hardStopPercent<a href="#hardstoppercent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">hardStopPercent</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Grading STOP of the rule, percent. The hit depends on it — a MISS
+is the hard stop firing before any fixation, so the same
+(hold, lock, trailing, author) has DIFFERENT hits at different
+stops. A full part of the rule identity and MUST be on the line,
+else those rows are indistinguishable.</p>
+<a id="trailingtakepercent" class="tsd-anchor"></a><h3 class="tsd-anchor-link">trailingTakePercent<a href="#trailingtakepercent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">trailingTakePercent</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Grading TRAILING take of the rule, percent. The hit depends on it
+— the trailing arm level (entry/(1 - dir*r)) is one of the two
+fixations raced against the hard stop, so the same
+(hold, lock, stop, author) has DIFFERENT hits at different
+trailing values. A full part of the rule identity and MUST be on
+the line, else those rows are indistinguishable.</p>
+<a id="author" class="tsd-anchor"></a><h3 class="tsd-anchor-link">author<a href="#author" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">author</span><span class="hl-2">: </span><span class="hl-5">string</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Author login on the source platform.</p>
+<a id="ideas" class="tsd-anchor"></a><h3 class="tsd-anchor-link">ideas<a href="#ideas" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">ideas</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>All the author's directional ideas — every idea counts. An idea
+cut short by the candle data edge is NOT excluded: running out of
+candles is a loss (a miss), exactly like the hold window timing
+out.</p>
+<a id="hits" class="tsd-anchor"></a><h3 class="tsd-anchor-link">hits<a href="#hits" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">hits</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Number of the author's hits — ideas whose lock or trailing arm
+fixation fired BEFORE the hard stop inside the rule's window. A
+miss is the hard stop firing first, the window expiring, or the
+candles running out before any fixation. The same author has
+different hit counts under different rules.</p>
+<a id="hitrate" class="tsd-anchor"></a><h3 class="tsd-anchor-link">hitRate<a href="#hitrate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">hitRate</span><span class="hl-2">: </span><span class="hl-5">number</span>
+</code><button type="button">Copy</button></pre>
+
+<p>hits / ideas, 0..1; zero when the author has no known outcomes.
+A derived convenience kept on the final product (one number per
+track line, no duplication) so userspace filters by trust
+directly (jq 'select(.hitRate &gt; 0.5)') instead of the engine
+baking a threshold into a banned flag.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#isweeptrack"><span>ISweep<wbr/>Track</span></a><ul><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#holdminutes"><span>hold<wbr/>Minutes</span></a></li><li><a href="#profitlockpercent"><span>profit<wbr/>Lock<wbr/>Percent</span></a></li><li><a href="#hardstoppercent"><span>hard<wbr/>Stop<wbr/>Percent</span></a></li><li><a href="#trailingtakepercent"><span>trailing<wbr/>Take<wbr/>Percent</span></a></li><li><a href="#author"><span>author</span></a></li><li><a href="#ideas"><span>ideas</span></a></li><li><a href="#hits"><span>hits</span></a></li><li><a href="#hitrate"><span>hit<wbr/>Rate</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

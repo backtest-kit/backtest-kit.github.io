@@ -11,9 +11,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue)]()
 [![Build](https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml/badge.svg)](https://github.com/tripolskypetr/backtest-kit/actions/workflows/webpack.yml)
 
-Most trading bots don't die because the strategy was wrong. They die because the backtest quietly read tomorrow's candle, because the process crashed mid-fill and opened the position twice, because the exchange rejected an order and the bot kept trading a ghost. The strategy was never the hard part — the *plumbing* was.
+Most trading bots don't die because the strategy was wrong. They die because the backtest quietly read tomorrow's candle, because the process crashed mid-fill and opened the position twice, because the exchange rejected an order and the bot kept trading a ghost. The strategy was never the hard part — the *infrastructure* was.
 
-`backtest-kit` is that plumbing, closed off one failure at a time over a year of live trading and running real money in production at [TheOneTrade](https://theonetrade.github.io). This page walks the failures that kill bots and shows how each one is designed out of the default path — not "discouraged," not "documented," but structurally unavailable unless you go out of your way to defeat the engine. Every claim opens into **The Code / The Math / The Proof** so you (or the model reading this for you) can check the work instead of trusting the pitch.
+`backtest-kit` is that infrastructure, closed off one failure at a time over a year of live trading and running real money in production at [TheOneTrade](https://theonetrade.github.io). This page walks the failures that kill bots and shows how each one is designed out of the default path — not "discouraged," not "documented," but structurally unavailable unless you go out of your way to defeat the engine. Every claim opens into **The Code / The Math / The Proof** so you (or the model reading this for you) can check the work instead of trusting the pitch.
 
 📚 **[API Reference](https://backtest-kit.github.io/documents/example_02_first_backtest.html)** · 🌟 **[Reference implementation](https://github.com/tripolskypetr/backtest-kit/tree/master/example)** · 📰 **[Article series](https://backtest-kit.github.io/documents/article_07_ai_news_trading_signals.html)**
 
@@ -663,7 +663,7 @@ Because the loop belongs to the engine, the *same* declarations run identically 
 
 ## Receipts
 
-Toy READMEs prove a moving-average crossover on daily candles. These are eight production-quality strategies, each a *different* signal source, each backtested on real history with the numbers written down. They live in [`/example`](https://github.com/tripolskypetr/backtest-kit/tree/master/example) — clone it, run it, get the same prints.
+Toy READMEs prove a moving-average crossover on daily candles. These are nine production-quality strategies, each a *different* signal source, each backtested on real history with the numbers written down. They live in [`/example`](https://github.com/tripolskypetr/backtest-kit/tree/master/example) — clone it, run it, get the same prints.
 
 | Strategy | Ticker · Period | Signal source | Net PNL | Sharpe |
 |---|---|---|---:|---:|
@@ -675,11 +675,13 @@ Toy READMEs prove a moving-average crossover on daily candles. These are eight p
 | [AI News Sentiment](https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/feb_2026.strategy) | BTC · Feb 2026 | LLM on live news (Tavily + Ollama) | **+16.99%** | 0.25 |
 | [SHORT DCA Ladder](https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/mar_2026.strategy) | BTC · Mar 2026 | Fixed SHORT + ladder up (≤10 rungs) | **+37.83%** | 0.35 |
 | [LONG DCA Ladder](https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/apr_2026.strategy) | BTC · Apr 2026 | Fixed LONG + ladder down (≤10 rungs) | **+67.85%** | 0.12 |
+| [Crowd Liquidity](https://github.com/tripolskypetr/backtest-kit/tree/master/example/content/jun_2026.strategy) | BTC · Jun 2026 | TradingView ideas, `Simulator`-trained author whitelist | **+19.80%** | **0.64** |
 
 <details>
 <summary>The Proof</summary>
 
 - **Liquidity Harvesting (Sharpe 1.14)** — a Telegram channel published SHORT signals with ~0.375:1 R/R and 106% deposit at risk at 25× leverage, mathematically guaranteed to lose; a volume spike appeared 15 min before every post and the TP step multipliers were identical across signals — an algorithm. Inverting it turned **−5.05% → +8.58%**, profit factor **0.56 → 7.31**. The edge was the bot crowd, not the indicators.
+- **Crowd Liquidity** — 462 TradingView ideas, 167 authors, and a falling knife of a month (BTC −20.4%). Following the raw crowd lost −24.23%; the framework's `Simulator` entity grid-searched the author ban rule itself (minimum track × minimum hit rate among 3,456 points) and kept **5 authors of 167**. Trading any post of those five: 10 trades, 90% WR, **+19.80%** — the whitelist artifact is generated by `scripts/simulator.mjs`, not curated by hand. Stated caveat: trained and traded on the same month; the July out-of-sample is the open question.
 - **AI News Sentiment** held SHORT through nearly all of a −16.4% month, flipped to LONG on the recovery bounce, and flipped back on geopolitical news — **+16.99%** where buy-and-hold lost 16%.
 - **DCA Ladders** show the trade-off honestly: high % return on deployed capital, but absolute fiat risk grows with rungs (Mar: −$104.93 on a 10-rung position; theoretical max −$2,500 if a non-reverting trend hits the 25% hard stop with all rungs filled). The README states the downside, not just the upside.
 
@@ -771,6 +773,12 @@ npm install @backtest-kit/ollama agent-swarm-kit backtest-kit
 npm install @backtest-kit/signals backtest-kit
 ```
 
+### `@backtest-kit/mcp` — [npm](https://www.npmjs.com/package/@backtest-kit/mcp)
+Model Context Protocol server: an LLM agent (Claude, any MCP client) watches the live portfolio and opens/closes positions through 3 guarded tools — TP/SL/cost stay engine-owned, stdio server talks to the trading process over HTTP.
+```bash
+npm install @backtest-kit/mcp backtest-kit @modelcontextprotocol/sdk
+```
+
 ### `@backtest-kit/sidekick` — [npm](https://www.npmjs.com/package/@backtest-kit/sidekick)
 The "eject" of `--init`: scaffolds a project where exchange adapter, frames, risk rules, strategy, and runner are all editable source. 4H-trend + 15m-signal Pine template, partial profit taking, breakeven trailing.
 ```bash
@@ -783,6 +791,7 @@ npx -y @backtest-kit/sidekick my-trading-bot && cd my-trading-bot && npm start
 
 Real, runnable templates — not slideware. And worth naming the concern directly: yes, this is one author's ecosystem, which is exactly what makes it *coherent* — but coherent is not captive. Everything is **MIT and open-source**, the core engine has **zero hard dependency** on any `@backtest-kit/*` add-on (you can run `getSignal` + `listen*` against a bare `addExchangeSchema` and nothing else), and each repo below is an independent reference you're meant to **fork and own**. The lock-in you'd normally fear — a closed runtime, a proprietary data format, a cloud you can't leave — none of it applies; the persistence is plain files or your own Mongo, the signals are your code, and the exit cost is a `git clone`.
 
+- **[ai-trading-mcp](https://github.com/backtest-kit/ai-trading-mcp)** — MCP-driven crypto trading rig. Claude (or any MCP client) trades a live portfolio through three guarded tools: get_status, open_position, close_position. Capable to read news and charts. Paper and live.
 - **[backtest-monorepo-parallel](https://github.com/backtest-kit/backtest-monorepo-parallel)** — 9 symbols in parallel in one Node process on shared Mongo+Redis, ~6,300× real-time, self-enforcement runtime exposing the workspace DI container to `./content/` strategy files. The scaling recipe: +1 service = +1 file, +1 provider, +1 ioc entry.
 - **[backtest-ollama-crontab](https://github.com/backtest-kit/backtest-ollama-crontab)** — a local Ollama (`gpt-oss` quantized) as a per-signal risk gate plus a 15-minute crontab ingesting any public Telegram channel; the *same code* re-polls live and bulk-prepares in backtest. Documented result: **+52.22% → +68.90%** with the LLM gate on.
 - **[backtest-kit-redis-mongo-docker](https://github.com/backtest-kit/backtest-kit-redis-mongo-docker)** — production persistence: all 15 adapters on Mongo+Redis, atomic read-after-write, `docker-compose` one-command deploy.
@@ -791,6 +800,7 @@ Real, runnable templates — not slideware. And worth naming the concern directl
 - **[backtest-kit-skills](https://github.com/backtest-kit/backtest-kit-skills)** — a Claude Code skill + Mintlify docs: describe a strategy in plain language, get working TypeScript with every schema registration wired. `npx skills add https://github.com/backtest-kit/backtest-kit-skills`
 - **[uzse-backtest-app](https://github.com/backtest-kit/uzse-backtest-app)** — Pine Script on regional exchanges that aren't on TradingView (UZSE, MSE, DSE…): download raw trades, build candles, feed them through a custom Mongo exchange adapter.
 - **[backtest-kit-docs](https://github.com/backtest-kit/backtest-kit-docs)** — Architecture handbook and knowledge base: explains the engine's design, AI workflows, production patterns, and quantitative trading concepts beyond the API.
+- **[wallet-manager](https://github.com/tripolskypetr/wallet-manager)** — Binance spot wallet toolkit with an interactive REPL and a reference broker adapter. Encodes the typical adapter mistake most implementations trip over: trying to sell an asset while its funds are still frozen in a pending order — the correct sequence is to cancel the pending orders first, verify the book is clean, and only then sell with a new order. lets you vibe-code an adapter for any exchange on top of it.
 
 ---
 

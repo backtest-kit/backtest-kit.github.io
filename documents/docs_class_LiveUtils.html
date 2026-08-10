@@ -70,36 +70,36 @@ to cover transaction costs (slippage + fees) and allow breakeven to be set.</p>
 
 <p>Returns the effective (weighted average) entry price for the current pending signal.</p>
 <p>Accounts for all DCA entries via commitAverageBuy.
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getpositioninvestedcount" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionInvestedCount<a href="#getpositioninvestedcount" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionInvestedCount</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the total number of base-asset units currently held in the position.</p>
-<p>Includes units from all DCA entries. Returns null if no pending signal exists.</p>
+<p>Includes units from all DCA entries. Throws if no pending signal exists.</p>
 <a id="getpositioninvestedcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionInvestedCost<a href="#getpositioninvestedcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionInvestedCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the total dollar cost invested in the current position.</p>
-<p>Sum of all entry costs across DCA entries. Returns null if no pending signal exists.</p>
+<p>Sum of all entry costs across DCA entries. Throws if no pending signal exists.</p>
 <a id="getpositionpnlpercent" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionPnlPercent<a href="#getpositionpnlpercent" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionPnlPercent</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">currentPrice</span><span class="hl-2">: </span><span class="hl-10">number</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the current unrealized PnL as a percentage of the invested cost.</p>
 <p>Calculated relative to the effective (weighted average) entry price.
-Positive for profit, negative for loss. Returns null if no pending signal exists.</p>
+Positive for profit, negative for loss. Throws if no pending signal exists.</p>
 <a id="getpositionpnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionPnlCost<a href="#getpositionpnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionPnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">currentPrice</span><span class="hl-2">: </span><span class="hl-10">number</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the current unrealized PnL in quote currency (dollar amount).</p>
 <p>Calculated as (currentPrice - effectiveEntry) * units for LONG,
-reversed for SHORT. Returns null if no pending signal exists.</p>
+reversed for SHORT. Throws if no pending signal exists.</p>
 <a id="getpositionlevels" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionLevels<a href="#getpositionlevels" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionLevels</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">[]&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the list of DCA entry prices for the current pending signal.</p>
 <p>The first element is always the original priceOpen (initial entry).
 Each subsequent element is a price added by commitAverageBuy().
-Returns null if no pending signal exists.
+Throws if no pending signal exists.
 Returns a single-element array [priceOpen] if no DCA entries were made.</p>
 <a id="getpositionpartials" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionPartials<a href="#getpositionpartials" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionPartials</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;{ </span><span class="hl-9">type</span><span class="hl-2">: </span><span class="hl-3">&quot;profit&quot;</span><span class="hl-2"> | </span><span class="hl-3">&quot;loss&quot;</span><span class="hl-2">; </span><span class="hl-9">percent</span><span class="hl-2">: </span><span class="hl-5">number</span><span class="hl-2">; </span><span class="hl-9">currentPrice</span><span class="hl-2">: </span><span class="hl-5">number</span><span class="hl-2">; </span><span class="hl-9">costBasisAtClose</span><span class="hl-2">: </span><span class="hl-5">number</span><span class="hl-2">; </span><span class="hl-9">entryCountAtClose</span><span class="hl-2">: </span><span class="hl-5">number</span><span class="hl-2">; </span><span class="hl-9">timestamp</span><span class="hl-2">: </span><span class="hl-5">number</span><span class="hl-2">; }[]&gt;</span>
 </code><button type="button">Copy</button></pre>
@@ -107,7 +107,7 @@ Returns a single-element array [priceOpen] if no DCA entries were made.</p>
 <p>Returns the list of partial close events for the current pending signal.</p>
 <p>Each element represents a partial profit or loss close executed via
 commitPartialProfit / commitPartialLoss (or their Cost variants).
-Returns null if no pending signal exists.
+Throws if no pending signal exists.
 Returns an empty array if no partials were executed yet.</p>
 <p>Each entry contains:</p>
 <ul>
@@ -123,7 +123,7 @@ Returns an empty array if no partials were executed yet.</p>
 <p>Returns the list of DCA entry prices and costs for the current pending signal.</p>
 <p>Each element represents a single position entry — the initial open or a subsequent
 DCA entry added via commitAverageBuy.</p>
-<p>Returns null if no pending signal exists.
+<p>Throws if no pending signal exists.
 Returns a single-element array if no DCA entries were made.</p>
 <p>Each entry contains:</p>
 <ul>
@@ -136,19 +136,19 @@ Returns a single-element array if no DCA entries were made.</p>
 <p>Returns the original estimated duration for the current pending signal.</p>
 <p>Reflects <code>minuteEstimatedTime</code> as set in the signal DTO — the maximum
 number of minutes the position is expected to be active before <code>time_expired</code>.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositioncountdownminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionCountdownMinutes<a href="#getpositioncountdownminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionCountdownMinutes</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the remaining time before the position expires, clamped to zero.</p>
 <p>Computes elapsed minutes since <code>pendingAt</code> and subtracts from <code>minuteEstimatedTime</code>.
 Returns 0 once the estimate is exceeded (never negative).</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionactiveminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionActiveMinutes<a href="#getpositionactiveminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionActiveMinutes</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the number of minutes the position has been active since it opened.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionwaitingminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionWaitingMinutes<a href="#getpositionwaitingminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionWaitingMinutes</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
@@ -158,22 +158,22 @@ Returns 0 once the estimate is exceeded (never negative).</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the best price reached in the profit direction during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestprofittimestamp" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestProfitTimestamp<a href="#getpositionhighestprofittimestamp" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestProfitTimestamp</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the timestamp when the best profit price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestpnlpercentage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestPnlPercentage<a href="#getpositionhighestpnlpercentage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestPnlPercentage</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the PnL percentage at the moment the best profit price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestpnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestPnlCost<a href="#getpositionhighestpnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestPnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the PnL cost (in quote currency) at the moment the best profit price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestprofitbreakeven" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestProfitBreakeven<a href="#getpositionhighestprofitbreakeven" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestProfitBreakeven</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">boolean</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
@@ -185,7 +185,7 @@ Returns 0 once the estimate is exceeded (never negative).</p>
 <p>Measures how long the position has been pulling back from its peak profit level.
 Zero when called at the exact moment the peak was set.
 Grows continuously as price moves away from the peak without setting a new record.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestprofitminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestProfitMinutes<a href="#getpositionhighestprofitminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestProfitMinutes</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
@@ -193,70 +193,70 @@ Grows continuously as price moves away from the peak without setting a new recor
 <p>Alias for getPositionDrawdownMinutes — measures how long the position has been
 pulling back from its peak profit level.
 Zero when called at the exact moment the peak was set.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionmaxdrawdownminutes" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionMaxDrawdownMinutes<a href="#getpositionmaxdrawdownminutes" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionMaxDrawdownMinutes</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the number of minutes elapsed since the worst loss price was recorded.</p>
 <p>Measures how long ago the deepest drawdown point occurred.
 Zero when called at the exact moment the trough was set.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionmaxdrawdownprice" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionMaxDrawdownPrice<a href="#getpositionmaxdrawdownprice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionMaxDrawdownPrice</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the worst price reached in the loss direction during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionmaxdrawdowntimestamp" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionMaxDrawdownTimestamp<a href="#getpositionmaxdrawdowntimestamp" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionMaxDrawdownTimestamp</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the timestamp when the worst loss price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionmaxdrawdownpnlpercentage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionMaxDrawdownPnlPercentage<a href="#getpositionmaxdrawdownpnlpercentage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionMaxDrawdownPnlPercentage</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the PnL percentage at the moment the worst loss price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionmaxdrawdownpnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionMaxDrawdownPnlCost<a href="#getpositionmaxdrawdownpnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionMaxDrawdownPnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the PnL cost (in quote currency) at the moment the worst loss price was recorded during this position's life.</p>
-<p>Returns null if no pending signal exists.</p>
+<p>Throws if no pending signal exists.</p>
 <a id="getpositionhighestprofitdistancepnlpercentage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestProfitDistancePnlPercentage<a href="#getpositionhighestprofitdistancepnlpercentage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestProfitDistancePnlPercentage</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the distance in PnL percentage between the current price and the highest profit peak.</p>
 <p>Computed as: max(0, peakPnlPercentage - currentPnlPercentage).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getpositionhighestprofitdistancepnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestProfitDistancePnlCost<a href="#getpositionhighestprofitdistancepnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestProfitDistancePnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the distance in PnL cost between the current price and the highest profit peak.</p>
 <p>Computed as: max(0, peakPnlCost - currentPnlCost).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getpositionhighestmaxdrawdownpnlpercentage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestMaxDrawdownPnlPercentage<a href="#getpositionhighestmaxdrawdownpnlpercentage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestMaxDrawdownPnlPercentage</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the distance in PnL percentage between the current price and the worst drawdown trough.</p>
 <p>Computed as: max(0, currentPnlPercentage - fallPnlPercentage).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getpositionhighestmaxdrawdownpnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionHighestMaxDrawdownPnlCost<a href="#getpositionhighestmaxdrawdownpnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionHighestMaxDrawdownPnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the distance in PnL cost between the current price and the worst drawdown trough.</p>
 <p>Computed as: max(0, currentPnlCost - fallPnlCost).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getmaxdrawdowndistancepnlpercentage" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getMaxDrawdownDistancePnlPercentage<a href="#getmaxdrawdowndistancepnlpercentage" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getMaxDrawdownDistancePnlPercentage</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the peak-to-trough PnL percentage distance between the position's highest profit and deepest drawdown.</p>
 <p>Computed as: max(0, peakPnlPercentage - fallPnlPercentage).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getmaxdrawdowndistancepnlcost" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getMaxDrawdownDistancePnlCost<a href="#getmaxdrawdowndistancepnlcost" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getMaxDrawdownDistancePnlCost</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">number</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Returns the peak-to-trough PnL cost distance between the position's highest profit and deepest drawdown.</p>
 <p>Computed as: max(0, peakPnlCost - fallPnlCost).
-Returns null if no pending signal exists.</p>
+Throws if no pending signal exists.</p>
 <a id="getpositionentryoverlap" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getPositionEntryOverlap<a href="#getpositionentryoverlap" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getPositionEntryOverlap</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">currentPrice</span><span class="hl-2">: </span><span class="hl-10">number</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }, </span><span class="hl-5">ladder</span><span class="hl-2">?: </span><span class="hl-10">IPositionOverlapLadder</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">boolean</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 

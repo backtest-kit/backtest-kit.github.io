@@ -1,0 +1,194 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>other/sweep/readme | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="other_sweep_readme.html">other/sweep/readme</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="sweep-demo" class="tsd-anchor"></a><h1 class="tsd-anchor-link">Sweep Demo<a href="#sweep-demo" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><blockquote>
+<p>Link to <a href="https://github.com/tripolskypetr/backtest-kit/tree/master/demo/sweep">the source code</a></p>
+</blockquote>
+<p>A <strong>grid sweep</strong> over a signal feed, driven by the <code>Sweep</code> entity. The dataset is a scrape of TradingView ideas — author, direction, publish time — for June 2026, a month where BTC fell <strong>−20.4%</strong> while the crowd kept posting longs. The demo answers two questions in one run: <strong>is there a profitable corridor at all</strong>, and <strong>what does the raw per-author track look like</strong> — how often did each author's calls actually land, over exactly the window a point trades.</p>
+<p>The crucial contract: <strong>the engine bans nobody.</strong> Every author's idea is traded; the engine reports the raw track (ideas / hits / hitRate per grading rule) and leaves the decision of <em>who to trust</em> to userspace. There is no <code>minAuthorTrack</code> / <code>minAuthorHitRate</code> threshold — that step collapsed continuous trust into a 0/1 flag and threw information away. So the corridor you see is the crowd's UNFILTERED result; the tracks next to it are the material a userspace scorer would filter on.</p>
+<p>Grading is <strong>one binary outcome — profit-before-stop</strong>: walking each point's own hold window candle by candle, an author's idea is a HIT when a fixation — the profit lock (if lock &gt; 0) OR the trailing arm level — fires BEFORE the hard stop; a MISS when the hard stop fires first, the window times out with nothing fixed, or the candle data runs out (running out of candles is a loss, same as a timeout). No <code>close</code> / <code>pnl</code> / <code>reach</code> / <code>retain</code> / <code>trail</code> metric zoo — one question, one report bucket, one set of tracks.</p>
+<p>This is a run of the model over its own full history — train-on-train, stated openly, no out-of-sample split here. The full harvesting machinery IS swept: hard stop, trailing take, hold duration and profit lock all vary across the grid, so the sweep looks for the exit engineering that turns the raw direction into a corridor.</p>
+<p>June 2026 is the honest example: the crowd average bleeds at short holds, but the corridor <strong>turns positive once the hold is long enough</strong> — the best point (<strong>stop 6% · trail 3% · hold 11d · lock 5%</strong>) makes <strong>+218.8%</strong> at a <strong>71% win rate</strong> over 220 trades, and <strong>24% of the whole grid (5,100 of 21,280 points) is profitable</strong>. The value is the corridor AND the raw tracks, which tell you which authors called this month well.</p>
+<a id="purpose" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Purpose<a href="#purpose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>This project exists for the concrete checks below.</p>
+<a id="1-is-there-a-profitable-corridor-at-all" class="tsd-anchor"></a><h3 class="tsd-anchor-link">1. Is there a profitable corridor at all?<a href="#1-is-there-a-profitable-corridor-at-all" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>One <code>Sweep.run</code> over the whole feed: each idea gets ONE asynchronous candle pass from the minute after its publication, as deep as the longest hold of the grid — the schema owns the horizon, the engine has no hidden constant. Execution is wick-honest: exits by high and low, never close-to-close, the stop wins inside an ambiguous candle, fees and slippage on both legs. The outcome of <strong>any</strong> grid point is derived from the profiles arithmetically. The grid is the full cartesian product — <strong>21,280 points</strong> (stop 19 × trailing 10 × hold 14 × lock 8) — because the whole harvesting machinery is swept. If no point of the corridor is profitable, the crowd's direction carries no extractable edge on this feed even with the exit engineering searched.</p>
+<a id="2-how-much-does-the-window-cut" class="tsd-anchor"></a><h3 class="tsd-anchor-link">2. How much does the window cut?<a href="#2-how-much-does-the-window-cut" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Before any trading logic runs, the feed passes the honesty filters: NEUTRAL ideas dropped, flood deduplicated — at most one idea per author per direction per 8 hours, because reposting a call must not inflate a track record or retrigger entries. The probe reports the cut explicitly: <strong>421 BTCUSDT ideas → 300 directional survivors</strong>. A feed that mostly evaporates here is a feed of reposts, not signals.</p>
+<a id="3-what-is-each-authors-raw-track" class="tsd-anchor"></a><h3 class="tsd-anchor-link">3. What is each author's raw track?<a href="#3-what-is-each-authors-raw-track" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The engine grades every author by the single <strong>profit-before-stop</strong> outcome INSIDE EACH POINT'S OWN HOLD WINDOW: a 1-day point scores the 1-day window, a 14-day point the 14-day window — the author is graded on exactly the trade the point takes. The result is <code>tracks[]</code>: one line per (grading rule × author) carrying <code>{holdMinutes, profitLockPercent, hardStopPercent, trailingTakePercent, author, ideas, hits, hitRate}</code>. No ban, no verdict — the raw ratio. Because the full rule (all four levels) is part of the identity, the same author appears once per rule: <strong>3,277,120 track lines = 154 authors × 21,280 rules</strong>. Userspace picks a rule and a threshold and reads the survivors off directly (<code>hitRate &gt;= 0.5</code>, <code>ideas &gt;= 3</code>).</p>
+<a id="4-the-mechanics-are-the-full-sweep" class="tsd-anchor"></a><h3 class="tsd-anchor-link">4. The mechanics are the full sweep<a href="#4-the-mechanics-are-the-full-sweep" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>Every idea triggers an entry (one open position PER AUTHOR — slots are per-author, so authors never collide, and each absorbs only his own overlapping posts). Authors are graded strictly in isolation — no interaction metrics (consensus, vote weighting, Wilson bounds) exist by design. What is swept is the whole exit machinery: catastrophe stop 1–10%, trailing take 0.5–5%, hold 1–14 days, profit lock 1–5%.</p>
+<a id="5-reading-the-result" class="tsd-anchor"></a><h3 class="tsd-anchor-link">5. Reading the result<a href="#5-reading-the-result" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><p>The result carries a single report bucket: ranking winners (time-based Sharpe/Sortino over daily equity increments — frozen capital is not free — plus total PnL and recovery factor) with full trade lists and per-trade <code>absorbedIdeas</code> (which author's signals a busy slot ate), and the <code>tracks[]</code>. The final arbiter for any point picked from the tracks is always a real engine backtest via <code>Backtest.run</code>.</p>
+<a id="actual-results--june-2026-btcusdt-full-feed" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Actual Results — June 2026, BTCUSDT, full feed<a href="#actual-results--june-2026-btcusdt-full-feed" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>Numbers below are from a local <code>npm start</code> run — the sweep output (<code>result.json</code> plus the <code>result_*.jsonl</code> streams) is written next to the script and is not committed (the reports stream alone runs to gigabytes). The feed is strictly crypto-venue: ideas are classified by the <code>fullName</code> exchange prefix — Binance, Coinbase, Bitstamp, Bybit, OKX and the like — forex, CFD, metals, stocks and indices never enter the file, so no fabricated pairs.</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Numbers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ideas in feed, BTCUSDT</td>
+<td>421 total → 300 after NEUTRAL + flood dedupe</td>
+</tr>
+<tr>
+<td>Profiles built</td>
+<td>300, none truncated</td>
+</tr>
+<tr>
+<td>Grid</td>
+<td>21,280 points — stop 19 × trailing 10 × hold 14 × lock 8, full sweep, no ban</td>
+</tr>
+<tr>
+<td>Author tracks</td>
+<td>3,277,120 — one per (rule × author) = 154 authors × 21,280 rules</td>
+</tr>
+<tr>
+<td>Profitable corridor</td>
+<td><strong>5,100 of 21,280 points (24%)</strong> — a wide zone, but only in the deep-stop / long-hold / high-lock corner</td>
+</tr>
+</tbody>
+</table>
+<p>The four ranking winners all sit in that corner:</p>
+<table>
+<thead>
+<tr>
+<th>Criterion</th>
+<th>Point</th>
+<th>Trades</th>
+<th>PnL</th>
+<th>Win rate</th>
+<th>Sharpe</th>
+<th>Sortino</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Sharpe / Sortino</td>
+<td>stop 7 · trail 3 · hold 13d · lock 5</td>
+<td>214</td>
+<td>+191.3%</td>
+<td>73%</td>
+<td><strong>2.45</strong></td>
+<td>9.22</td>
+</tr>
+<tr>
+<td>PnL</td>
+<td>stop 6 · trail 3 · hold 11d · lock 5</td>
+<td>220</td>
+<td><strong>+218.8%</strong></td>
+<td>71%</td>
+<td>1.72</td>
+<td>4.31</td>
+</tr>
+<tr>
+<td>Recovery</td>
+<td>stop 6 · trail 3 · hold 13d · lock 5</td>
+<td>220</td>
+<td>+218.6%</td>
+<td>71%</td>
+<td>1.70</td>
+<td>4.31</td>
+</tr>
+</tbody>
+</table>
+<p>The corridor is honest about WHERE the edge is. Three monotone gradients, best PnL per axis value:</p>
+<ul>
+<li><strong>Hold</strong> — bleeds short, pays long: <strong>−80% @ 1d, +47% @ 5d, +163% @ 7d, +219% @ 11d, plateau to 14d</strong>. The crossover into the black is at 5 days; profit saturates past 11. Only sitting through the whole post-−20% rebound pays.</li>
+<li><strong>Stop</strong> — a dome: tight stops kill (<strong>−110% @ 1%</strong>, the shakeout stops out future winners), the turn is at <strong>stop 4% (+27%)</strong>, peak at <strong>stop 6% (+219%)</strong>, slow decay to 10%.</li>
+<li><strong>Lock</strong> — monotone up: <strong>−5% @ lock 1% → +219% @ lock 5%</strong>; the higher the fixation floor, the more the long hold harvests. Every winner sits at <strong>trail 3</strong> — the middle of 0.5–5%, wide enough not to clip a runner, tight enough not to give it all back.</li>
+</ul>
+<p>The signal also lives in the <strong>tracks</strong>. Filter the WINNING rule (stop 7 · trail 3 · hold 13d · lock 5) to authors with a real track (ideas ≥ 3) and rank by hitRate:</p>
+<table>
+<thead>
+<tr>
+<th>Author</th>
+<th>Hits / Ideas</th>
+<th>HitRate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CandleKing09</td>
+<td>5/5</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>KennyYenKen</td>
+<td>3/3</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Prime_X_Trader</td>
+<td>3/3</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>CryptoSkullSignal</td>
+<td>7/8</td>
+<td>88%</td>
+</tr>
+<tr>
+<td>MarketStrategysignals</td>
+<td>7/8</td>
+<td>88%</td>
+</tr>
+<tr>
+<td>TradingShot</td>
+<td>13/15</td>
+<td>87%</td>
+</tr>
+<tr>
+<td>InvestingScope</td>
+<td>5/6</td>
+<td>83%</td>
+</tr>
+<tr>
+<td>XAUxBTC_Pro</td>
+<td>5/6</td>
+<td>83%</td>
+</tr>
+</tbody>
+</table>
+<p><strong>20 of the 23 authors with a 3-idea track clear hitRate ≥ 0.5 under the winning rule.</strong> That population is what a userspace swarm scorer carries forward: the raw track is the evidence, no ban baked in.</p>
+<a id="project-structure" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Project Structure<a href="#project-structure" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code><span class="hl-5">demo</span><span class="hl-2">/</span><span class="hl-5">sweep</span><span class="hl-2">/</span><br/><span class="hl-2">├── </span><span class="hl-5">assets</span><span class="hl-2">/</span><br/><span class="hl-2">│   └── </span><span class="hl-5">tv</span><span class="hl-2">-</span><span class="hl-5">ideas</span><span class="hl-2">.</span><span class="hl-5">normalized</span><span class="hl-2">.</span><span class="hl-5">jsonl</span><span class="hl-2">   # </span><span class="hl-5">crypto</span><span class="hl-2">-</span><span class="hl-5">venue</span><span class="hl-2"> </span><span class="hl-5">ideas</span><span class="hl-2"> </span><span class="hl-5">only</span><span class="hl-2">, </span><span class="hl-5">symbols</span><span class="hl-2"> </span><span class="hl-5">normalized</span><span class="hl-2"> </span><span class="hl-5">to</span><span class="hl-2"> *</span><span class="hl-7">USDT</span><br/><span class="hl-2">├── </span><span class="hl-5">src</span><span class="hl-2">/</span><br/><span class="hl-2">│   └── </span><span class="hl-5">index</span><span class="hl-2">.</span><span class="hl-5">mjs</span><span class="hl-2">                   # </span><span class="hl-5">Exchange</span><span class="hl-2"> + </span><span class="hl-5">sweep</span><span class="hl-2"> </span><span class="hl-5">schema</span><span class="hl-2"> + </span><span class="hl-5">Sweep</span><span class="hl-2">.</span><span class="hl-5">run</span><br/><span class="hl-2">├── </span><span class="hl-5">dump</span><span class="hl-2">/                           # </span><span class="hl-5">candle</span><span class="hl-2"> </span><span class="hl-5">persist</span><span class="hl-2"> </span><span class="hl-5">cache</span><br/><span class="hl-2">├── </span><span class="hl-5">package</span><span class="hl-2">.</span><span class="hl-5">json</span><span class="hl-2">                    # </span><span class="hl-5">Scripts</span><span class="hl-2"> </span><span class="hl-5">and</span><span class="hl-2"> </span><span class="hl-5">dependencies</span><br/><span class="hl-2">└── </span><span class="hl-7">README</span><span class="hl-2">.</span><span class="hl-5">md</span><span class="hl-2">                       # </span><span class="hl-5">This</span><span class="hl-2"> </span><span class="hl-5">file</span><br/><br/><span class="hl-2"># </span><span class="hl-5">result</span><span class="hl-2">.</span><span class="hl-5">json</span><span class="hl-2"> + </span><span class="hl-5">result_</span><span class="hl-2">*.</span><span class="hl-5">jsonl</span><span class="hl-2"> </span><span class="hl-5">are</span><span class="hl-2"> </span><span class="hl-5">written</span><span class="hl-2"> </span><span class="hl-5">by</span><span class="hl-2"> </span><span class="hl-3">`npm start`</span><span class="hl-2"> </span><span class="hl-5">and</span><span class="hl-2"> </span><span class="hl-5">are</span><span class="hl-2"> </span><span class="hl-7">NOT</span><span class="hl-2"> </span><span class="hl-5">committed</span><br/><span class="hl-2"># (</span><span class="hl-5">the</span><span class="hl-2"> </span><span class="hl-5">reports</span><span class="hl-2"> </span><span class="hl-5">stream</span><span class="hl-2"> </span><span class="hl-5">runs</span><span class="hl-2"> </span><span class="hl-5">to</span><span class="hl-2"> </span><span class="hl-5">gigabytes</span><span class="hl-2">)</span>
+</code><button>Copy</button></pre>
+
+<p>The ideas feed contains every crypto symbol seen on the source platform — BTCUSDT 421, ETHUSDT 205, XRPUSDT 86 and so on, 1,049 ideas total. <code>Sweep.run</code> filters by the requested symbol itself, so one shared feed serves any run.</p>
+<a id="installation" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Installation<a href="#installation" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-1">cd</span><span class="hl-2"> </span><span class="hl-3">demo/sweep</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">install</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="running" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Running<a href="#running" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="bash"><span class="hl-0"># grid sweep over the whole feed</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">start</span><br/><br/><span class="hl-0"># the published CLI on the same feed</span><br/><span class="hl-1">npm</span><span class="hl-2"> </span><span class="hl-3">run</span><span class="hl-2"> </span><span class="hl-3">cli</span>
+</code><button type="button">Copy</button></pre>
+
+<p>The script registers a CCXT Binance spot exchange, a sweep schema with explicit grid axes, loads the ideas feed and runs the sweep for BTCUSDT:</p>
+<pre><code class="javascript"><span class="hl-1">addSweepSchema</span><span class="hl-2">({</span><br/><span class="hl-2">  </span><span class="hl-5">sweepName:</span><span class="hl-2"> </span><span class="hl-3">&quot;tv_probe&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-5">exchangeName:</span><span class="hl-2"> </span><span class="hl-3">&quot;ccxt_cached&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">  </span><span class="hl-0">// gridAxes опущены — движок метёт полную сетку по умолчанию.</span><br/><span class="hl-2">  </span><span class="hl-0">// Метрика одна — profit-before-stop, задавать нечего.</span><br/><span class="hl-2">  </span><span class="hl-5">reportOrder:</span><span class="hl-2"> </span><span class="hl-3">&quot;sharpe&quot;</span><span class="hl-2">,</span><br/><span class="hl-2">});</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Candles are fetched lazily in chunks through the exchange schema — persist cache first, network after. Only the horizons of actual ideas are requested, gaps between sparse ideas are never downloaded. The run writes <code>./result.json</code> (run-level counters) plus three streams next to the script — <code>result_reports.jsonl</code> (every grid point), <code>result_best.jsonl</code> (the four ranking winners), <code>result_tracks.jsonl</code> (per-rule author tracks). None are committed.</p>
+<a id="reading-the-result" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Reading the Result<a href="#reading-the-result" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>The result is read in two independent layers — the corridor and the tracks:</p>
+<ol>
+<li><strong>The corridor</strong> (<code>reports.reports</code> — the single report bucket, sorted by the schema's <code>reportOrder</code>, with its ranking winners in <code>reports.best</code>). Count the positive-PnL share and how it distributes over the hold axis; <code>p95HoldMinutes</code> / <code>p99HoldMinutes</code> make eternal holds visible instantly. A negative corridor means the <em>unfiltered</em> crowd has no edge — it does not mean the feed is worthless (see the tracks).</li>
+<li><strong>The tracks</strong> (<code>reports.tracks</code> — one line per grading rule × author, <code>{holdMinutes, profitLockPercent, hardStopPercent, trailingTakePercent, author, ideas, hits, hitRate}</code>). This is the raw material for a userspace scorer: pick a rule (the four levels), require a minimum track (<code>ideas &gt;= N</code>), rank by <code>hitRate</code>. There is no ban and no threshold in the engine — that judgement is yours, on continuous evidence.</li>
+</ol>
+<p>The final arbiter for any point or author picked from the tracks is always a real engine backtest via <code>Backtest.run</code> — the sweep makes the search cheap, it does not replace the engine.</p>
+<a id="license" class="tsd-anchor"></a><h2 class="tsd-anchor-link">License<a href="#license" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><p>MIT © <a href="https://github.com/tripolskypetr">tripolskypetr</a></p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#sweep-demo"><span>Sweep <wbr/>Demo</span></a><ul><li><a href="#purpose"><span>Purpose</span></a></li><li><ul><li><a href="#1-is-there-a-profitable-corridor-at-all"><span>1. <wbr/>Is there a profitable corridor at all?</span></a></li><li><a href="#2-how-much-does-the-window-cut"><span>2. <wbr/>How much does the window cut?</span></a></li><li><a href="#3-what-is-each-authors-raw-track"><span>3. <wbr/>What is each author&#39;s raw track?</span></a></li><li><a href="#4-the-mechanics-are-the-full-sweep"><span>4. <wbr/>The mechanics are the full sweep</span></a></li><li><a href="#5-reading-the-result"><span>5. <wbr/>Reading the result</span></a></li></ul></li><li><a href="#actual-results--june-2026-btcusdt-full-feed"><span>Actual <wbr/>Results — <wbr/>June 2026, BTCUSDT, full feed</span></a></li><li><a href="#project-structure"><span>Project <wbr/>Structure</span></a></li><li><a href="#installation"><span>Installation</span></a></li><li><a href="#running"><span>Running</span></a></li><li><a href="#reading-the-result"><span>Reading the <wbr/>Result</span></a></li><li><a href="#license"><span>License</span></a></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>

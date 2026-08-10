@@ -1,0 +1,145 @@
+<!DOCTYPE html><html class="default" lang="en" data-base=".."><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>docs/class/MCPUtils | backtest-kit</title><meta name="description" content="Documentation for backtest-kit"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar"><div class="tsd-toolbar-contents container"><div class="table-cell" id="tsd-search"><div class="field"><label for="tsd-search-field" class="tsd-widget tsd-toolbar-icon search no-caption"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></label><input type="text" id="tsd-search-field" aria-label="Search"/></div><div class="field"><div id="tsd-toolbar-links"></div></div><ul class="results"><li class="state loading">Preparing search index...</li><li class="state failure">The search index is not available</li></ul><a href="../index.html" class="title">backtest-kit</a></div><div class="table-cell" id="tsd-widgets"><a href="#" class="tsd-widget tsd-toolbar-icon menu no-caption" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></div></header><div class="container container-main"><div class="col-content"><div class="tsd-page-title"><ul class="tsd-breadcrumb"><li><a href="../modules.html">backtest-kit</a></li><li><a href="docs_class_MCPUtils.html">docs/class/MCPUtils</a></li></ul></div><div class="tsd-panel tsd-typography"><a id="mcputils" class="tsd-anchor"></a><h1 class="tsd-anchor-link">MCPUtils<a href="#mcputils" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h1><p>Utility class exposing live trading to an MCP (Model Context Protocol) agent.</p>
+<p>Provides static-like methods (via singleton instance) to observe every
+live instance of the schema's strategy and to open/close positions on
+the agent's command.</p>
+<p>Features:</p>
+<ul>
+<li>Portfolio status rendered as human-readable agent messages</li>
+<li>Manual position open (moonbag levels, grid-snapped hard stop)</li>
+<li>Manual close of the pending position</li>
+</ul>
+<p>Every method validates the full MCP -&gt; strategy -&gt; risk/action chain
+before touching the live state.</p>
+<a id="constructor" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Constructor<a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><pre><code class="ts"><span class="hl-1">constructor</span><span class="hl-2">();</span>
+</code><button type="button">Copy</button></pre>
+
+<a id="properties" class="tsd-anchor"></a><h2 class="tsd-anchor-link">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2><a id="getdefaultmessages" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getDefaultMessages<a href="#getdefaultmessages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getDefaultMessages</span><span class="hl-2">: (</span><span class="hl-5">context</span><span class="hl-2">: </span><span class="hl-10">IMCPContext</span><span class="hl-2">, </span><span class="hl-5">when</span><span class="hl-2">: </span><span class="hl-10">Date</span><span class="hl-2">, </span><span class="hl-5">mcpName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">IMCPMessage</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Renders a portfolio snapshot with the DEFAULT text renderer, regardless
+of the schema's getMessages.</p>
+<p>Emits one header message — snapshot time plus the portfolio summary
+(open position count, total invested, total and per-position dollar
+PnL) — plus one text message per traded symbol: prices, PnL/peak/
+drawdown percents with timing, DCA entries, capital balance and the
+entry/position/close slots.</p>
+<p>The signature matches IMCPSchema.getMessages (async variant), so a
+custom renderer can await this method and extend the default output
+instead of rebuilding it.</p>
+<a id="gethistorymessages" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getHistoryMessages<a href="#gethistorymessages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getHistoryMessages</span><span class="hl-2">: (</span><span class="hl-5">when</span><span class="hl-2">: </span><span class="hl-10">Date</span><span class="hl-2">, </span><span class="hl-5">mcpName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">limit</span><span class="hl-2">?: </span><span class="hl-10">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">IMCPMessage</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Renders the trade history of the MCP (Model Context Protocol)
+instance's strategy into agent messages:
+the CLOSED positions from the live signal
+storage, newest first — dollar/percent result, direction, close reason,
+open/close times and the opening note per trade.</p>
+<p>Complements getStatus for stateless agents: the status shows what is
+open, the history shows what was already traded and how it ended, so
+the agent does not re-enter the same idea right after closing it.</p>
+<p>Depth defaults to  DEFAULT_HISTORY_LIMIT ; the newest trades are
+the ones kept when <code>limit</code> cuts the feed.</p>
+<a id="getagentmessages" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getAgentMessages<a href="#getagentmessages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getAgentMessages</span><span class="hl-2">: (</span><span class="hl-5">when</span><span class="hl-2">: </span><span class="hl-10">Date</span><span class="hl-2">, </span><span class="hl-5">mcpName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">limit</span><span class="hl-2">?: </span><span class="hl-10">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">IMCPMessage</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Renders the messages the STRATEGY CODE addressed to the agent into agent
+messages: the <code>agent</code>-level entries of the log history written via
+<code>Log.agent(...)</code> under the MCP (Model Context Protocol) instance's
+strategy in LIVE mode, newest first — symbol, emit time and the message
+text per entry.</p>
+<p>This is the strategy talking to the agent, the reverse direction of every
+other renderer: getStatus reports numbers, getNotificationMessages
+replays the agent's own notes, and this channel carries directives the
+strategy raised on its own — a position stagnating for an hour, collapsed
+volatility, an approaching session close. The agent reads them as
+instructions from the trading system.</p>
+<p>Backtest entries and entries of other strategies are filtered out; rows
+accumulate only while a Log adapter is enabled. Depth defaults to
+DEFAULT_AGENT_LIMIT ; the newest directives are the ones kept when
+<code>limit</code> cuts the feed.</p>
+<a id="getnotificationmessages" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getNotificationMessages<a href="#getnotificationmessages" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getNotificationMessages</span><span class="hl-2">: (</span><span class="hl-5">when</span><span class="hl-2">: </span><span class="hl-10">Date</span><span class="hl-2">, </span><span class="hl-5">mcpName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">limit</span><span class="hl-2">?: </span><span class="hl-10">number</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">IMCPMessage</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Renders the DESCRIBED trading events of the MCP (Model Context Protocol)
+instance's strategy into agent messages: position opens, position closes
+and mid-position notes that carry a description, newest first — symbol,
+direction, signal id, the prices and PnL of the moment, and the reasoning
+itself.</p>
+<p>Events without a description are dropped. This is the anti-whipsaw half
+of the agent's memory: a bare &quot;opened LONG / closed LONG&quot; pair says
+nothing about intent and invites the agent to re-enter what it just left,
+while &quot;opened: breakout on volume&quot; followed by &quot;closed: volume dried up,
+thesis void&quot; reads as a finished thought. Unlike getStatus, the feed is
+not limited to what is open right now — a close only means something next
+to the open it terminates.</p>
+<p>Rows accumulate only while a NotificationLive backend is enabled. Depth
+defaults to  DEFAULT_NOTIFICATION_LIMIT ; the newest events are the
+ones kept when <code>limit</code> cuts the feed.</p>
+<a id="getstatus" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getStatus<a href="#getstatus" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getStatus</span><span class="hl-2">: (</span><span class="hl-5">mcpName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">IMCPMessage</span><span class="hl-2">[]&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Renders the current portfolio of the MCP (Model Context Protocol)
+instance's strategy into agent messages.</p>
+<p>Builds a per-symbol snapshot (current price, queued entry, active
+position with PnL, queued close) over every live instance of the bound
+strategy and passes it to the schema's getMessages (or the default
+text renderer). Fires the schema's onStatus callback with the snapshot
+and the rendered messages.</p>
+<p>Requires the &quot;getStatus&quot; permission on the schema.</p>
+<a id="commitpositionopen" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitPositionOpen<a href="#commitpositionopen" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitPositionOpen</span><span class="hl-2">: (</span><span class="hl-5">dto</span><span class="hl-2">: </span><span class="hl-10">IMCPPositionOpenCommand</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Opens a position for a symbol on the agent's command.</p>
+<p>The symbol must be enabled in live trading for the schema's strategy and
+must have no pending signal. Levels are moonbag: fixed 50% take profit,
+hard stop-loss snapped one notch below CC_MAX_STOPLOSS_DISTANCE_PERCENT;
+entry cost comes from the schema's positionCost.</p>
+<a id="commitpositionclose" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitPositionClose<a href="#commitpositionclose" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitPositionClose</span><span class="hl-2">: (</span><span class="hl-5">dto</span><span class="hl-2">: </span><span class="hl-10">IMCPPositionCloseCommand</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Closes the pending position of a symbol on the agent's command.</p>
+<p>The symbol must be enabled in live trading for the schema's strategy and
+must have a pending signal; its id is consumed by the close commit.</p>
+<a id="commitaveragebuy" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitAverageBuy<a href="#commitaveragebuy" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitAverageBuy</span><span class="hl-2">: (</span><span class="hl-5">dto</span><span class="hl-2">: </span><span class="hl-10">IMCPAverageBuyCommand</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">boolean</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Adds a DCA entry to the pending position of a symbol on the agent's command.</p>
+<p>The symbol must be enabled in live trading for the schema's strategy and
+must have a pending signal — its id is resolved by symbol from the live
+strategy state, no method context is required. The entry executes at the
+current market price with the cost from the schema's positionCost.</p>
+<a id="commitsignalnotify" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitSignalNotify<a href="#commitsignalnotify" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitSignalNotify</span><span class="hl-2">: (</span><span class="hl-5">dto</span><span class="hl-2">: </span><span class="hl-10">IMCPSignalNotifyCommand</span><span class="hl-2">) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Emits a <code>signal.info</code> notification for the pending position of a symbol
+on the agent's command.</p>
+<p>The symbol must be enabled in live trading for the schema's strategy and
+must have a pending signal — its id is resolved by symbol from the live
+strategy state, no method context is required. The notification lands in
+the live notification storage and is later readable via
+getNotificationMessages.</p>
+</div></div><div class="col-sidebar"><div class="page-menu"><div class="tsd-navigation settings"><details class="tsd-accordion"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Settings</h3></summary><div class="tsd-accordion-details"><div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span><ul id="tsd-filter-options"><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li><li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div><div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div><details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>On This Page</h3></summary><div class="tsd-accordion-details"><a href="#mcputils"><span>MCPUtils</span></a><ul><li><a href="#constructor"><span>Constructor</span></a></li><li><a href="#properties"><span>Properties</span></a></li><li><ul><li><a href="#getdefaultmessages"><span>get<wbr/>Default<wbr/>Messages</span></a></li><li><a href="#gethistorymessages"><span>get<wbr/>History<wbr/>Messages</span></a></li><li><a href="#getagentmessages"><span>get<wbr/>Agent<wbr/>Messages</span></a></li><li><a href="#getnotificationmessages"><span>get<wbr/>Notification<wbr/>Messages</span></a></li><li><a href="#getstatus"><span>get<wbr/>Status</span></a></li><li><a href="#commitpositionopen"><span>commit<wbr/>Position<wbr/>Open</span></a></li><li><a href="#commitpositionclose"><span>commit<wbr/>Position<wbr/>Close</span></a></li><li><a href="#commitaveragebuy"><span>commit<wbr/>Average<wbr/>Buy</span></a></li><li><a href="#commitsignalnotify"><span>commit<wbr/>Signal<wbr/>Notify</span></a></li></ul></li></ul></div></details></div><div class="site-menu"><nav class="tsd-navigation"><a href="../modules.html">backtest-kit</a><ul class="tsd-small-nested-navigation" id="tsd-nav-container"><li>Loading...</li></ul></nav></div></div></div><footer><p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer><div class="overlay"></div></body></html>
+
+<!-- Yandex.Metrika counter -->
+<script type="text/javascript">
+    (function(m,e,t,r,i,k,a){
+        m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();
+        for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
+        k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=105455585', 'ym');
+
+    ym(105455585, 'init', {ssr:true, webvisor:true, clickmap:true, ecommerce:"dataLayer", accurateTrackBounce:true, trackLinks:true});
+</script>
+<noscript><div><img src="https://mc.yandex.ru/watch/105455585" style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+<!-- /Yandex.Metrika counter -->
+
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3MQZEBBDDR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-3MQZEBBDDR');
+</script>
