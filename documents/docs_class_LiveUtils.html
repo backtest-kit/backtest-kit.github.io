@@ -306,16 +306,16 @@ scheduled signal. Validated, and rejected if a signal or deferred action is alre
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's take-profit order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that bypasses the VWAP-based TP check.</p>
-<p>The exchange and the strategy are parallel states: the framework evaluates TP/SL against VWAP,
+(e.g. by candle high/low), forcing a close that bypasses the framework's VWAP-based TP check.</p>
+<p>The exchange and the strategy are parallel states: the framework evaluates SL/liquidation by closed-candle touch and TP by VWAP,
 but the real order may fill on high/low. The close is deferred and emitted with closeReason
 &quot;take_profit&quot; on the next live tick. No-op if no pending signal exists.</p>
 <a id="commitcreatestoploss" class="tsd-anchor"></a><h3 class="tsd-anchor-link">commitCreateStopLoss<a href="#commitcreatestoploss" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">commitCreateStopLoss</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }, </span><span class="hl-5">payload</span><span class="hl-2">?: </span><span class="hl-10">Partial</span><span class="hl-2">&lt;</span><span class="hl-10">CommitPayload</span><span class="hl-2">&gt;) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-4">void</span><span class="hl-2">&gt;</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's stop-loss order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that bypasses the VWAP-based SL check.</p>
-<p>The exchange and the strategy are parallel states: the framework evaluates TP/SL against VWAP,
+(e.g. by candle high/low), forcing a close that bypasses the framework's touch-based SL check (closed-candle granularity).</p>
+<p>The exchange and the strategy are parallel states: the framework evaluates SL/liquidation by closed-candle touch and TP by VWAP,
 but the real order may fill on high/low. The close is deferred and emitted with closeReason
 &quot;stop_loss&quot; on the next live tick. No-op if no pending signal exists.</p>
 <a id="getstrategystatus" class="tsd-anchor"></a><h3 class="tsd-anchor-link">getStrategyStatus<a href="#getstrategystatus" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3><pre><code class="ts"><span class="hl-9">getStrategyStatus</span><span class="hl-2">: (</span><span class="hl-5">symbol</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">, </span><span class="hl-5">context</span><span class="hl-2">: { </span><span class="hl-5">strategyName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; </span><span class="hl-5">exchangeName</span><span class="hl-2">: </span><span class="hl-10">string</span><span class="hl-2">; }) </span><span class="hl-4">=&gt;</span><span class="hl-2"> </span><span class="hl-10">Promise</span><span class="hl-2">&lt;</span><span class="hl-5">StrategyStatus</span><span class="hl-2">&gt;</span>

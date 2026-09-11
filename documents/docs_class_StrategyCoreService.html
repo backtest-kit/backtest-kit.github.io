@@ -200,7 +200,7 @@ Rejected if a signal or deferred action is already in flight. Does not require e
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's take-profit order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that bypasses the VWAP-based TP check.</p>
+(e.g. by candle high/low), forcing a close that bypasses the framework's VWAP-based TP check.</p>
 <p>Validates the context, then delegates to StrategyConnectionService.createTakeProfit().
 The close is deferred and emitted with closeReason &quot;take_profit&quot; on the next tick/backtest.
 Does not require execution context.</p>
@@ -208,7 +208,7 @@ Does not require execution context.</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's stop-loss order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that bypasses the VWAP-based SL check.</p>
+(e.g. by candle high/low), forcing a close that bypasses the framework's touch-based SL check (closed-candle granularity).</p>
 <p>Validates the context, then delegates to StrategyConnectionService.createStopLoss().
 The close is deferred and emitted with closeReason &quot;stop_loss&quot; on the next tick/backtest.
 Does not require execution context.</p>

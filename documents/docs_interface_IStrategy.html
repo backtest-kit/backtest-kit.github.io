@@ -171,9 +171,8 @@ when provided the pipeline decides immediate-vs-scheduled.</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's take-profit order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that does not wait for the VWAP-based TP check.</p>
-<p>The exchange and the strategy are parallel states: ClientStrategy evaluates TP/SL against
-VWAP, but the real order may close on high/low. This method bridges that gap — the broker
+(e.g. by candle high/low), forcing a close that does not wait for the framework's VWAP-based TP check.</p>
+<p>The exchange and the strategy are parallel states: ClientStrategy evaluates SL/liquidation by closed-candle touch and TP by VWAP, but the real order may close on high/low. This method bridges that gap — the broker
 confirms the fill out of the async-hooks execution context, and the close is deferred:
 a snapshot of the current pending signal is stored and drained on the next tick/backtest,
 which closes the position with closeReason &quot;take_profit&quot; at the effective take-profit level.</p>
@@ -183,9 +182,8 @@ tick does not lose the deferred close.</p>
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's stop-loss order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that does not wait for the VWAP-based SL check.</p>
-<p>The exchange and the strategy are parallel states: ClientStrategy evaluates TP/SL against
-VWAP, but the real order may close on high/low. This method bridges that gap — the broker
+(e.g. by candle high/low), forcing a close that does not wait for the framework's touch-based SL check (closed-candle granularity).</p>
+<p>The exchange and the strategy are parallel states: ClientStrategy evaluates SL/liquidation by closed-candle touch and TP by VWAP, but the real order may close on high/low. This method bridges that gap — the broker
 confirms the fill out of the async-hooks execution context, and the close is deferred:
 a snapshot of the current pending signal is stored and drained on the next tick/backtest,
 which closes the position with closeReason &quot;stop_loss&quot; at the effective stop-loss level.</p>

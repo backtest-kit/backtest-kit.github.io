@@ -2,8 +2,8 @@
 </code><button type="button">Copy</button></pre>
 
 <p>Reports that the pending position's take-profit order was actually filled on the exchange
-(e.g. by candle high/low), forcing a close that bypasses the VWAP-based TP check.</p>
-<p>The exchange and the strategy are parallel states: the framework evaluates TP/SL against VWAP,
+(e.g. by candle high/low), forcing a close that bypasses the framework's VWAP-based TP check.</p>
+<p>The exchange and the strategy are parallel states: the framework evaluates SL/liquidation by closed-candle touch and TP by VWAP,
 but the real order may fill on high/low. The close is deferred and emitted with closeReason
 &quot;take_profit&quot; on the next tick. No-op if no pending signal exists.</p>
 <p>Automatically detects backtest/live mode from execution context.</p>
