@@ -9,7 +9,7 @@
 <p>To verify that the adapter even <strong>works</strong> — that the order goes through, leverage gets set, <code>positionSide</code> in hedge mode isn't mixed up, quantity rounding passes the exchange's filters, TP/SL land on the correct side — you need to wait for a <strong>trading signal</strong>.</p>
 <p>And the signal may not come. A day. Two. Three days.</p>
 <p>By its very nature, a strategy stays silent most of the time: it waits for conditions, waits for a breakout, waits for news. You sit and stare at a log where nothing is happening. The bot is alive, the bot is healthy, the bot is waiting. And then the moment comes. At 03:47 in the morning the conditions align, the bot forms a signal, pulls the adapter and... catches a bug.</p>
-<pre><code class="yaml"><span class="hl-14">ExchangeAPIException</span><span class="hl-2">: </span><span class="hl-15">-4061 Order&#39;s position side does not match user&#39;s setting.</span>
+<pre><code class="yaml"><span class="hl-19">ExchangeAPIException</span><span class="hl-2">: </span><span class="hl-20">-4061 Order&#39;s position side does not match user&#39;s setting.</span>
 </code><button type="button">Copy</button></pre>
 
 <p>Congratulations. You spent three days of waiting to learn that in hedge mode you need to send <code>positionSide</code> as <code>LONG</code>, not <code>BOTH</code>. You fix one line. And you wait another three days until the next signal to check that <strong>this time</strong> the quantity rounding under <code>stepSize</code> won't fall apart.</p>
